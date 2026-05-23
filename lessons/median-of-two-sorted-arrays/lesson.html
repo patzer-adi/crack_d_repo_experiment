@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Median of Two Sorted Arrays — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+.badge-hard{background:#fee2e2;color:#b91c1c;border:0.5px solid #fca5a5;}
+
+/* PARTITION VISUAL */
+.part-vis{margin:.75rem 0;}
+.part-row{display:flex;align-items:center;gap:4px;margin-bottom:6px;}
+.part-row-label{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text3);width:22px;flex-shrink:0;}
+.part-cell{width:38px;height:38px;border-radius:5px;border:0.5px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);transition:all .2s;}
+.part-cell.left{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);}
+.part-cell.right{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info);}
+.part-divider{width:3px;height:46px;background:var(--text-warn);border-radius:2px;flex-shrink:0;margin:0 2px;}
+.part-empty{font-family:var(--mono);font-size:13px;color:var(--text3);padding:0 6px;}
+.part-summary{display:flex;gap:10px;flex-wrap:wrap;margin-top:.75rem;align-items:center;}
+.part-half{background:var(--bg3);border:0.5px solid var(--border2);border-radius:6px;padding:.5rem .875rem;font-family:var(--mono);font-size:12px;}
+.part-half-label{font-size:10px;margin-bottom:3px;}
+.part-half-vals{font-weight:600;}
+.part-inv{display:flex;gap:12px;flex-wrap:wrap;margin-top:.625rem;font-family:var(--mono);font-size:12px;}
+.inv-ok{color:var(--text-success);}
+.inv-bad{color:var(--text-danger);}
+
+/* CV partition display */
+.cv-part-grid{display:flex;flex-direction:column;gap:5px;margin-bottom:7px;}
+.cv-part-row{display:flex;align-items:center;gap:3px;flex-wrap:nowrap;}
+.cv-arr-label{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text3);width:18px;flex-shrink:0;}
+.cv-arr-cell{width:22px;height:24px;border-radius:3px;border:0.5px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text);transition:all .2s;}
+.cv-arr-cell.lh{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);}
+.cv-arr-cell.rh{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info);}
+.cv-part-div{width:2px;height:28px;background:var(--text-warn);border-radius:1px;flex-shrink:0;margin:0 2px;}
+.cv-bounds{font-family:var(--mono);font-size:10px;color:var(--text3);min-height:14px;}
+
+/* CV var grid override: 3 cols (matches default) but 9 vars = 3×3 */
+.cv-var-grid-mots{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
+
+/* Brute-force strips */
+.bf-src-row{display:flex;align-items:center;gap:6px;margin:.375rem 0;}
+.bf-src-lbl{font-family:var(--mono);font-size:11px;color:var(--text3);width:20px;flex-shrink:0;}
+.bf-src-strip{display:flex;gap:3px;flex-wrap:wrap;}
+.bf-src-cell{width:30px;height:30px;border-radius:4px;border:0.5px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text);transition:all .2s;}
+.bf-src-cell.active{background:var(--bg-warn);border-color:var(--border-warn);color:var(--text-warn);outline:2px solid var(--border-warn);}
+.bf-src-cell.used{opacity:.3;}
+.bf-merge-strip{display:flex;gap:3px;flex-wrap:wrap;margin:.375rem 0;}
+.bf-merge-cell{width:30px;height:30px;border-radius:4px;border:0.5px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text);transition:all .2s;}
+.bf-merge-cell.newest{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info);}
+.bf-merge-cell.med{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);outline:2px solid var(--border-success);}
+
+/* DR formula-grid 4-col override */
+.formula-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:.875rem;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Median of Two Sorted Arrays</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/median-of-two-sorted-arrays/" target="_blank">LC #4</a>
+    <span class="badge badge-hard">Hard</span>
+    <span class="badge badge-arr">Binary Search · Arrays</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains the solution.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <p class="acard-q">Can either array be empty?</p>
+      <p class="acard-a">Yes — e.g. A=[], B=[1,2,3] is valid. One array may have zero elements.</p>
+      <span class="acard-u">→ boundary sentinels (−∞ / +∞) needed for empty-partition edges</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Are both arrays guaranteed sorted?</p>
+      <p class="acard-a">Yes — both in non-decreasing order. That's the problem's given constraint.</p>
+      <span class="acard-u">→ sortedness is the invariant that makes binary search on the partition valid</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">What type should the median be?</p>
+      <p class="acard-a">double — for even total length, return average of the two middle elements.</p>
+      <span class="acard-u">→ must use /2.0, not /2, to avoid integer truncation</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can values repeat within or across arrays?</p>
+      <p class="acard-a">Yes — e.g. A=[0,0] B=[0,0] is valid.</p>
+      <span class="acard-u">→ duplicates handled naturally; no special case needed</span>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Both arrays are non-null and sorted. Total length ≥ 1. No overflow risk for the two-element average: cast to double before dividing. The problem requires O(log(m+n)) time — merging is off the table.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">The median is a partition. Find the right split — no merge needed.</p>
+
+  <p class="body">Before any algorithm: what does the median actually mean? It is the value that splits a sorted sequence into two equal halves — every element on the left is ≤ every element on the right. Find that split across both sorted arrays directly, by binary-searching the partition index in the smaller array; the other index follows from half = ⌊(m+n+1)/2⌋ − i.</p>
+
+  <!-- §1 animation — binary search on partition: A=[1,2,3,4], B=[5,6,7,8]. Median = 4.5.
+       Layers (PLAN-017): current candidate (info-blue), valid partition once found (success-green),
+       binary-search bound update (warn-orange ↔). -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);border:0.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>current candidate (i, j)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-success);border:0.5px solid var(--border-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>valid partition (median found)</span>
+      <span><span style="color:var(--text-warn);font-weight:700;font-size:14px;vertical-align:middle">↔</span> binary search bound shift</span>
+    </div>
+
+    <!-- Row 1: A and B arrays with split bars at i and j -->
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.25rem">A = [1,2,3,4] · B = [5,6,7,8] · half = (4+4+1)/2 = 4</div>
+    <div id="si-strip" style="background:var(--bg);border-radius:var(--r);padding:.5rem;margin-bottom:.5rem;min-height:90px"></div>
+
+    <!-- Row 2: partition check predicate -->
+    <div style="background:var(--bg);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:13px;line-height:1.9;color:var(--text2);min-height:60px">
+      <div id="si-calc">
+        <div>i = <span id="si-i" style="color:var(--text-info);font-weight:600">—</span> · j = half − i = <span id="si-j" style="color:var(--text-info);font-weight:600">—</span></div>
+        <div>maxL_A = <span id="si-mla" style="font-weight:600">—</span> · minR_B = <span id="si-mrb" style="font-weight:600">—</span> &nbsp;|&nbsp; maxL_B = <span id="si-mlb" style="font-weight:600">—</span> · minR_A = <span id="si-mra" style="font-weight:600">—</span> &nbsp;<span id="si-decision-badge" class="decision-badge">—</span></div>
+      </div>
+    </div>
+
+    <!-- Row 3: bounds + median -->
+    <div style="display:flex;gap:1.5rem;align-items:center;padding:.625rem .875rem;background:var(--bg);border-radius:var(--r);font-family:var(--mono);font-size:14px;margin:.5rem 0">
+      <div>lo = <span id="si-lo" style="font-weight:600">—</span> · hi = <span id="si-hi" style="font-weight:600">—</span></div>
+      <div>median = <span id="si-med" style="font-weight:700;color:var(--text-success);font-size:18px">—</span></div>
+    </div>
+
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <!-- Foundational concept visual -->
+  <div style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:1rem 1.25rem;margin:1rem 0;">
+    <p style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.625rem">Concrete example: A=[1,3] and B=[2]. Combined sorted: [1,2,3]. Median = 2.</p>
+    <p style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.5rem">Split A after index 1 (i=1) and B after index 1 (j=1):</p>
+    <div class="part-vis">
+      <div class="part-row">
+        <span class="part-row-label">A:</span>
+        <div class="part-cell left">1</div>
+        <div class="part-divider"></div>
+        <div class="part-cell right">3</div>
+      </div>
+      <div class="part-row">
+        <span class="part-row-label">B:</span>
+        <div class="part-cell left">2</div>
+        <div class="part-divider"></div>
+        <span class="part-empty">∅</span>
+      </div>
+    </div>
+    <div class="part-summary">
+      <div class="part-half">
+        <div class="part-half-label" style="color:var(--text-success)">Left half</div>
+        <div class="part-half-vals" style="color:var(--text-success)">[1, 2]  max = 2</div>
+      </div>
+      <div style="font-size:20px;color:var(--text3)">→</div>
+      <div class="part-half">
+        <div class="part-half-label" style="color:var(--text-info)">Right half</div>
+        <div class="part-half-vals" style="color:var(--text-info)">[3]  min = 3</div>
+      </div>
+    </div>
+    <div class="part-inv" style="margin-top:.625rem">
+      <span class="inv-ok">✓ maxLeft_A(1) ≤ minRight_B(∅ → +∞): satisfied</span>
+      <span class="inv-ok">✓ maxLeft_B(2) ≤ minRight_A(3): satisfied</span>
+      <span class="inv-ok">✓ Odd total (3): median = max(left half) = 2</span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Binary search on the partition point i in the smaller array. For each candidate i, set j = half − i so both halves together contain exactly ⌊(m+n+1)/2⌋ elements. The partition is correct when max(left_A) ≤ min(right_B) AND max(left_B) ≤ min(right_A). Binary search adjusts i left or right until that invariant holds. The algorithm reads at most O(log min(m,n)) partition-boundary values and never allocates any array.</p>
+  </div>
+
+  <!-- Equivalence chain -->
+  <p class="body" style="margin-top:1.125rem">Why binary search on the partition works:</p>
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">find the median of the merged sorted sequence of length m+n</div>
+        <div class="chain-note">the problem statement</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">find a partition (i, j) where i+j = ⌊(m+n+1)/2⌋ and max(left_A,left_B) ≤ min(right_A,right_B)</div>
+        <div class="chain-note">correct partition ↔ correct median, no merge needed</div>
+        <div class="chain-example">
+          <span class="pill n">i from A</span><span class="arrow">+</span>
+          <span class="pill n">j from B</span><span class="arrow">=</span>
+          <span class="pill ok">exactly half the combined array</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">once i is chosen, j = half − i is determined — one free variable</div>
+        <div class="chain-note">2D search collapses to 1D; i ranges over [0..m]</div>
+        <div class="chain-example">
+          <span class="pill n">m=2 n=2 half=2</span><span class="arrow">→</span>
+          <span class="pill n">i=0→j=2</span>
+          <span style="color:var(--text3);font-size:11px">·</span>
+          <span class="pill n">i=1→j=1</span>
+          <span style="color:var(--text3);font-size:11px">·</span>
+          <span class="pill n">i=2→j=0</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">binary search i</span>: if maxLeft_A > minRight_B → i too large (hi=i−1); if maxLeft_B > minRight_A → i too small (lo=i+1)</div>
+        <div class="chain-note">the validity predicate is monotone in i — binary search applies</div>
+        <div class="chain-example">
+          <span class="pill bad">A[i-1] > B[j] → hi = i−1</span>
+          <span style="color:var(--text3);font-size:11px">·</span>
+          <span class="pill bad">B[j-1] > A[i] → lo = i+1</span>
+          <span style="color:var(--text3);font-size:11px">·</span>
+          <span class="pill ok">both ≤ → found</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">always <span class="chain-hl">binary search on the smaller array</span> — swap so m ≤ n, ensuring j ≥ 0 throughout</div>
+        <div class="chain-note">keeps complexity O(log min(m,n)); j = half−i ≥ 0 is guaranteed when m ≤ n</div>
+        <div class="chain-example">
+          <span class="pill n">m=1000 n=1</span><span class="arrow">→</span>
+          <span class="pill ok">swap → search i ∈ [0..1]: 1 step</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // §1 animation — binary search on partition: A=[1,2,3,4], B=[5,6,7,8]. Median = 4.5.
+  const SI_A = [1, 2, 3, 4];
+  const SI_B = [5, 6, 7, 8];
+  let siSteps = siGenSteps(SI_A, SI_B);
+  let siCur = 0;
+  let siTimer = null;
+
+  function siGenSteps(A, B) {
+    const m = A.length, n = B.length;
+    const half = Math.floor((m + n + 1) / 2);
+    const steps = [];
+    let lo = 0, hi = m;
+    let found = null;
+    while (lo <= hi) {
+      const i = Math.floor((lo + hi) / 2);
+      const j = half - i;
+      const maxLA = i === 0 ? -Infinity : A[i - 1];
+      const minRA = i === m ? Infinity : A[i];
+      const maxLB = j === 0 ? -Infinity : B[j - 1];
+      const minRB = j === n ? Infinity : B[j];
+      let decision, capt;
+      if (maxLA <= minRB && maxLB <= minRA) {
+        const totalLen = m + n;
+        let med;
+        if (totalLen % 2 === 0) med = (Math.max(maxLA, maxLB) + Math.min(minRA, minRB)) / 2;
+        else med = Math.max(maxLA, maxLB);
+        decision = 'match'; found = {i, j, med};
+        capt = `i=${i}, j=${j}: maxL_A=${fmt(maxLA)}, maxL_B=${fmt(maxLB)}, minR_A=${fmt(minRA)}, minR_B=${fmt(minRB)}. Both invariants hold ★. median = ${med}.`;
+        steps.push({i, j, maxLA, maxLB, minRA, minRB, lo, hi, decision, capt, med, found});
+        break;
+      } else if (maxLA > minRB) {
+        decision = 'low'; capt = `i=${i}, j=${j}: maxL_A=${fmt(maxLA)} > minR_B=${fmt(minRB)}. i too large; shrink hi to ${i - 1}.`;
+        steps.push({i, j, maxLA, maxLB, minRA, minRB, lo, hi, decision, capt});
+        hi = i - 1;
+      } else {
+        decision = 'high'; capt = `i=${i}, j=${j}: maxL_B=${fmt(maxLB)} > minR_A=${fmt(minRA)}. i too small; grow lo to ${i + 1}.`;
+        steps.push({i, j, maxLA, maxLB, minRA, minRB, lo, hi, decision, capt});
+        lo = i + 1;
+      }
+    }
+    steps.push({terminal: true, found, capt: found ? `Median = ${found.med} (partition i=${found.i}, j=${found.j}).` : 'No valid partition found.'});
+    return steps;
+    function fmt(v) { return v === Infinity ? '+∞' : v === -Infinity ? '−∞' : v; }
+  }
+
+  function siRender() {
+    const s = siSteps[siCur];
+    const strip = document.getElementById('si-strip');
+    // Render A row and B row with split bars
+    const buildRow = (arr, label, split, splitIsValid) => {
+      let html = `<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px"><span style="width:24px;font-family:var(--mono);font-size:12px;color:var(--text3);font-weight:600">${label}</span>`;
+      for (let k = 0; k < arr.length; k++) {
+        if (k === split && !s.terminal) {
+          const splitColor = splitIsValid && s.decision === 'match' ? 'var(--text-success)' : 'var(--text-info)';
+          html += `<div style="width:3px;height:34px;background:${splitColor};margin:0 2px"></div>`;
+        }
+        const isLeft = k < split;
+        const cellBg = !s.terminal && k === split - 1 ? (splitIsValid && s.decision === 'match' ? 'var(--bg-success)' : 'var(--bg-info)') : (isLeft ? 'var(--bg2)' : 'var(--bg2)');
+        const cellBorder = !s.terminal && k === split - 1 ? (splitIsValid && s.decision === 'match' ? 'var(--border-success)' : 'var(--border-info)') : 'var(--border)';
+        const cellColor = !s.terminal && k === split - 1 ? (splitIsValid && s.decision === 'match' ? 'var(--text-success)' : 'var(--text-info)') : 'var(--text2)';
+        html += `<div style="width:30px;height:34px;border-radius:5px;border:0.5px solid ${cellBorder};background:${cellBg};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:600;color:${cellColor}">${arr[k]}</div>`;
+      }
+      if (split === arr.length && !s.terminal) {
+        const splitColor = splitIsValid && s.decision === 'match' ? 'var(--text-success)' : 'var(--text-info)';
+        html += `<div style="width:3px;height:34px;background:${splitColor};margin:0 2px"></div>`;
+      }
+      html += '</div>';
+      return html;
+    };
+    if (s.terminal && s.found) {
+      strip.innerHTML = buildRow(SI_A, 'A', s.found.i, true) + buildRow(SI_B, 'B', s.found.j, true);
+    } else if (!s.terminal) {
+      strip.innerHTML = buildRow(SI_A, 'A', s.i, true) + buildRow(SI_B, 'B', s.j, true);
+    }
+    const fmt = (v) => v === Infinity ? '+∞' : v === -Infinity ? '−∞' : v;
+    if (s.terminal) {
+      document.getElementById('si-calc').innerHTML = `<div style="color:var(--text-success)">${s.capt}</div>`;
+    } else {
+      document.getElementById('si-i').textContent = s.i;
+      document.getElementById('si-j').textContent = s.j;
+      document.getElementById('si-mla').textContent = fmt(s.maxLA);
+      document.getElementById('si-mlb').textContent = fmt(s.maxLB);
+      document.getElementById('si-mra').textContent = fmt(s.minRA);
+      document.getElementById('si-mrb').textContent = fmt(s.minRB);
+      const badge = document.getElementById('si-decision-badge');
+      if (s.decision === 'match') { badge.textContent = '★ valid partition'; badge.style.color = 'var(--text-success)'; }
+      else if (s.decision === 'low') { badge.textContent = '↔ i too high → hi = i−1'; badge.style.color = 'var(--text-warn)'; }
+      else { badge.textContent = '↔ i too low → lo = i+1'; badge.style.color = 'var(--text-warn)'; }
+    }
+    document.getElementById('si-lo').textContent = s.lo !== undefined ? s.lo : '—';
+    document.getElementById('si-hi').textContent = s.hi !== undefined ? s.hi : '—';
+    document.getElementById('si-med').textContent = (s.found && s.found.med !== undefined) ? s.found.med : (s.med !== undefined ? s.med : '—');
+    document.getElementById('si-caption').textContent = s.capt;
+    document.getElementById('si-sctr').textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext() { siStopPlay(); siCur = Math.min(siCur + 1, siSteps.length - 1); siRender(); }
+  function siPrev() { siStopPlay(); siCur = Math.max(siCur - 1, 0); siRender(); }
+  function siReset() { siStopPlay(); siCur = 0; siRender(); }
+  function siStopPlay() { if (siTimer) { clearInterval(siTimer); siTimer = null; document.getElementById('si-bplay').textContent = '▶ Auto'; } }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur >= siSteps.length - 1) { siStopPlay(); return; }
+      siCur++; siRender();
+    }, 1400);
+  }
+  siRender();
+</script>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force: merge then pick middle</p>
+  <p class="body">Two pointers merge both arrays into a new array, then index the middle element(s). Watch the "merged" counter grow — that's what the O(log) approach eliminates.</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">A=[1,3]  B=[2]</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">A=[1,2,3]  B=[4,5,6]</button>
+  </div>
+
+  <div class="bf-src-row">
+    <span class="bf-src-lbl">A:</span>
+    <div class="bf-src-strip" id="bf-stripA"></div>
+  </div>
+  <div class="bf-src-row">
+    <span class="bf-src-lbl">B:</span>
+    <div class="bf-src-strip" id="bf-stripB"></div>
+  </div>
+  <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin:.5rem 0 3px">merged →</div>
+  <div class="bf-merge-strip" id="bf-merge"></div>
+
+  <div style="font-family:var(--mono);font-size:12px;color:var(--text2);margin:.5rem 0;min-height:18px" id="bf-msg"></div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:.5rem">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(m+n) time, O(m+n) space</p>
+    <p class="infobox-d">Allocates a new array of m+n elements. The problem statement requires O(log(m+n)) time — this approach is used only to establish a baseline and to make the O(log) speedup feel concrete.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('bf-code',this)">▶ Show brute force code</button>
+  <div class="code-block" id="bf-code">
+<pre class="cb"><span class="kw">double</span> <span class="fn">findMedian_BF</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; A, <span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; B) {
+    <span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; merged;
+    <span class="kw">int</span> i = <span class="nu">0</span>, j = <span class="nu">0</span>;
+    <span class="kw">while</span> (i &lt; (<span class="kw">int</span>)A.size() || j &lt; (<span class="kw">int</span>)B.size()) {
+        <span class="kw">if</span> (j &gt;= (<span class="kw">int</span>)B.size() || (i &lt; (<span class="kw">int</span>)A.size() &amp;&amp; A[i] &lt;= B[j])) {
+            merged.push_back(A[i++]);
+        } <span class="kw">else</span> {
+            merged.push_back(B[j++]);
+        }
+    }
+    <span class="kw">int</span> n = merged.size();
+    <span class="kw">if</span> (n % <span class="nu">2</span> == <span class="nu">1</span>) { <span class="kw">return</span> (<span class="kw">double</span>)merged[n / <span class="nu">2</span>]; }
+    <span class="kw">return</span> (merged[n/<span class="nu">2</span>-<span class="nu">1</span>] + merged[n/<span class="nu">2</span>]) / <span class="nu">2.0</span>;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Three translations from O(m+n) to O(log min(m,n))</p>
+  <p class="body">The brute force allocates and scans the entire merged array. Three translations eliminate all of that work.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 1 — Build merged array → partition invariant</p>
+        <p class="wt-desc">Instead of building the merged array and finding the median index, find a <em>partition</em>: choose i elements from A and j = half−i elements from B such that every element in the left group is ≤ every element in the right group. When that invariant holds the median is max(left group) for odd total, or (max(left)+min(right))/2 for even. The invariant requires only four boundary values — A[i-1], A[i], B[j-1], B[j] — not the full arrays.</p>
+        <p class="wt-gain">→ reduces problem to: find valid partition (i, j), reading O(1) elements per check</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 2 — Two free variables → one free variable</p>
+        <p class="wt-desc">i and j are coupled: j = half − i where half = ⌊(m+n+1)/2⌋. Choosing i completely determines j. The search space is [0..m]: i=0 means A contributes nothing to the left half; i=m means all of A is in the left half. Example: m=2, n=2, half=2. Possible values: (i=0,j=2), (i=1,j=1), (i=2,j=0). Only three candidates to check.</p>
+        <p class="wt-gain">→ 2D search collapses to 1D search over m+1 candidates</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 3 — Linear scan → binary search on i</p>
+        <p class="wt-desc">The partition validity is monotone: if A[i-1] > B[j] the left half has too large a value from A — decrease i. If B[j-1] > A[i] the left half has too large a value from B — increase i. Increasing i always moves A[i-1] up and B[j-1] down (because j decreases). This monotonicity is the binary search condition. Ensure m ≤ n (swap if needed) so that j = half−i is always ≥ 0.</p>
+        <p class="wt-gain">→ O(log(m+1)) steps where m = min(|A|,|B|)</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <p class="body">Say this before writing any code.</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t"><b>Ensure A is the smaller array.</b> If A.size() > B.size(), swap A and B. This keeps the binary search range [0..m] small and guarantees j = half−i ≥ 0 throughout.</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t">Set <b>m=A.size()</b>, <b>n=B.size()</b>, <b>half=(m+n+1)/2</b>. Initialize binary search <b>lo=0, hi=m</b>.</span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t">Each iteration: compute <b>i=(lo+hi)/2</b>, <b>j=half−i</b>. Read the four boundary values: <b>maxLeft1=A[i-1]</b>, <b>minRight1=A[i]</b>, <b>maxLeft2=B[j-1]</b>, <b>minRight2=B[j]</b> — substituting −∞ at left edges (i=0 or j=0) and +∞ at right edges (i=m or j=n).</span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t">If <b>maxLeft1 ≤ minRight2 AND maxLeft2 ≤ minRight1</b>: partition correct. For odd (m+n): return max(maxLeft1,maxLeft2). For even: return (max(maxLeft1,maxLeft2) + min(minRight1,minRight2)) / 2.0.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t">If <b>maxLeft1 > minRight2</b>: i is too large — set <b>hi=i−1</b>. Otherwise (maxLeft2 > minRight1): i is too small — set <b>lo=i+1</b>. Repeat from step 3.</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Canonical C++ solution</p>
+  <p class="body">Try writing from the five steps above before revealing.</p>
+  <button class="reveal-btn" id="reveal-btn" onclick="toggleEl('code-block',document.getElementById('reveal-btn'))">▶ Reveal Code</button>
+  <div class="code-block" id="code-block">
+<pre class="cb"><span class="kw">double</span> <span class="fn">findMedianSortedArrays</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; A, <span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; B) {
+    <span class="kw">if</span> (A.size() &gt; B.size()) { swap(A, B); }     <span class="cm">// ensure A is smaller</span>
+    <span class="kw">int</span> m = A.size(), n = B.size();
+    <span class="kw">int</span> half = (m + n + <span class="nu">1</span>) / <span class="nu">2</span>;
+    <span class="kw">int</span> lo = <span class="nu">0</span>, hi = m;
+
+    <span class="kw">while</span> (lo &lt;= hi) {
+        <span class="kw">int</span> i = lo + (hi - lo) / <span class="nu">2</span>;
+        <span class="kw">int</span> j = half - i;
+
+        <span class="kw">int</span> mxL1 = (i == <span class="nu">0</span>) ? INT_MIN : A[i-<span class="nu">1</span>];
+        <span class="kw">int</span> mnR1 = (i == m) ? INT_MAX : A[i];
+        <span class="kw">int</span> mxL2 = (j == <span class="nu">0</span>) ? INT_MIN : B[j-<span class="nu">1</span>];
+        <span class="kw">int</span> mnR2 = (j == n) ? INT_MAX : B[j];
+
+        <span class="kw">if</span> (mxL1 &lt;= mnR2 &amp;&amp; mxL2 &lt;= mnR1) {
+            <span class="kw">int</span> mxL = max(mxL1, mxL2);
+            <span class="kw">int</span> mnR = min(mnR1, mnR2);
+            <span class="kw">if</span> ((m + n) % <span class="nu">2</span> == <span class="nu">1</span>) { <span class="kw">return</span> (<span class="kw">double</span>)mxL; }
+            <span class="kw">return</span> (mxL + mnR) / <span class="nu">2.0</span>;
+        } <span class="kw">else if</span> (mxL1 &gt; mnR2) {
+            hi = i - <span class="nu">1</span>;               <span class="cm">// i too large</span>
+        } <span class="kw">else</span> {
+            lo = i + <span class="nu">1</span>;               <span class="cm">// i too small</span>
+        }
+    }
+    <span class="kw">return</span> <span class="nu">0.0</span>;                      <span class="cm">// unreachable for valid input</span>
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — watch every variable</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">Ex 1: A=[1,3] B=[2]</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">Ex 2: A=[1,2] B=[3,4]</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">Ex 3: A=[] B=[1,2,3]</button>
+  </div>
+  <div class="cv-split">
+    <div class="cv-code-panel" id="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px">Partition — green=left half · blue=right half · amber line=split</p>
+        <div class="cv-bounds" id="cv-bounds"></div>
+        <div class="cv-part-grid" id="cv-part-grid"></div>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:5px">Variables</p>
+        <div class="cv-var-grid-mots">
+          <div class="cv-var-card dim" id="cvv-lo">  <p class="cv-var-name">lo</p>  <p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-hi">  <p class="cv-var-name">hi</p>  <p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-half"><p class="cv-var-name">half</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-i">   <p class="cv-var-name">i</p>   <p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-j">   <p class="cv-var-name">j</p>   <p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-mxL1"><p class="cv-var-name">mxL1</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-mnR1"><p class="cv-var-name">mnR1</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-mxL2"><p class="cv-var-name">mxL2</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-mnR2"><p class="cv-var-name">mnR2</p><p class="cv-var-val">—</p></div>
+        </div>
+      </div>
+      <div class="cv-narration" id="cv-narration">Select an example to begin.</div>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="cv-bp"    onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="cv-bn"    onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"               onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Interactive dry run</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1: A=[1,3] B=[2] — odd, 2 iters</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">Ex 2: A=[1,2] B=[3,4] — even, 2 iters</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">Ex 3: A=[] B=[1,2,3] — empty A, 1 iter</button>
+  </div>
+
+  <!-- live partition display -->
+  <div style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);padding:.875rem 1rem;margin-bottom:.625rem;min-height:88px">
+    <div id="dr-part-vis"></div>
+  </div>
+
+  <div class="panels-fixed">
+    <div class="formula-panel" id="dr-formula">
+      <div class="formula-grid-4">
+        <div><p class="fitem-label">lo</p><p class="fitem-val" id="f-lo">—</p><p class="fitem-sub">bs lower</p></div>
+        <div><p class="fitem-label">hi</p><p class="fitem-val" id="f-hi">—</p><p class="fitem-sub">bs upper</p></div>
+        <div><p class="fitem-label">i</p> <p class="fitem-val" id="f-i">—</p> <p class="fitem-sub">A split</p></div>
+        <div><p class="fitem-label">j</p> <p class="fitem-val" id="f-j">—</p> <p class="fitem-sub">B split</p></div>
+      </div>
+      <div class="formula-eq" id="dr-feq">Select an example to begin.</div>
+    </div>
+    <div class="step-panel" id="dr-step">
+      <p class="step-what" id="dr-what">—</p>
+      <p class="step-why"  id="dr-why">Use the controls below to step through.</p>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"               onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+  <div style="margin-top:.875rem">
+    <p style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-bottom:4px">Median</p>
+    <p id="dr-result" style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--text3)">—</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner"><div class="cnum">1</div><div>
+    <p class="corner-title">One array empty — A=[], B=[1,2,3]</p>
+    <p class="corner-body">m=0, lo=hi=0. One iteration: i=0, j=2. mxL1=−∞ (sentinel), mnR1=+∞, mxL2=B[1]=2, mnR2=B[2]=3. Invariant holds immediately. Odd total → median = max(−∞, 2) = 2. No special-case code needed.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">2</div><div>
+    <p class="corner-title">Single element each — A=[2], B=[3]</p>
+    <p class="corner-body">After swap check: A=[2], B=[3]. m=1, n=1, half=1. i=0,j=1: mxL2=B[0]=3 > mnR1=A[0]=2 → lo=1. i=1,j=0: mxL1=A[0]=2, mnR2=B[0]=3 → invariant holds. Even: (2+3)/2.0 = 2.5.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">3</div><div>
+    <p class="corner-title">All same value — A=[0,0], B=[0,0]</p>
+    <p class="corner-body">m=2,n=2,half=2. i=1,j=1: mxL1=0, mnR1=0, mxL2=0, mnR2=0. All boundary values equal — invariant trivially satisfied. Even: (0+0)/2.0 = 0.0.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">4</div><div>
+    <p class="corner-title">No overlap — A=[1,2], B=[3,4]</p>
+    <p class="corner-body">i=1,j=1: mxL2=3 > mnR1=2 → lo=2. i=2,j=0: mxL1=A[1]=2, mnR2=B[0]=3, mxL2=−∞ → invariant holds. Even: (2+3)/2.0 = 2.5. All of A ends up in the left half.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">5</div><div>
+    <p class="corner-title">Integer division for even total</p>
+    <p class="corner-body">Write <code>(mxL + mnR) / 2.0</code>. With A=[1], B=[2]: mxL=1, mnR=2. Integer division gives (1+2)/2 = 1 (wrong). Floating-point gives (1+2)/2.0 = 1.5 (correct).</p>
+  </div></div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Empty array:</b> INT_MIN/INT_MAX sentinels handle i==0 or j==0 edges — no bounds check needed anywhere.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Size swap:</b> always swap so A is smaller — guarantees j = half−i ≥ 0 throughout. Without the swap, j can go negative.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Even median division:</b> use <code>(mxL + mnR) / 2.0</code> — the <code>.0</code> promotes to double before division.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Sentinel overflow:</b> INT_MIN and INT_MAX are only compared, never added together — no overflow risk.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>half formula:</b> use <code>(m+n+1)/2</code> — the +1 rounds up for odd totals, making the left half the larger half (or equal). Consistent for both odd and even.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Binary search bounds:</b> lo=0 and hi=m (inclusive) — i=0 means A contributes nothing; i=m means A is entirely in the left half. Both extremes are valid and reachable.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Binary search on partition (optimal)</button>
+    <button class="tab-btn"        id="tab1" onclick="switchTab(1)">Merge then find middle</button>
+    <button class="tab-btn"        id="tab2" onclick="switchTab(2)">kth element binary search</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">Time O(log min(m,n))</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body" style="margin-top:.5rem">Binary search on the partition point in the smaller array. Reads at most four array elements per iteration. No extra memory beyond the handful of integer variables. The approach shown in this lesson.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">Time O(m+n)</span><span class="tag tag-space">Space O(m+n)</span>
+    <p class="body" style="margin-top:.5rem">Merge both arrays using the standard two-pointer merge, then index the middle. Correct but allocates O(m+n) space and does linear work. Useful as a reference implementation for verifying the O(log) solution.</p>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">Time O(log(m+n))</span><span class="tag tag-space">Space O(log(m+n))</span>
+    <p class="body" style="margin-top:.5rem">Reframe as "find the kth smallest across two sorted arrays." At each step, compare the k/2-th elements of each array and eliminate the smaller half. Recurse with k halved. Same asymptotic class as the partition approach but uses O(log) stack space and the recursion bookkeeping is trickier to get right under interview pressure.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard"><p class="ccard-l">Time</p><p class="ccard-v">O(log min(m,n))</p><p class="ccard-n">Binary search range is [0..m] where m ≤ n. Each step halves the range. At most ⌈log₂(m+1)⌉ iterations — at most 17 for m ≤ 10⁵.</p></div>
+    <div class="ccard"><p class="ccard-l">Space</p><p class="ccard-v">O(1)</p><p class="ccard-n">No arrays allocated. Only: m, n, half, lo, hi, i, j, and four boundary values. The swap is a pointer swap, not a copy.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">What to remember for similar problems</p>
+  <div class="takehome">
+    <p class="body">The <strong>binary search on partition</strong> pattern is about searching for a split point that satisfies a cross-structure invariant. Whenever you see "find a position in a sorted structure such that everything to the left is ≤ everything to the right," think partition binary search.</p>
+    <p class="body">The sentinel trick (−∞ at left edge, +∞ at right edge) eliminates all boundary special-case code. The invariant check becomes uniform: <code>mxL1 ≤ mnR2 && mxL2 ≤ mnR1</code> — no if-i==0 branches. Use sentinels in any binary search where empty partitions are possible.</p>
+    <p class="body">The half = (m+n+1)/2 formula (with the +1) is the canonical way to bias the left half to be the same size as or one larger than the right half. This makes the median formula work identically for odd and even totals — just always compute max(left) and min(right) and decide based on parity.</p>
+    <p class="body">Related: LC 4 generalization — kth smallest in two sorted arrays (replace half with k); LC 410 (Split Array Largest Sum — binary search on the answer, monotone feasibility check); LC 875 (Koko Eating Bananas — binary search on a monotone predicate, same structure as checking the partition invariant).</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+/* ═══════════════════════════════════
+   HELPERS
+═══════════════════════════════════ */
+const INF = Infinity;
+function ss(v) {
+  if (v === -INF) { return '−∞'; }
+  if (v ===  INF) { return '+∞'; }
+  return String(v);
+}
+
+/* ═══════════════════════════════════
+   DATA
+═══════════════════════════════════ */
+const CV_EXAMPLES = [
+  {A:[1,3], B:[2]},
+  {A:[1,2], B:[3,4]},
+  {A:[],    B:[1,2,3]},
+];
+const BF_EXAMPLES = [
+  {A:[1,3], B:[2]},
+  {A:[1,2,3], B:[4,5,6]},
+];
+
+/* ═══════════════════════════════════
+   BRUTE FORCE
+═══════════════════════════════════ */
+let bfSteps = [], bfCur = 0, bfTimer = null;
+
+function bfGen(Aorig, Borig) {
+  const A = Aorig.slice(), B = Borig.slice();
+  const steps = [];
+  let pi = 0, pj = 0;
+  const merged = [];
+
+  steps.push({A, B, pi, pj, merged:[], phase:'init', msg:'Merge two sorted arrays pointer-by-pointer.'});
+
+  while (pi < A.length || pj < B.length) {
+    const fromA = pj >= B.length || (pi < A.length && A[pi] <= B[pj]);
+    if (fromA) {
+      const val = A[pi];
+      const cmp = pj < B.length ? `A[${pi}]=${val} ≤ B[${pj}]=${B[pj]}` : `B exhausted`;
+      merged.push(val);
+      steps.push({A, B, pi, pj, merged:merged.slice(), phase:'pickA', msg:`${cmp} → append ${val} from A. i→${pi+1}`});
+      pi++;
+    } else {
+      const val = B[pj];
+      const cmp = pi < A.length ? `B[${pj}]=${val} < A[${pi}]=${A[pi]}` : `A exhausted`;
+      merged.push(val);
+      steps.push({A, B, pi, pj, merged:merged.slice(), phase:'pickB', msg:`${cmp} → append ${val} from B. j→${pj+1}`});
+      pj++;
+    }
+  }
+
+  const tot = merged.length;
+  let m1, m2;
+  if (tot % 2 === 1) {
+    m1 = Math.floor(tot / 2);
+    steps.push({A, B, pi, pj, merged:merged.slice(), phase:'median', m1, msg:`Merged=[${merged}]. Odd length ${tot} → median=merged[${m1}]=${merged[m1]}`});
+  } else {
+    m1 = tot/2-1; m2 = tot/2;
+    const med = (merged[m1]+merged[m2])/2;
+    steps.push({A, B, pi, pj, merged:merged.slice(), phase:'median', m1, m2, msg:`Merged=[${merged}]. Even length ${tot} → (${merged[m1]}+${merged[m2]})/2=${med}`});
+  }
+  steps.push({...steps[steps.length-1], phase:'done'});
+  return steps;
+}
+
+function bfRender(st) {
+  const renderStrip = (id, arr, activeIdx, usedBefore) => {
+    const el = document.getElementById(id); el.innerHTML = '';
+    arr.forEach((v, idx) => {
+      const c = document.createElement('div'); c.className = 'bf-src-cell';
+      c.textContent = v;
+      if (idx === activeIdx) { c.classList.add('active'); }
+      else if (idx < usedBefore) { c.classList.add('used'); }
+      el.appendChild(c);
+    });
+  };
+  renderStrip('bf-stripA', st.A, st.phase==='pickA'?st.pi:-1, st.pi);
+  renderStrip('bf-stripB', st.B, st.phase==='pickB'?st.pj:-1, st.pj);
+
+  const mg = document.getElementById('bf-merge'); mg.innerHTML = '';
+  st.merged.forEach((v, idx) => {
+    const c = document.createElement('div'); c.className = 'bf-merge-cell'; c.textContent = v;
+    const isLast = idx === st.merged.length - 1;
+    const isMed = (st.phase==='median'||st.phase==='done') && (idx===st.m1||idx===st.m2);
+    if (isMed) { c.classList.add('med'); }
+    else if (isLast && (st.phase==='pickA'||st.phase==='pickB')) { c.classList.add('newest'); }
+    mg.appendChild(c);
+  });
+
+  document.getElementById('bf-msg').textContent = st.msg;
+  document.getElementById('bf-sctr').textContent = `Step ${bfCur+1}/${bfSteps.length}`;
+  document.getElementById('bf-prev').disabled = bfCur === 0;
+  document.getElementById('bf-next').disabled = bfCur === bfSteps.length-1;
+}
+
+function bfNext()  { if(bfCur<bfSteps.length-1){bfCur++;bfRender(bfSteps[bfCur]);}else bfStopPlay(); }
+function bfPrev()  { if(bfCur>0){bfCur--;bfRender(bfSteps[bfCur]);} }
+function bfReset() { bfStopPlay();bfCur=0;bfRender(bfSteps[0]); }
+function bfLoadEx(idx) {
+  bfStopPlay(); bfCur=0;
+  [0,1].forEach(i=>document.getElementById('bf-ex'+i).classList.toggle('active',i===idx));
+  bfSteps = bfGen(BF_EXAMPLES[idx].A, BF_EXAMPLES[idx].B);
+  bfRender(bfSteps[0]);
+}
+
+/* ═══════════════════════════════════
+   CODE VISUALIZATION
+═══════════════════════════════════ */
+const CV_LINES = [
+  {n:1,  c:'double findMedianSortedArrays(vector<int>& A, vector<int>& B) {'},
+  {n:2,  c:'    if (A.size() > B.size()) { swap(A, B); }'},
+  {n:3,  c:'    int m = A.size(), n = B.size();'},
+  {n:4,  c:'    int half = (m + n + 1) / 2;'},
+  {n:5,  c:'    int lo = 0, hi = m;'},
+  {n:6,  c:'    while (lo <= hi) {'},
+  {n:7,  c:'        int i = lo + (hi - lo) / 2;'},
+  {n:8,  c:'        int j = half - i;'},
+  {n:9,  c:'        int mxL1 = (i==0) ? INT_MIN : A[i-1];'},
+  {n:10, c:'        int mnR1 = (i==m) ? INT_MAX : A[i];'},
+  {n:11, c:'        int mxL2 = (j==0) ? INT_MIN : B[j-1];'},
+  {n:12, c:'        int mnR2 = (j==n) ? INT_MAX : B[j];'},
+  {n:13, c:'        if (mxL1 <= mnR2 && mxL2 <= mnR1) {'},
+  {n:14, c:'            int mxL = max(mxL1, mxL2);'},
+  {n:15, c:'            int mnR = min(mnR1, mnR2);'},
+  {n:16, c:'            if ((m+n)%2==1) { return (double)mxL; }'},
+  {n:17, c:'            return (mxL + mnR) / 2.0;'},
+  {n:18, c:'        } else if (mxL1 > mnR2) {'},
+  {n:19, c:'            hi = i - 1;'},
+  {n:20, c:'        } else {'},
+  {n:21, c:'            lo = i + 1;'},
+  {n:22, c:'        }'},
+  {n:23, c:'    }'},
+  {n:24, c:'    return 0.0;'},
+  {n:25, c:'}'},
+];
+
+let cvSteps = [], cvCur = 0, cvTimer = null;
+
+function cvGen(Aorig, Borig) {
+  let A = Aorig.slice(), B = Borig.slice();
+  const swapped = A.length > B.length;
+  if (swapped) { [A, B] = [B, A]; }
+  const m = A.length, n = B.length;
+  const steps = [];
+
+  let lo = -1, hi = -1, half = -1, i = -1, j = -1;
+  let mxL1 = null, mnR1 = null, mxL2 = null, mnR2 = null;
+
+  const snap = (line, narr, phase, changed) => {
+    steps.push({line, narr, phase, changed: changed||[],
+      A, B, m, n, lo, hi, half, i, j, mxL1, mnR1, mxL2, mnR2});
+  };
+
+  snap(1, 'Enter findMedianSortedArrays.', 'init', []);
+
+  if (swapped) {
+    snap(2, `A.size()(${Aorig.length}) > B.size()(${Borig.length}): swap. A=[${A}] B=[${B}]`, 'init', ['lo']);
+  } else {
+    snap(2, `A.size()(${m}) ≤ B.size()(${n}): no swap needed.`, 'init', []);
+  }
+
+  snap(3, `m=${m}, n=${n}.`, 'init', ['lo', 'hi']);
+  half = (m + n + 1) >> 1;
+  snap(4, `half = (${m}+${n}+1)/2 = ${half}.`, 'init', ['half']);
+  lo = 0; hi = m;
+  snap(5, `lo=${lo}, hi=${hi}. Binary search range set.`, 'init', ['lo', 'hi']);
+
+  while (lo <= hi) {
+    snap(6, `while lo(${lo}) ≤ hi(${hi}): enter.`, 'active', ['lo', 'hi']);
+    i = lo + ((hi - lo) >> 1);
+    snap(7, `i = ${lo}+(${hi}-${lo})/2 = ${i}.`, 'active', ['i']);
+    j = half - i;
+    snap(8, `j = ${half}−${i} = ${j}.`, 'active', ['j']);
+
+    mxL1 = (i === 0) ? -INF : A[i-1];
+    snap(9, `mxL1 = ${i===0 ? '−∞ (i==0)' : `A[${i-1}]=${A[i-1]}`}.`, 'active', ['mxL1']);
+    mnR1 = (i === m) ? INF : A[i];
+    snap(10, `mnR1 = ${i===m ? '+∞ (i==m)' : `A[${i}]=${A[i]}`}.`, 'active', ['mnR1']);
+    mxL2 = (j === 0) ? -INF : B[j-1];
+    snap(11, `mxL2 = ${j===0 ? '−∞ (j==0)' : `B[${j-1}]=${B[j-1]}`}.`, 'active', ['mxL2']);
+    mnR2 = (j === n) ? INF : B[j];
+    snap(12, `mnR2 = ${j===n ? '+∞ (j==n)' : `B[${j}]=${B[j]}`}.`, 'active', ['mnR2']);
+
+    snap(13, `Check: mxL1(${ss(mxL1)}) ≤ mnR2(${ss(mnR2)}) && mxL2(${ss(mxL2)}) ≤ mnR1(${ss(mnR1)})?`, 'active', []);
+
+    if (mxL1 <= mnR2 && mxL2 <= mnR1) {
+      const mxL = Math.max(mxL1, mxL2);
+      const mnR = Math.min(mnR1, mnR2);
+      snap(14, `Invariant holds! mxL = max(${ss(mxL1)},${ss(mxL2)}) = ${ss(mxL)}.`, 'match', ['mxL1','mxL2']);
+      snap(15, `mnR = min(${ss(mnR1)},${ss(mnR2)}) = ${ss(mnR)}.`, 'match', ['mnR1','mnR2']);
+      if ((m+n) % 2 === 1) {
+        snap(16, `Odd total (${m}+${n}=${m+n}): return median = ${ss(mxL)}.`, 'match', ['half']);
+      } else {
+        snap(17, `Even total: return (${ss(mxL)}+${ss(mnR)})/2 = ${(mxL+mnR)/2}.`, 'match', ['half']);
+      }
+      break;
+    } else if (mxL1 > mnR2) {
+      snap(18, `mxL1(${ss(mxL1)}) > mnR2(${ss(mnR2)}): i too large.`, 'active', []);
+      hi = i - 1;
+      snap(19, `hi = ${i}−1 = ${hi}.`, 'active', ['hi']);
+    } else {
+      snap(20, `mxL2(${ss(mxL2)}) > mnR1(${ss(mnR1)}): i too small.`, 'active', []);
+      lo = i + 1;
+      snap(21, `lo = ${i}+1 = ${lo}.`, 'active', ['lo']);
+    }
+  }
+  return steps;
+}
+
+function cvRenderPartGrid(st) {
+  const g = document.getElementById('cv-part-grid'); g.innerHTML = '';
+  const makeRow = (label, arr, partAt) => {
+    const row = document.createElement('div'); row.className = 'cv-part-row';
+    const lbl = document.createElement('span'); lbl.className = 'cv-arr-label'; lbl.textContent = label; row.appendChild(lbl);
+    if (arr.length === 0) {
+      const d = document.createElement('div'); d.className = 'cv-part-div'; row.appendChild(d);
+      const e = document.createElement('span'); e.style.cssText='font-family:var(--mono);font-size:9px;color:var(--text3);padding:0 4px;'; e.textContent='∅'; row.appendChild(e);
+    } else {
+      arr.forEach((v, idx) => {
+        if (partAt >= 0 && idx === partAt) { const d=document.createElement('div'); d.className='cv-part-div'; row.appendChild(d); }
+        const c = document.createElement('div'); c.className = 'cv-arr-cell';
+        if (partAt >= 0) { c.classList.add(idx < partAt ? 'lh' : 'rh'); }
+        c.textContent = v; row.appendChild(c);
+      });
+      if (partAt >= 0 && partAt === arr.length) { const d=document.createElement('div'); d.className='cv-part-div'; row.appendChild(d); }
+    }
+    return row;
+  };
+  g.appendChild(makeRow('A:', st.A, st.i));
+  g.appendChild(makeRow('B:', st.B, st.j));
+  document.getElementById('cv-bounds').textContent = st.lo >= 0 ? `lo=${st.lo}  hi=${st.hi}  half=${st.half}` : '';
+}
+
+function cvRender(st) {
+  document.querySelectorAll('.cv-line').forEach(el => el.classList.remove('active','active-match'));
+  const al = document.getElementById('cvL'+st.line);
+  if (al) {
+    al.classList.add(st.phase==='match' ? 'active-match' : 'active');
+    if (visPx(document.querySelector('.cv-section')) > 0) { al.scrollIntoView({block:'nearest', behavior:'smooth'}); }
+  }
+  cvRenderPartGrid(st);
+
+  const varMap = {
+    lo:   st.lo>=0  ? st.lo   : '—',
+    hi:   st.hi>=0  ? st.hi   : '—',
+    half: st.half>0 ? st.half : '—',
+    i:    st.i>=0   ? st.i    : '—',
+    j:    st.j>=0   ? st.j    : '—',
+    mxL1: st.mxL1 != null ? ss(st.mxL1) : '—',
+    mnR1: st.mnR1 != null ? ss(st.mnR1) : '—',
+    mxL2: st.mxL2 != null ? ss(st.mxL2) : '—',
+    mnR2: st.mnR2 != null ? ss(st.mnR2) : '—',
+  };
+  Object.entries(varMap).forEach(([id, val]) => {
+    const card = document.getElementById('cvv-'+id); if (!card) { return; }
+    card.querySelector('.cv-var-val').textContent = val;
+    card.classList.remove('hl','hl-match','dim');
+    if (st.changed.includes(id)) { card.classList.add(st.phase==='match' ? 'hl-match' : 'hl'); }
+    else if (st.phase === 'init') { card.classList.add('dim'); }
+  });
+
+  const narr = document.getElementById('cv-narration');
+  narr.textContent = st.narr;
+  narr.className = 'cv-narration' + (st.phase==='match' ? ' is-match' : st.phase!=='done' ? ' is-active' : '');
+  document.getElementById('cv-sctr').textContent = `Step ${cvCur+1} / ${cvSteps.length}`;
+  document.getElementById('cv-bp').disabled = cvCur === 0;
+  document.getElementById('cv-bn').disabled = cvCur === cvSteps.length-1;
+}
+
+function cvNext()  { if(cvCur<cvSteps.length-1){cvCur++;cvRender(cvSteps[cvCur]);}else cvStopPlay(); }
+function cvPrev()  { if(cvCur>0){cvCur--;cvRender(cvSteps[cvCur]);} }
+function cvReset() { cvStopPlay();cvCur=0;cvRender(cvSteps[0]); }
+function cvLoadEx(idx) {
+  cvStopPlay(); cvCur = 0;
+  [0,1,2].forEach(i => document.getElementById('cv-ex'+i).classList.toggle('active', i===idx));
+  const ex = CV_EXAMPLES[idx];
+  cvSteps = cvGen(ex.A, ex.B);
+  cvBuildCode(CV_LINES);
+  cvRender(cvSteps[0]);
+}
+
+/* ═══════════════════════════════════
+   DRY RUN
+═══════════════════════════════════ */
+let drSteps = [], drCur = 0, drTimer = null;
+
+function drGen(Aorig, Borig) {
+  let A = Aorig.slice(), B = Borig.slice();
+  const swapped = A.length > B.length;
+  if (swapped) { [A, B] = [B, A]; }
+  const m = A.length, n = B.length;
+  const half = (m + n + 1) >> 1;
+  const steps = [];
+
+  const snap = (lo, hi, i, j, mxL1, mnR1, mxL2, mnR2, what, why, phase, result) =>
+    steps.push({A, B, m, n, half, lo, hi, i, j, mxL1, mnR1, mxL2, mnR2, what, why, phase, result: result ?? null});
+
+  snap(-1,-1,-1,-1,null,null,null,null,
+    `A=[${A.join(',')}]  B=[${B.join(',')}]${swapped?' (swapped so |A|≤|B|)':''}`,
+    `m=${m}, n=${n}, half=${half}. Binary search i ∈ [0..${m}]; j = ${half}−i.`,
+    'init', null);
+
+  let lo = 0, hi = m;
+  while (lo <= hi) {
+    const i = lo + ((hi - lo) >> 1);
+    const j = half - i;
+    const mxL1 = (i===0) ? -INF : A[i-1];
+    const mnR1 = (i===m) ?  INF : A[i];
+    const mxL2 = (j===0) ? -INF : B[j-1];
+    const mnR2 = (j===n) ?  INF : B[j];
+
+    if (mxL1 <= mnR2 && mxL2 <= mnR1) {
+      const mxL = Math.max(mxL1, mxL2);
+      const mnR = Math.min(mnR1, mnR2);
+      const med = (m+n)%2===1 ? mxL : (mxL+mnR)/2;
+      snap(lo, hi, i, j, mxL1, mnR1, mxL2, mnR2,
+        `i=${i}  j=${j}: mxL=${ss(mxL)}  mnR=${ss(mnR)}`,
+        `Both invariants hold ✓. ${(m+n)%2===1 ? `Odd total → median = max(left) = ${ss(mxL)}` : `Even total → (${ss(mxL)}+${ss(mnR)})/2 = ${med}`}`,
+        'match', med);
+      break;
+    } else if (mxL1 > mnR2) {
+      snap(lo, hi, i, j, mxL1, mnR1, mxL2, mnR2,
+        `i=${i}  j=${j}: mxL1=${ss(mxL1)} > mnR2=${ss(mnR2)}`,
+        `A contributes too large a value to the left half. i is too large — hi = ${i}−1 = ${i-1}.`,
+        'squeeze', null);
+      hi = i - 1;
+    } else {
+      snap(lo, hi, i, j, mxL1, mnR1, mxL2, mnR2,
+        `i=${i}  j=${j}: mxL2=${ss(mxL2)} > mnR1=${ss(mnR1)}`,
+        `B contributes too large a value to the left half. i is too small — lo = ${i}+1 = ${i+1}.`,
+        'squeeze', null);
+      lo = i + 1;
+    }
+  }
+  return steps;
+}
+
+function drRenderPartVis(st) {
+  const con = document.getElementById('dr-part-vis'); con.innerHTML = '';
+  if (st.i < 0) {
+    const s = document.createElement('span'); s.style.cssText='font-family:var(--mono);font-size:11px;color:var(--text3);'; s.textContent='Select an example.'; con.appendChild(s);
+    return;
+  }
+  const makeRow = (label, arr, partAt) => {
+    const row = document.createElement('div'); row.className = 'part-row';
+    const lbl = document.createElement('span'); lbl.className = 'part-row-label'; lbl.textContent = label; row.appendChild(lbl);
+    if (arr.length === 0) {
+      const d = document.createElement('div'); d.className = 'part-divider'; row.appendChild(d);
+      const e = document.createElement('span'); e.className = 'part-empty'; e.textContent = '∅'; row.appendChild(e);
+    } else {
+      arr.forEach((v, idx) => {
+        if (idx === partAt) { const d=document.createElement('div'); d.className='part-divider'; row.appendChild(d); }
+        const c = document.createElement('div'); c.className = 'part-cell';
+        c.classList.add(idx < partAt ? 'left' : 'right');
+        c.textContent = v; row.appendChild(c);
+      });
+      if (partAt === arr.length) { const d=document.createElement('div'); d.className='part-divider'; row.appendChild(d); }
+    }
+    return row;
+  };
+  con.appendChild(makeRow('A:', st.A, st.i));
+  con.appendChild(makeRow('B:', st.B, st.j));
+
+  const invRow = document.createElement('div'); invRow.className = 'part-inv';
+  const ok1 = st.mxL1 !== null && st.mnR2 !== null && st.mxL1 <= st.mnR2;
+  const ok2 = st.mxL2 !== null && st.mnR1 !== null && st.mxL2 <= st.mnR1;
+  const mk = (text, ok) => { const s=document.createElement('span'); s.className=ok?'inv-ok':'inv-bad'; s.textContent=text; return s; };
+  invRow.appendChild(mk(`${ok1?'✓':'✗'} mxL1(${ss(st.mxL1)}) ≤ mnR2(${ss(st.mnR2)})`, ok1));
+  invRow.appendChild(mk(`${ok2?'✓':'✗'} mxL2(${ss(st.mxL2)}) ≤ mnR1(${ss(st.mnR1)})`, ok2));
+  con.appendChild(invRow);
+}
+
+function drRender(st) {
+  drRenderPartVis(st);
+
+  document.getElementById('f-lo').textContent = st.lo >= 0 ? st.lo : '—';
+  document.getElementById('f-hi').textContent = st.hi >= 0 ? st.hi : '—';
+  document.getElementById('f-i').textContent  = st.i  >= 0 ? st.i  : '—';
+  document.getElementById('f-j').textContent  = st.j  >= 0 ? st.j  : '—';
+
+  const fp = document.getElementById('dr-formula');
+  let feq;
+  if (st.phase === 'match' && st.result != null) {
+    feq = `<span class="eq-hl">median = ${st.result}</span>`;
+  } else if (st.i >= 0) {
+    feq = `lo=${st.lo}  hi=${st.hi}  →  i=${st.i}  j=${st.j}`;
+  } else {
+    feq = 'Select an example.';
+  }
+  document.getElementById('dr-feq').innerHTML = feq;
+  fp.className = 'formula-panel' + (st.phase==='match' ? ' is-match' : st.phase==='squeeze' ? ' is-squeeze' : '');
+
+  const sp = document.getElementById('dr-step');
+  sp.className = 'step-panel' + (st.phase==='match' ? ' match' : st.phase==='squeeze' ? ' squeeze' : '');
+  document.getElementById('dr-what').textContent = st.what;
+  document.getElementById('dr-why').textContent  = st.why;
+
+  const rl = document.getElementById('dr-result');
+  if (st.result != null) { rl.textContent = String(st.result); rl.style.color = 'var(--text-success)'; }
+  else { rl.textContent = '—'; rl.style.color = 'var(--text3)'; }
+
+  document.getElementById('dr-sctr').textContent = `Step ${drCur+1} / ${drSteps.length}`;
+  document.getElementById('dr-bp').disabled = drCur === 0;
+  document.getElementById('dr-bn').disabled = drCur === drSteps.length-1;
+}
+
+function drNext()  { if(drCur<drSteps.length-1){drCur++;drRender(drSteps[drCur]);}else drStopPlay(); }
+function drPrev()  { if(drCur>0){drCur--;drRender(drSteps[drCur]);} }
+function drReset() { drStopPlay();drCur=0;drRender(drSteps[0]); }
+function drLoadEx(idx) {
+  drStopPlay(); drCur = 0;
+  [0,1,2].forEach(i => document.getElementById('dr-ex'+i).classList.toggle('active', i===idx));
+  const ex = CV_EXAMPLES[idx];
+  drSteps = drGen(ex.A, ex.B);
+  drRender(drSteps[0]);
+}
+
+/* ═══════════════════════════════════
+   INIT
+═══════════════════════════════════ */
+bfLoadEx(0);
+cvLoadEx(0);
+drLoadEx(0);
+</script>
+</body>
+</html>

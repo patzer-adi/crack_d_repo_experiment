@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>crack_d — DSA Intuition Lab</title>
+  <style>
+    :root {
+      --bg: #efede8; --bg2: #e5e2dc; --bg3: #dbd8d2;
+      --text: #0d0d0d; --text2: #2e2e2e; --text3: #666660;
+      --border: #d0cdc7; --border2: #c4c1bb;
+      --bg-info: #dbeafe; --text-info: #1d4ed8; --border-info: #93c5fd;
+      --bg-success: #dcfce7; --text-success: #15803d; --border-success: #86efac;
+      --bg-warn: #fef3c7; --text-warn: #92400e; --border-warn: #fcd34d;
+      --bg-danger: #fee2e2; --text-danger: #991b1b; --border-danger: #fca5a5;
+      --bg-purple: #f3e8ff; --text-purple: #6b21a8; --border-purple: #d8b4fe;
+      --mono: 'SF Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+      --r: 8px;
+      --topbar-h: 68px;
+      --tabs-h: 0px;
+      --filter-h: 46px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      font-size: 17px; line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      background: var(--bg2); border-bottom: 1px solid var(--border2);
+      padding: 0 24px;
+      display: flex; align-items: center;
+      height: var(--topbar-h); position: sticky; top: 0; z-index: 110;
+    }
+    .topbar-logo { height: 42px; width: auto; margin-right: 24px; }
+    .topbar-spacer { flex: 1; }
+
+    /* ── TABS (now inside topbar) ── */
+    .tab-btn {
+      font-size: 16px; font-weight: 500; padding: 0 16px;
+      border: none; background: none; color: var(--text3); cursor: pointer;
+      border-bottom: 2px solid transparent;
+      align-self: stretch; display: flex; align-items: center;
+      white-space: nowrap; transition: color .12s;
+    }
+    .tab-btn:hover { color: var(--text2); }
+    .tab-btn.active { color: var(--text); border-bottom-color: var(--text); }
+
+    /* ── STATS BAR ── */
+    .stats-bar {
+      display: flex; gap: 6px; align-items: center;
+      padding: 10px 24px; border-bottom: 1px solid var(--border);
+      background: var(--bg); flex-wrap: wrap;
+    }
+    .stat-chip {
+      font-size: 15px; padding: 3px 10px; border-radius: 20px;
+      border: 0.5px solid var(--border); background: var(--bg2);
+      color: var(--text2); white-space: nowrap;
+    }
+    .stat-chip.done   { background: var(--bg-success); color: var(--text-success); border-color: var(--border-success); }
+    .stat-chip.new    { background: var(--bg2); color: var(--text3); border-color: var(--border); }
+    .stat-chip.gen    { background: var(--bg-info); color: var(--text-info); border-color: var(--border-info); }
+    .stat-chip.hard   { background: var(--bg-danger); color: var(--text-danger); border-color: var(--border-danger); }
+    .stat-chip.med    { background: var(--bg-warn); color: var(--text-warn); border-color: var(--border-warn); }
+    .stat-chip.easy   { background: var(--bg-success); color: var(--text-success); border-color: var(--border-success); }
+    .stat-chip.purple { background: var(--bg-purple); color: var(--text-purple); border-color: var(--border-purple); }
+    .stats-sep { width: 1px; height: 16px; background: var(--border); flex-shrink: 0; }
+
+    /* ── FILTER BAR ── */
+    .filter-bar {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      padding: 10px 24px; border-bottom: 1px solid var(--border2);
+      background: var(--bg2);
+      position: sticky; top: var(--topbar-h); z-index: 90;
+    }
+    .filter-search {
+      font-size: 16px; padding: 5px 10px; border-radius: var(--r);
+      border: 0.5px solid var(--border); background: var(--bg);
+      color: var(--text); outline: none; width: 200px;
+    }
+    .filter-search:focus { border-color: var(--border-info); }
+    .filter-select {
+      font-size: 16px; padding: 5px 8px; border-radius: var(--r);
+      border: 0.5px solid var(--border); background: var(--bg);
+      color: var(--text); cursor: pointer; outline: none;
+    }
+    .filter-select:focus { border-color: var(--border-info); }
+    .pill-group { display: flex; gap: 3px; }
+    .pill {
+      font-size: 15px; padding: 4px 10px; border-radius: 20px;
+      border: 0.5px solid var(--border); background: var(--bg);
+      color: var(--text2); cursor: pointer; white-space: nowrap;
+    }
+    .pill:hover { background: var(--bg3); }
+    .pill.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .pill.diff-easy.active  { background: var(--bg-success); color: var(--text-success); border-color: var(--border-success); }
+    .pill.diff-med.active   { background: var(--bg-warn); color: var(--text-warn); border-color: var(--border-warn); }
+    .pill.diff-hard.active  { background: var(--bg-danger); color: var(--text-danger); border-color: var(--border-danger); }
+    .pill.status-done.active { background: var(--bg-success); color: var(--text-success); border-color: var(--border-success); }
+    .pill.lesson-gen.active  { background: var(--bg-info); color: var(--text-info); border-color: var(--border-info); }
+    .pill.rel-high.active   { background: var(--bg-success); color: var(--text-success); border-color: var(--border-success); }
+    .pill.rel-med.active    { background: var(--bg-warn); color: var(--text-warn); border-color: var(--border-warn); }
+    .pill.rel-low.active    { background: var(--bg2); color: var(--text3); border-color: var(--border); }
+    .filter-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+
+    /* ── MAIN CONTENT ── */
+    .content { max-width: 1400px; margin: 0 auto; padding: 20px 24px 60px; }
+
+    /* ── SECTION HEADER ── */
+    .section-hdr {
+      display: flex; align-items: center; gap: 10px;
+      padding: 18px 0 6px; cursor: pointer; user-select: none;
+    }
+    .section-hdr-text {
+      font-size: 16px; font-weight: 600; color: var(--text2);
+      text-transform: uppercase; letter-spacing: .06em;
+    }
+    .section-hdr-count { font-size: 15px; color: var(--text3); }
+    .section-hdr-line { flex: 1; height: 1px; background: var(--border); }
+    .section-hdr-arrow { font-size: 14px; color: var(--text3); transition: transform .15s; }
+    .section-hdr.collapsed .section-hdr-arrow { transform: rotate(-90deg); }
+
+    /* ── PROBLEM TABLE ── */
+    .prob-table {
+      width: 100%; border-collapse: collapse; margin-bottom: 4px;
+    }
+    .prob-table th {
+      font-size: 14px; font-weight: 500; color: var(--text3);
+      text-transform: uppercase; letter-spacing: .06em;
+      padding: 6px 8px; border-bottom: 1px solid var(--border2);
+      text-align: left; background: var(--bg);
+    }
+    .prob-row td {
+      padding: 5px 8px; border-bottom: 0.5px solid rgba(208, 205, 199, 0.5);
+      vertical-align: middle;
+    }
+    .prob-row:hover td { background: var(--bg2); }
+
+    .col-order { width: 38px; font-size: 15px; color: var(--text3); font-family: var(--mono); }
+    .col-lc    { width: 52px; font-size: 15px; color: var(--text3); font-family: var(--mono); }
+    .col-name  { }
+    .col-topic { width: 130px; }
+    .col-diff  { width: 80px; }
+    .col-status{ width: 74px; }
+    .col-lesson{ width: 80px; text-align: right; }
+    .col-kind  { width: 110px; }
+    .col-xlinks { width: 160px; }
+    .col-tier  { width: 50px; text-align: center; }
+    .col-rel   { width: 76px; }
+    .col-time  { width: 200px; font-size: 15px; font-family: var(--mono); color: var(--text2); }
+
+    .prob-name-link {
+      font-size: 17px; font-weight: 500; color: var(--text);
+      text-decoration: none;
+    }
+    .prob-name-link:hover { color: var(--text-info); text-decoration: underline; }
+
+    /* ── CROSS-LINK CHIPS ── */
+    .xlink-chips {
+      display: flex; flex-wrap: wrap; gap: 3px;
+    }
+    .xlink-chip {
+      font-size: 13px; padding: 1px 6px; border-radius: 20px;
+      border: 0.5px solid var(--border-purple); background: var(--bg-purple);
+      color: var(--text-purple); white-space: nowrap; cursor: default;
+    }
+    .xlink-chip-lc {
+      font-size: 13px; padding: 1px 6px; border-radius: 20px;
+      border: 0.5px solid var(--border-info); background: var(--bg-info);
+      color: var(--text-info); white-space: nowrap; cursor: default;
+    }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-block; font-size: 14px; padding: 2px 7px;
+      border-radius: 20px; font-weight: 500; white-space: nowrap;
+    }
+    .badge-easy   { background: var(--bg-success); color: var(--text-success); border: 0.5px solid var(--border-success); }
+    .badge-medium { background: var(--bg-warn);    color: var(--text-warn);    border: 0.5px solid var(--border-warn); }
+    .badge-hard   { background: var(--bg-danger);  color: var(--text-danger);  border: 0.5px solid var(--border-danger); }
+    .badge-done   { background: var(--bg-success); color: var(--text-success); border: 0.5px solid var(--border-success); }
+    .badge-new    { background: var(--bg2);        color: var(--text3);        border: 0.5px solid var(--border); }
+    .badge-topic  { background: var(--bg2);        color: var(--text2);        border: 0.5px solid var(--border); font-size: 11px; }
+    .badge-algo   { background: var(--bg-info);    color: var(--text-info);    border: 0.5px solid var(--border-info); }
+    .badge-ds     { background: var(--bg-purple);  color: var(--text-purple);  border: 0.5px solid var(--border-purple); }
+    .badge-t1     { background: var(--bg-success); color: var(--text-success); border: 0.5px solid var(--border-success); }
+    .badge-t2     { background: var(--bg-warn);    color: var(--text-warn);    border: 0.5px solid var(--border-warn); }
+    .badge-t3     { background: var(--bg-danger);  color: var(--text-danger);  border: 0.5px solid var(--border-danger); }
+    .badge-high   { background: var(--bg-success); color: var(--text-success); border: 0.5px solid var(--border-success); }
+    .badge-medium-rel { background: var(--bg-warn); color: var(--text-warn);   border: 0.5px solid var(--border-warn); }
+    .badge-low    { background: var(--bg2);        color: var(--text3);        border: 0.5px solid var(--border); }
+
+    /* ── OPEN LESSON BUTTON ── */
+    .open-btn {
+      font-size: 15px; padding: 3px 10px; border-radius: 6px;
+      border: 0.5px solid var(--border-info); background: var(--bg-info);
+      color: var(--text-info); cursor: pointer; text-decoration: none;
+      display: inline-block; font-weight: 500; white-space: nowrap;
+    }
+    .open-btn:hover { background: var(--text-info); color: #fff; }
+
+    /* ── STATUS TOGGLE BUTTON ── */
+    .status-toggle {
+      font-size: 14px; padding: 2px 7px; border-radius: 20px; font-weight: 500;
+      border: 0.5px solid; cursor: pointer; white-space: nowrap;
+      transition: opacity .1s;
+    }
+    .status-toggle:hover { opacity: .75; }
+    .status-toggle.is-done {
+      background: var(--bg-success); color: var(--text-success); border-color: var(--border-success);
+    }
+    .status-toggle.is-new {
+      background: var(--bg2); color: var(--text3); border-color: var(--border);
+    }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--text); color: var(--bg); font-size: 16px; padding: 8px 18px;
+      border-radius: var(--r); opacity: 0; pointer-events: none;
+      transition: opacity .2s, transform .2s; z-index: 999; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── CHECKBOX COLUMN ── */
+    .col-check { width: 32px; text-align: center; }
+    .row-check { cursor: pointer; accent-color: var(--text); width: 14px; height: 14px; }
+
+    /* ── ACTION BAR ── */
+    .action-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--text); color: var(--bg);
+      display: flex; align-items: center; gap: 14px; padding: 12px 28px;
+      z-index: 200; transform: translateY(100%); transition: transform .2s;
+    }
+    .action-bar.visible { transform: translateY(0); }
+    .action-bar-label { font-size: 16px; flex: 1; }
+    .action-bar-btn {
+      font-size: 16px; font-weight: 600; padding: 7px 20px; border-radius: var(--r);
+      border: none; background: var(--bg); color: var(--text);
+      cursor: pointer; white-space: nowrap;
+    }
+    .action-bar-btn:hover { background: var(--bg2); }
+    .action-bar-btn:disabled { opacity: .5; cursor: default; }
+    .action-bar-clear {
+      font-size: 15px; color: var(--bg2); background: none; border: none;
+      cursor: pointer; text-decoration: underline; padding: 0;
+    }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: flex; align-items: flex-start; justify-content: center;
+      z-index: 300; padding: 48px 16px; overflow-y: auto;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal {
+      background: var(--bg); border-radius: var(--r); width: 100%; max-width: 680px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.25);
+    }
+    .modal-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 18px 22px 14px; border-bottom: 1px solid var(--border);
+    }
+    .modal-title { font-size: 18px; font-weight: 700; flex: 1; }
+    .modal-close {
+      font-size: 21px; background: none; border: none; cursor: pointer;
+      color: var(--text3); padding: 0 4px; line-height: 1;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-body { padding: 18px 22px 24px; display: flex; flex-direction: column; gap: 20px; }
+    .plan-result { border: 0.5px solid var(--border); border-radius: var(--r); overflow: hidden; }
+    .plan-result-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border);
+    }
+    .plan-result-name { font-size: 16px; font-weight: 600; flex: 1; }
+    .plan-result-status { font-size: 15px; }
+    .plan-result-body { padding: 12px 14px; }
+    .prompt-label { font-size: 14px; font-weight: 600; color: var(--text3);
+      text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .prompt-text {
+      font-family: var(--mono); font-size: 15px; line-height: 1.55;
+      background: var(--bg3); border-radius: 6px; padding: 10px 12px;
+      white-space: pre-wrap; word-break: break-word; max-height: 220px;
+      overflow-y: auto; border: 0.5px solid var(--border); margin-bottom: 8px;
+    }
+    .copy-btn {
+      font-size: 15px; padding: 4px 14px; border-radius: 6px;
+      border: 0.5px solid var(--border); background: var(--bg2);
+      color: var(--text2); cursor: pointer; font-weight: 500;
+    }
+    .copy-btn:hover { background: var(--bg3); }
+    .copy-btn.copied { background: var(--bg-success); color: var(--text-success); border-color: var(--border-success); }
+
+    /* ── ADD PROBLEM FORM ── */
+    .btn-add-trigger {
+      font-size: 15px; padding: 5px 12px; border-radius: var(--r);
+      border: 0.5px solid var(--border-info); background: var(--bg-info);
+      color: var(--text-info); cursor: pointer; font-weight: 500; white-space: nowrap;
+    }
+    .btn-add-trigger:hover { background: var(--text-info); color: #fff; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-label { font-size: 14px; font-weight: 600; color: var(--text3);
+      text-transform: uppercase; letter-spacing: .06em; }
+    .form-input, .form-select {
+      font-size: 16px; padding: 6px 10px; border-radius: var(--r);
+      border: 0.5px solid var(--border); background: var(--bg);
+      color: var(--text); outline: none; width: 100%;
+    }
+    .form-input:focus, .form-select:focus { border-color: var(--border-info); }
+    .add-error { font-size: 15px; color: var(--text-danger); min-height: 18px; }
+    .add-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .add-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+    .add-submit {
+      font-size: 16px; font-weight: 600; padding: 7px 20px; border-radius: var(--r);
+      border: none; background: var(--text); color: var(--bg); cursor: pointer;
+    }
+    .add-submit:hover { background: var(--text2); }
+    .add-submit:disabled { opacity: .5; cursor: default; }
+    .add-cancel {
+      font-size: 16px; padding: 7px 14px; border-radius: var(--r);
+      border: 0.5px solid var(--border); background: var(--bg2);
+      color: var(--text2); cursor: pointer;
+    }
+    .add-cancel:hover { background: var(--bg3); }
+
+    /* ── EMPTY STATE / LOADING ── */
+    .empty-state {
+      text-align: center; padding: 60px 20px; color: var(--text3); font-size: 17px;
+    }
+    .loading { text-align: center; padding: 80px; color: var(--text3); font-size: 17px; }
+
+    /* ── TAB PANELS ── */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    @media (max-width: 700px) {
+      .col-topic, .col-lc, .col-time { display: none; }
+      .filter-search { width: 140px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── TOPBAR ── -->
+<div class="topbar">
+  <img class="topbar-logo" id="site-logo" alt="crack_d — DSA Intuition Lab">
+  <div class="topbar-spacer"></div>
+  <button class="tab-btn active" id="tab-btn-problems" onclick="switchTab('problems')">
+    Problems <span id="tab-count-problems" style="color:var(--text3);font-weight:400"></span>
+  </button>
+  <button class="tab-btn" id="tab-btn-algorithms" onclick="switchTab('algorithms')">
+    Algorithms <span id="tab-count-algorithms" style="color:var(--text3);font-weight:400"></span>
+  </button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PROBLEMS TAB
+     ══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel active" id="tab-panel-problems">
+
+  <!-- ── STATS BAR ── -->
+  <div class="stats-bar" id="stats-bar">
+    <span class="stat-chip" id="st-total">— problems</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip done" id="st-done">— done</span>
+    <span class="stat-chip new"  id="st-new">— new</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip easy" id="st-easy">— Easy</span>
+    <span class="stat-chip med"  id="st-med">— Medium</span>
+    <span class="stat-chip hard" id="st-hard">— Hard</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip gen"  id="st-gen">— lessons generated</span>
+  </div>
+
+  <!-- ── FILTER BAR ── -->
+  <div class="filter-bar">
+    <input class="filter-search" id="f-search" type="search" placeholder="Search problems…" oninput="applyFilters()">
+    <div class="filter-sep"></div>
+    <select class="filter-select" id="f-topic" onchange="applyFilters()">
+      <option value="">All Topics</option>
+    </select>
+    <div class="filter-sep"></div>
+    <div class="pill-group" id="f-diff">
+      <button class="pill active" data-val="">All</button>
+      <button class="pill diff-easy" data-val="Easy">Easy</button>
+      <button class="pill diff-med"  data-val="Medium">Medium</button>
+      <button class="pill diff-hard" data-val="Hard">Hard</button>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="pill-group" id="f-status">
+      <button class="pill active" data-val="">All</button>
+      <button class="pill status-done" data-val="done">Done</button>
+      <button class="pill" data-val="new">New</button>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="pill-group" id="f-lesson">
+      <button class="pill active" data-val="">All</button>
+      <button class="pill lesson-gen" data-val="generated">Has Lesson</button>
+    </div>
+    <div class="filter-sep"></div>
+    <button class="btn-add-trigger" onclick="openAddModal()">＋ Add problem</button>
+  </div>
+
+  <!-- ── CONTENT ── -->
+  <div class="content" id="content">
+    <div class="loading">Loading problems…</div>
+  </div>
+
+</div><!-- /tab-panel-problems -->
+
+<!-- ══════════════════════════════════════════════════════════════
+     ALGORITHMS TAB
+     ══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-panel-algorithms">
+
+  <!-- ── ALGO STATS BAR ── -->
+  <div class="stats-bar" id="algo-stats-bar">
+    <span class="stat-chip" id="ast-total">— algorithms</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip easy"   id="ast-high">— high relevance</span>
+    <span class="stat-chip med"    id="ast-med">— medium</span>
+    <span class="stat-chip new"    id="ast-low">— low</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip algo"   id="ast-algo">— algorithms</span>
+    <span class="stat-chip purple" id="ast-ds">— data structures</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip gen"    id="ast-gen">— lessons generated</span>
+  </div>
+
+  <!-- ── ALGO FILTER BAR ── -->
+  <div class="filter-bar">
+    <input class="filter-search" id="af-search" type="search" placeholder="Search algorithms…" oninput="applyAlgoFilters()">
+    <div class="filter-sep"></div>
+    <select class="filter-select" id="af-cat" onchange="applyAlgoFilters()">
+      <option value="">All Categories</option>
+    </select>
+    <div class="filter-sep"></div>
+    <span style="font-size:15px;color:var(--text3);white-space:nowrap">Kind:</span>
+    <div class="pill-group" id="af-kind">
+      <button class="pill active" data-val="">All</button>
+      <button class="pill" data-val="algorithm">Algorithm</button>
+      <button class="pill" data-val="data_structure">Data Structure</button>
+    </div>
+    <div class="filter-sep"></div>
+    <span style="font-size:15px;color:var(--text3);white-space:nowrap">Relevance:</span>
+    <div class="pill-group" id="af-rel">
+      <button class="pill" data-val="">All</button>
+      <button class="pill rel-high active" data-val="high">High</button>
+      <button class="pill rel-med  active" data-val="medium">Medium</button>
+      <button class="pill rel-low" data-val="low">Low</button>
+    </div>
+  </div>
+
+  <!-- ── ALGO CONTENT ── -->
+  <div class="content" id="algo-content">
+    <div class="loading">Loading algorithms…</div>
+  </div>
+
+</div><!-- /tab-panel-algorithms -->
+
+<div id="toast"></div>
+
+<!-- ── ACTION BAR (problems only) ── -->
+<div class="action-bar" id="action-bar">
+  <span class="action-bar-label" id="action-label">0 problems selected</span>
+  <button class="action-bar-clear" onclick="clearSelection()">Clear</button>
+  <button class="action-bar-btn" id="gen-btn" onclick="generatePlans()">Generate Plan</button>
+</div>
+
+<!-- ── MODAL (plan generation) ── -->
+<div class="modal-overlay hidden" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">Plans generated</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ── ADD PROBLEM MODAL ── -->
+<div class="modal-overlay hidden" id="add-modal-overlay" onclick="handleAddOverlayClick(event)">
+  <div class="modal" style="max-width:480px" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">Add problem</span>
+      <button class="modal-close" onclick="closeAddModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="add-url">LeetCode URL</label>
+        <input class="form-input" id="add-url" type="url" placeholder="https://leetcode.com/problems/two-sum/" oninput="onAddUrlInput()">
+      </div>
+      <div class="add-row">
+        <div class="form-group">
+          <label class="form-label" for="add-name">Problem name</label>
+          <input class="form-input" id="add-name" type="text" placeholder="Two Sum">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="add-num">LC number</label>
+          <input class="form-input" id="add-num" type="number" min="1" placeholder="1">
+        </div>
+      </div>
+      <div class="add-row">
+        <div class="form-group">
+          <label class="form-label" for="add-topic">Topic</label>
+          <input class="form-input" id="add-topic" type="text" placeholder="Arrays">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="add-diff">Difficulty</label>
+          <select class="form-select" id="add-diff">
+            <option value="">Select…</option>
+            <option>Easy</option>
+            <option>Medium</option>
+            <option>Hard</option>
+          </select>
+        </div>
+      </div>
+      <p class="add-error" id="add-error"></p>
+      <div class="add-footer">
+        <button class="add-cancel" onclick="closeAddModal()">Cancel</button>
+        <button class="add-submit" id="add-submit" onclick="submitAdd()">Add problem</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('site-logo').src = `img/logo_${Math.floor(Math.random() * 3) + 1}.png`;
+
+// ══════════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════════
+let ALL   = [];   // LC problems
+let ALGOS = [];   // algorithm entries
+
+// Cross-link indices (built after both datasets load)
+let slugToAlgos  = {};  // slug → algo[]
+let algoIdToLCPS = {};  // algoId → problem[]
+
+let filters     = { search: '', topic: '', diff: '', status: '', lesson: '' };
+let algoFilters = { search: '', cat: '', kind: '', rel: [] };
+const SELECTED  = new Set();
+
+// Default relevance filter: show high + medium, not low
+algoFilters.rel = ['high', 'medium'];
+
+// ──────────────────────────────────────────────────────────────
+// Skill files that currently exist on disk (update when new skill files are added)
+// ──────────────────────────────────────────────────────────────
+const EXISTING_SKILL_FILES = new Set([
+  'skills/ds/array.md',
+  'skills/ds/linked_list.md',
+  'skills/ds/binary_tree.md',
+  'skills/patterns/two_pointers.md',
+  'skills/patterns/sliding_window.md',
+  'skills/patterns/binary_search.md',
+  'skills/patterns/bfs_dfs.md',
+  'skills/patterns/dynamic_programming.md',
+]);
+
+const TOPIC_SKILL_MAP = {
+  'Arrays':            { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/two_pointers.md'] },
+  'Sliding Window':    { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/sliding_window.md'] },
+  'Binary Search':     { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/binary_search.md'] },
+  'Linked Lists':      { ds: ['skills/ds/linked_list.md'], patterns: [] },
+  'Trees':             { ds: ['skills/ds/binary_tree.md'], patterns: ['skills/patterns/bfs_dfs.md'] },
+  'BST':               { ds: ['skills/ds/binary_tree.md'], patterns: ['skills/patterns/binary_search.md'] },
+  'Graphs':            { ds: ['skills/ds/graph.md'], patterns: ['skills/patterns/bfs_dfs.md'] },
+  'Heaps':             { ds: ['skills/ds/heap.md'], patterns: [] },
+  'Stack':             { ds: ['skills/ds/stack.md'], patterns: [] },
+  'Tries':             { ds: ['skills/ds/trie.md'], patterns: [] },
+  'Backtracking':      { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/backtracking.md'] },
+  'Greedy':            { ds: ['skills/ds/array.md'], patterns: [] },
+  'DP / Greedy':       { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/dynamic_programming.md'] },
+  'DP — 0/1 Knapsack': { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/dynamic_programming.md'] },
+  'DP — 1D':           { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/dynamic_programming.md'] },
+  'DP — 2D':           { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/dynamic_programming.md'] },
+  'DP — Grid':         { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/dynamic_programming.md'] },
+  'DP — Interval':     { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/dynamic_programming.md'] },
+  'DP — Palindrome':   { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/dynamic_programming.md'] },
+  'DP — Stock':        { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/dynamic_programming.md'] },
+  'DP — Subsequence':  { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/dynamic_programming.md'] },
+  'DP — Unbounded':    { ds: ['skills/ds/array.md'], patterns: ['skills/patterns/dynamic_programming.md'] },
+  'Design':            { ds: [], patterns: [] },
+  'Math':              { ds: [], patterns: [] },
+  'Bits':              { ds: [], patterns: [] },
+};
+
+// ══════════════════════════════════════════════════════════════
+// TAB ROUTING
+// ══════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  ['problems', 'algorithms'].forEach(t => {
+    document.getElementById(`tab-panel-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`tab-btn-${t}`).classList.toggle('active', t === tab);
+  });
+  // Hide action bar when on algorithms tab
+  if (tab === 'algorithms') document.getElementById('action-bar').classList.remove('visible');
+  history.replaceState(null, '', `#${tab}`);
+}
+
+function initTabFromHash() {
+  const hash = location.hash.replace('#', '');
+  if (hash === 'algorithms') switchTab('algorithms');
+  else switchTab('problems');
+}
+
+window.addEventListener('hashchange', () => {
+  const hash = location.hash.replace('#', '');
+  switchTab(hash === 'algorithms' ? 'algorithms' : 'problems');
+});
+
+// ══════════════════════════════════════════════════════════════
+// DATA LOAD
+// ══════════════════════════════════════════════════════════════
+async function init() {
+  const [probsOk, algosOk] = await Promise.all([loadProblems(), loadAlgorithms()]);
+  if (probsOk && algosOk) buildCrossLinkIndices();
+  initTabFromHash();
+}
+
+async function loadProblems() {
+  try {
+    const r = await fetch('../data/problems.json');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    ALL = await r.json();
+    document.getElementById('tab-count-problems').textContent = `(${ALL.length})`;
+    populateTopics();
+    applyFilters();
+    return true;
+  } catch (e) {
+    document.getElementById('content').innerHTML =
+      `<div class="empty-state">Could not load problems.json.<br>
+       Run <code>python3 scripts/server.py</code> from the project root, then open
+       <code>http://localhost:8765/dashboard/</code></div>`;
+    return false;
+  }
+}
+
+async function loadAlgorithms() {
+  try {
+    const r = await fetch('../data/algorithms.json');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    ALGOS = await r.json();
+    document.getElementById('tab-count-algorithms').textContent = `(${ALGOS.length})`;
+    populateAlgoCats();
+    applyAlgoFilters();
+    return true;
+  } catch (e) {
+    document.getElementById('algo-content').innerHTML =
+      `<div class="empty-state">Could not load algorithms.json.</div>`;
+    return false;
+  }
+}
+
+function buildCrossLinkIndices() {
+  // slug → list of algos that reference this slug
+  const probBySlug = {};
+  ALL.forEach(p => { if (p.slug) probBySlug[p.slug] = p; });
+
+  ALGOS.forEach(a => {
+    a.related_lc.forEach(slug => {
+      if (!slugToAlgos[slug]) slugToAlgos[slug] = [];
+      slugToAlgos[slug].push(a);
+    });
+  });
+
+  // algoId → list of LC problems for that algo's related_lc
+  ALGOS.forEach(a => {
+    algoIdToLCPS[a.id] = a.related_lc
+      .map(slug => probBySlug[slug])
+      .filter(Boolean);
+  });
+
+  // Re-render both to pick up cross-link chips
+  applyFilters();
+  applyAlgoFilters();
+}
+
+// ══════════════════════════════════════════════════════════════
+// PROBLEMS — FILTERING & RENDERING
+// ══════════════════════════════════════════════════════════════
+function populateTopics() {
+  const sel = document.getElementById('f-topic');
+  const topics = [...new Set(ALL.map(p => p.topic))].sort();
+  topics.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t; o.textContent = t;
+    sel.appendChild(o);
+  });
+}
+
+function applyFilters() {
+  filters.search = document.getElementById('f-search').value.toLowerCase().trim();
+  filters.topic  = document.getElementById('f-topic').value;
+  filters.diff   = activePill('f-diff');
+  filters.status = activePill('f-status');
+  filters.lesson = activePill('f-lesson');
+
+  const visible = ALL.filter(matchProb);
+  updateStats(visible);
+  renderTable(visible);
+}
+
+function matchProb(p) {
+  if (filters.search && !p.name.toLowerCase().includes(filters.search) &&
+      !String(p.lc_num).includes(filters.search)) return false;
+  if (filters.topic  && p.topic !== filters.topic)          return false;
+  if (filters.diff   && p.difficulty !== filters.diff)      return false;
+  if (filters.status && p.status !== filters.status)        return false;
+  if (filters.lesson && p.lesson_status !== filters.lesson) return false;
+  return true;
+}
+
+function activePill(groupId) {
+  const active = document.querySelector(`#${groupId} .pill.active`);
+  return active ? active.dataset.val : '';
+}
+
+function updateStats(visible) {
+  const total = visible.length;
+  const done  = visible.filter(p => p.status === 'done').length;
+  const nw    = visible.filter(p => p.status === 'new').length;
+  const easy  = visible.filter(p => p.difficulty === 'Easy').length;
+  const med   = visible.filter(p => p.difficulty === 'Medium').length;
+  const hard  = visible.filter(p => p.difficulty === 'Hard').length;
+  const gen   = visible.filter(p => p.lesson_status === 'generated').length;
+  const suffix = (filters.search || filters.topic || filters.diff ||
+                  filters.status || filters.lesson) ? ' (filtered)' : '';
+
+  document.getElementById('st-total').textContent = `${total} problem${total !== 1 ? 's' : ''}${suffix}`;
+  document.getElementById('st-done').textContent  = `${done} done`;
+  document.getElementById('st-new').textContent   = `${nw} new`;
+  document.getElementById('st-easy').textContent  = `${easy} Easy`;
+  document.getElementById('st-med').textContent   = `${med} Medium`;
+  document.getElementById('st-hard').textContent  = `${hard} Hard`;
+  document.getElementById('st-gen').textContent   = `${gen} lesson${gen !== 1 ? 's' : ''} generated`;
+}
+
+function renderTable(visible) {
+  const content = document.getElementById('content');
+  if (!visible.length) {
+    content.innerHTML = '<div class="empty-state">No problems match the current filters.</div>';
+    return;
+  }
+
+  const sectionOrder = [];
+  const bySection = {};
+  for (const p of visible) {
+    if (!bySection[p.section]) { bySection[p.section] = []; sectionOrder.push(p.section); }
+    bySection[p.section].push(p);
+  }
+
+  const frag = document.createDocumentFragment();
+
+  for (const sec of sectionOrder) {
+    const rows = bySection[sec];
+
+    const hdr = document.createElement('div');
+    hdr.className = 'section-hdr';
+    hdr.dataset.section = sec;
+    hdr.innerHTML = `
+      <span class="section-hdr-text">${sec}</span>
+      <span class="section-hdr-count">${rows.length}</span>
+      <span class="section-hdr-line"></span>
+      <span class="section-hdr-arrow">▾</span>`;
+    hdr.addEventListener('click', () => toggleSection(hdr, 'section'));
+    frag.appendChild(hdr);
+
+    const wrap = document.createElement('div');
+    wrap.dataset.sectionBody = sec;
+
+    const tbl = document.createElement('table');
+    tbl.className = 'prob-table';
+    tbl.innerHTML = `<thead><tr>
+      <th class="col-check"><input type="checkbox" class="row-check" title="Select all in section"></th>
+      <th class="col-order">#</th>
+      <th class="col-lc">LC</th>
+      <th class="col-name">Problem</th>
+      <th class="col-topic">Topic</th>
+      <th class="col-xlinks">Algorithms</th>
+      <th class="col-diff">Difficulty</th>
+      <th class="col-status">Status</th>
+      <th class="col-lesson">Lesson</th>
+    </tr></thead>`;
+
+    const allChk = tbl.querySelector('thead .row-check');
+    allChk.checked = rows.every(p => SELECTED.has(p.slug));
+    allChk.addEventListener('change', () => {
+      rows.forEach(p => toggleRowCheck(p.slug, allChk.checked, false));
+      tbl.querySelectorAll('tbody .row-check').forEach(c => c.checked = allChk.checked);
+      updateActionBar();
+    });
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(p => tbody.appendChild(buildRow(p)));
+    tbl.appendChild(tbody);
+    wrap.appendChild(tbl);
+    frag.appendChild(wrap);
+  }
+
+  content.innerHTML = '';
+  content.appendChild(frag);
+}
+
+function buildRow(p) {
+  const tr = document.createElement('tr');
+  tr.className = 'prob-row' + (p.status === 'done' ? ' done-row' : '');
+  tr.dataset.slug = p.slug;
+
+  const diffClass = { Easy: 'badge-easy', Medium: 'badge-medium', Hard: 'badge-hard' }[p.difficulty] || '';
+  const lessonCell = p.lesson_status === 'generated'
+    ? `<a class="open-btn" href="../lessons/${p.slug}/lesson.html" target="_blank">Open ↗</a>`
+    : `<span style="font-size:15px;color:var(--text3)">—</span>`;
+
+  // Cross-link chips: related algorithms for this slug
+  const relAlgos = slugToAlgos[p.slug] || [];
+  const algoChips = relAlgos.length
+    ? `<div class="xlink-chips">${relAlgos.map(a =>
+        `<span class="xlink-chip" title="${escHtml(a.short_note)}">${escHtml(a.name)}</span>`
+      ).join('')}</div>`
+    : '';
+
+  tr.innerHTML = `
+    <td class="col-check"></td>
+    <td class="col-order">${p.order}</td>
+    <td class="col-lc">${p.lc_num}</td>
+    <td class="col-name">
+      <a class="prob-name-link" href="${p.url}" target="_blank">${escHtml(p.name)}</a>
+    </td>
+    <td class="col-topic"><span class="badge badge-topic">${escHtml(p.topic)}</span></td>
+    <td class="col-xlinks">${algoChips}</td>
+    <td class="col-diff"><span class="badge ${diffClass}">${p.difficulty}</span></td>
+    <td class="col-status"></td>
+    <td class="col-lesson">${lessonCell}</td>`;
+
+  const cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.className = 'row-check';
+  cb.checked = SELECTED.has(p.slug);
+  cb.addEventListener('change', () => toggleRowCheck(p.slug, cb.checked));
+  tr.querySelector('.col-check').appendChild(cb);
+
+  const btn = document.createElement('button');
+  btn.className = 'status-toggle ' + (p.status === 'done' ? 'is-done' : 'is-new');
+  btn.textContent = p.status === 'done' ? '✓ Done' : 'New';
+  btn.addEventListener('click', () => toggleStatus(p, tr, btn));
+  tr.querySelector('.col-status').appendChild(btn);
+
+  return tr;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ALGORITHMS — FILTERING & RENDERING
+// ══════════════════════════════════════════════════════════════
+function populateAlgoCats() {
+  const sel = document.getElementById('af-cat');
+  const cats = [...new Set(ALGOS.map(a => a.category))];
+  // keep canonical order
+  cats.sort((a, b) => {
+    const oa = ALGOS.find(x => x.category === a)?.category_order ?? 99;
+    const ob = ALGOS.find(x => x.category === b)?.category_order ?? 99;
+    return oa - ob;
+  });
+  cats.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    sel.appendChild(o);
+  });
+}
+
+function applyAlgoFilters() {
+  algoFilters.search = document.getElementById('af-search').value.toLowerCase().trim();
+  algoFilters.cat    = document.getElementById('af-cat').value;
+  algoFilters.kind   = activePillMulti('af-kind');
+
+  // Relevance: multi-select pills (all active ones)
+  algoFilters.rel = activeMultiPills('af-rel');
+
+  const visible = ALGOS.filter(matchAlgo);
+  updateAlgoStats(visible);
+  renderAlgosTable(visible);
+}
+
+function activePillMulti(groupId) {
+  const active = document.querySelector(`#${groupId} .pill.active[data-val]:not([data-val=""])`);
+  return active ? active.dataset.val : '';
+}
+
+function activeMultiPills(groupId) {
+  const allPill = document.querySelector(`#${groupId} .pill.active[data-val=""]`);
+  if (allPill) return [];  // empty = all
+  return [...document.querySelectorAll(`#${groupId} .pill.active[data-val]:not([data-val=""])`)].map(p => p.dataset.val);
+}
+
+function matchAlgo(a) {
+  if (algoFilters.search && !a.name.toLowerCase().includes(algoFilters.search) &&
+      !a.id.includes(algoFilters.search) &&
+      !(a.aliases || []).some(x => x.toLowerCase().includes(algoFilters.search))) return false;
+  if (algoFilters.cat  && a.category !== algoFilters.cat)   return false;
+  if (algoFilters.kind && a.kind !== algoFilters.kind)       return false;
+  if (algoFilters.rel.length && !algoFilters.rel.includes(a.interview_relevance)) return false;
+  return true;
+}
+
+function updateAlgoStats(visible) {
+  const total = visible.length;
+  const high  = visible.filter(a => a.interview_relevance === 'high').length;
+  const med   = visible.filter(a => a.interview_relevance === 'medium').length;
+  const low   = visible.filter(a => a.interview_relevance === 'low').length;
+  const algo  = visible.filter(a => a.kind === 'algorithm').length;
+  const ds    = visible.filter(a => a.kind === 'data_structure').length;
+  const gen   = visible.filter(a => a.lesson_status === 'generated').length;
+  const suffix = (algoFilters.search || algoFilters.cat || algoFilters.kind ||
+                  algoFilters.rel.length) ? ' (filtered)' : '';
+
+  document.getElementById('ast-total').textContent = `${total} algorithm${total !== 1 ? 's' : ''}${suffix}`;
+  document.getElementById('ast-high').textContent  = `${high} high relevance`;
+  document.getElementById('ast-med').textContent   = `${med} medium`;
+  document.getElementById('ast-low').textContent   = `${low} low`;
+  document.getElementById('ast-algo').textContent  = `${algo} algorithm${algo !== 1 ? 's' : ''}`;
+  document.getElementById('ast-ds').textContent    = `${ds} data structure${ds !== 1 ? 's' : ''}`;
+  document.getElementById('ast-gen').textContent   = `${gen} lesson${gen !== 1 ? 's' : ''} generated`;
+}
+
+function renderAlgosTable(visible) {
+  const content = document.getElementById('algo-content');
+  if (!visible.length) {
+    content.innerHTML = '<div class="empty-state">No algorithms match the current filters.</div>';
+    return;
+  }
+
+  const catOrder = [];
+  const byCat = {};
+  for (const a of visible) {
+    if (!byCat[a.category]) { byCat[a.category] = []; catOrder.push(a.category); }
+    byCat[a.category].push(a);
+  }
+
+  const frag = document.createDocumentFragment();
+
+  for (const cat of catOrder) {
+    const rows = byCat[cat];
+
+    const hdr = document.createElement('div');
+    hdr.className = 'section-hdr';
+    hdr.dataset.section = cat;
+    hdr.innerHTML = `
+      <span class="section-hdr-text">${escHtml(cat)}</span>
+      <span class="section-hdr-count">${rows.length}</span>
+      <span class="section-hdr-line"></span>
+      <span class="section-hdr-arrow">▾</span>`;
+    hdr.addEventListener('click', () => toggleSection(hdr, 'algo-section'));
+    frag.appendChild(hdr);
+
+    const wrap = document.createElement('div');
+    wrap.dataset.algoSectionBody = cat;
+
+    const tbl = document.createElement('table');
+    tbl.className = 'prob-table';
+    tbl.innerHTML = `<thead><tr>
+      <th class="col-order">#</th>
+      <th class="col-name">Name</th>
+      <th class="col-kind">Kind</th>
+      <th class="col-tier" title="Tier: 1=primer, 2=core, 3=advanced">Tier</th>
+      <th class="col-rel">Relevance</th>
+      <th class="col-time">Time</th>
+      <th class="col-lesson">Lesson</th>
+    </tr></thead>`;
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(a => tbody.appendChild(buildAlgoRow(a)));
+    tbl.appendChild(tbody);
+    wrap.appendChild(tbl);
+    frag.appendChild(wrap);
+  }
+
+  content.innerHTML = '';
+  content.appendChild(frag);
+}
+
+function buildAlgoRow(a) {
+  const tr = document.createElement('tr');
+  tr.className = 'prob-row';
+
+  const kindBadge = a.kind === 'data_structure'
+    ? `<span class="badge badge-ds">Data Structure</span>`
+    : `<span class="badge badge-algo">Algorithm</span>`;
+
+  const tierBadge = { 1: 'badge-t1', 2: 'badge-t2', 3: 'badge-t3' }[a.tier] || '';
+  const tierLabel = { 1: 'T1', 2: 'T2', 3: 'T3' }[a.tier] || a.tier;
+
+  const relBadge = {
+    high:   `<span class="badge badge-high">High</span>`,
+    medium: `<span class="badge badge-medium-rel">Medium</span>`,
+    low:    `<span class="badge badge-low">Low</span>`,
+  }[a.interview_relevance] || '';
+
+  const lessonCell = a.lesson_status === 'generated' && a.lesson_path
+    ? `<a class="open-btn" href="../${a.lesson_path}" target="_blank">Open ↗</a>`
+    : `<span style="font-size:15px;color:var(--text3)">—</span>`;
+
+  // Cross-link chips: related LC problems for this algorithm
+  const relProbs = algoIdToLCPS[a.id] || [];
+  const lcChips = relProbs.length
+    ? `<div class="xlink-chips">${relProbs.map(p =>
+        `<span class="xlink-chip-lc" title="LC ${p.lc_num}">${escHtml(p.name)}</span>`
+      ).join('')}</div>`
+    : '';
+
+  const aliases = (a.aliases || []).length
+    ? `<div style="font-size:14px;color:var(--text3);margin-top:1px">${escHtml(a.aliases.join(' · '))}</div>`
+    : '';
+
+  tr.innerHTML = `
+    <td class="col-order">${a.ramp_pos}</td>
+    <td class="col-name">
+      <span style="font-size:17px;font-weight:500">${escHtml(a.name)}</span>
+      ${aliases}
+      <div style="font-size:14px;color:var(--text3);margin-top:2px;line-height:1.4">${escHtml(a.short_note)}</div>
+      ${lcChips}
+    </td>
+    <td class="col-kind">${kindBadge}</td>
+    <td class="col-tier"><span class="badge ${tierBadge}">${tierLabel}</span></td>
+    <td class="col-rel">${relBadge}</td>
+    <td class="col-time">${escHtml(a.complexity.time)}</td>
+    <td class="col-lesson">${lessonCell}</td>`;
+
+  return tr;
+}
+
+// ══════════════════════════════════════════════════════════════
+// STATUS TOGGLE
+// ══════════════════════════════════════════════════════════════
+async function toggleStatus(p, tr, btn) {
+  const newStatus = p.status === 'done' ? 'new' : 'done';
+  btn.disabled = true;
+  try {
+    const data = await apiCall('PATCH', '/api/status', { slug: p.slug, status: newStatus });
+    if (!data.ok) throw new Error(data.error || 'unknown error');
+    p.status = newStatus;
+    btn.textContent = newStatus === 'done' ? '✓ Done' : 'New';
+    btn.className = 'status-toggle ' + (newStatus === 'done' ? 'is-done' : 'is-new');
+    tr.classList.toggle('done-row', newStatus === 'done');
+    applyFilters();
+    showToast(newStatus === 'done' ? '✓ Marked done' : '↩ Marked new');
+  } catch (e) {
+    showToast(`Error: ${e.message}`, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION COLLAPSE
+// ══════════════════════════════════════════════════════════════
+function toggleSection(hdr, bodyAttr) {
+  const sec = hdr.dataset.section;
+  const selector = bodyAttr === 'algo-section'
+    ? `[data-algo-section-body="${CSS.escape(sec)}"]`
+    : `[data-section-body="${CSS.escape(sec)}"]`;
+  const body = document.querySelector(selector);
+  if (!body) return;
+  const collapsed = hdr.classList.toggle('collapsed');
+  body.style.display = collapsed ? 'none' : '';
+}
+
+// ══════════════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════════════
+let _toastTimer = null;
+function showToast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = isError ? 'var(--text-danger)' : 'var(--text)';
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ══════════════════════════════════════════════════════════════
+// SELECTION (problems only)
+// ══════════════════════════════════════════════════════════════
+function toggleRowCheck(slug, checked, doUpdate = true) {
+  if (checked) SELECTED.add(slug); else SELECTED.delete(slug);
+  if (doUpdate) updateActionBar();
+}
+
+function updateActionBar() {
+  const n = SELECTED.size;
+  const bar = document.getElementById('action-bar');
+  document.getElementById('action-label').textContent =
+    `${n} problem${n !== 1 ? 's' : ''} selected`;
+  bar.classList.toggle('visible', n > 0);
+}
+
+function clearSelection() {
+  SELECTED.clear();
+  document.querySelectorAll('.row-check').forEach(c => c.checked = false);
+  updateActionBar();
+}
+
+// ══════════════════════════════════════════════════════════════
+// PLAN GENERATION
+// ══════════════════════════════════════════════════════════════
+function topicToSkills(topic) {
+  return TOPIC_SKILL_MAP[topic] || { ds: [], patterns: [] };
+}
+
+function buildPlanMd(p) {
+  const { ds, patterns } = topicToSkills(p.topic);
+  const allSkills = [...ds, ...patterns];
+  const dsLines = ds.length
+    ? ds.map(f => `- **DS:** ${f.split('/').pop().replace('.md','').replace(/_/g,' ')} → load \`${f}\``).join('\n')
+    : '- **DS:** (identify from problem)';
+  const patLines = patterns.length
+    ? patterns.map(f => `- **Pattern:** ${f.split('/').pop().replace('.md','').replace(/_/g,' ')} → load \`${f}\``).join('\n')
+    : '- **Pattern:** (identify from problem)';
+  const skillList = allSkills.length
+    ? allSkills.map((f, i) => `${i+1}. \`${f}\``).join('\n')
+    : '(no skill files mapped for this topic yet — add manually)';
+
+  return `# Lesson Plan: ${p.name} (LC #${p.lc_num})
+
+## Problem
+- **Name:** ${p.name}
+- **Number:** ${p.lc_num}
+- **Link:** ${p.url}
+- **Difficulty:** ${p.difficulty}
+- **Topic:** ${p.topic}
+
+## Data structures & patterns
+${dsLines}
+${patLines}
+
+## Skill files to load into context
+${skillList}
+
+## Output file
+\`lessons/${p.slug}/lesson.html\` — self-contained, offline-capable, no CDN dependencies.
+
+## Lesson sections (produce all of these)
+
+### 1. Intuition
+[Explain the key insight that makes this approach work over brute force. Cover: brute-force cost, the invariant or structure that enables the optimal approach, and why the pattern applies here.]
+
+### 2. Animated dry run
+[Choose 2–3 representative inputs (one typical, one edge, one tricky). Walk through every step: data structure state, pointer/variable positions, decision made, result update. Use the visual conventions from the DS skill file.]
+
+### 3. Corner cases
+| Case | Input | Expected | Why |
+|---|---|---|---|
+| Empty input | ... | ... | ... |
+| Single element | ... | ... | ... |
+| All same value | ... | ... | ... |
+| [add more relevant cases] | ... | ... | ... |
+
+### 4. Code (C++ — revealed after attempt)
+[Canonical C++ solution. Include type declarations, one comment per logical step, complexity analysis at the end. Code hidden behind "Reveal Code" toggle by default.]
+
+### 5. Approaches (two tabs)
+**Tab 1 — [Primary approach name]**
+Time: O(?). Space: O(?).
+[Brief description — why this complexity, what the key insight is.]
+
+**Tab 2 — [Alternative approach name]**
+Time: O(?). Space: O(?).
+[Brief description. Provide code if it's concise; otherwise a text sketch.]
+
+## Quality bar
+Follow the visual conventions in the skill files and match the style of existing lessons:
+- Self-contained HTML/CSS/JS, no CDN dependencies
+- \`.panels-fixed\` layout (grid-template-rows: 175px 120px) to prevent control shift
+- Formula breakdown panel showing variable values + full substitution per step
+- Step panel split: \`.step-what\` (computed result) + \`.step-why\` (decision reasoning)
+- Keyboard shortcuts: ← → Space R/Esc
+- ↺ Reset button, Reveal Code toggle (hidden by default), approach tabs
+`;
+}
+
+function buildPrompt(p) {
+  const { ds, patterns } = topicToSkills(p.topic);
+  const allSkills = [...ds, ...patterns];
+  const existingSkills = allSkills.filter(f => EXISTING_SKILL_FILES.has(f));
+  const missingSkills  = allSkills.filter(f => !EXISTING_SKILL_FILES.has(f));
+  const fileLines = [`lessons/${p.slug}/plan.md`, ...existingSkills].map(f => `  ${f}`).join('\n');
+  const missingNote = missingSkills.length
+    ? `\nNote: these skill files are not yet authored — omit them for now:\n${missingSkills.map(f => `  ${f}`).join('\n')}`
+    : '';
+  return `Read the following files into your context, then generate the lesson HTML:
+
+${fileLines}${missingNote}
+
+Generate: lessons/${p.slug}/lesson.html
+
+The lesson must be:
+- Self-contained HTML/CSS/JS (no CDN, everything inline)
+- Visual style: warm grey background (#efede8), dark near-black text, same CSS variables as existing lessons
+- .panels-fixed layout (grid-template-rows: 175px 120px) to prevent control shift on content resize
+- Formula breakdown panel with full per-step substitution (show variable name + index + value)
+- Step panel split: .step-what (computed result this step) + .step-why (decision / greedy reasoning)
+- Keyboard shortcuts: ← → for prev/next, Space for auto-play, R or Esc for reset
+- ↺ Reset button, Reveal Code toggle (hidden by default), tabs for multiple approaches
+- Follow all animation rules and visual conventions from the skill files`;
+}
+
+async function apiCall(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const ct = res.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    throw new Error(
+      `Server returned HTTP ${res.status} (not JSON). ` +
+      `Make sure you started the server with: python3 scripts/server.py`
+    );
+  }
+  return res.json();
+}
+
+async function generatePlans() {
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  const problems = ALL.filter(p => SELECTED.has(p.slug));
+  const results = [];
+  for (const p of problems) {
+    const content = buildPlanMd(p);
+    try {
+      const data = await apiCall('POST', '/api/write', { path: `lessons/${p.slug}/plan.md`, content });
+      results.push({ p, ok: data.ok, error: data.error || null });
+    } catch (e) {
+      results.push({ p, ok: false, error: e.message });
+    }
+  }
+  btn.disabled = false;
+  btn.textContent = 'Generate Plan';
+  showModal(results);
+}
+
+function showModal(results) {
+  const ok = results.filter(r => r.ok).length;
+  document.getElementById('modal-title').textContent =
+    `Plan${ok !== 1 ? 's' : ''} created for ${ok} of ${results.length} problem${results.length !== 1 ? 's' : ''}`;
+  const body = document.getElementById('modal-body');
+  body.innerHTML = '';
+  for (const { p, ok: writeOk, error } of results) {
+    const block = document.createElement('div');
+    block.className = 'plan-result';
+    const statusColor = writeOk ? 'var(--text-success)' : 'var(--text-danger)';
+    const statusText  = writeOk ? 'plan.md created' : `failed: ${error}`;
+    const prompt = writeOk ? buildPrompt(p) : null;
+    block.innerHTML = `
+      <div class="plan-result-header">
+        <span class="plan-result-name">${escHtml(p.name)} <span style="font-weight:400;color:var(--text3)">LC #${p.lc_num}</span></span>
+        <span class="plan-result-status" style="color:${statusColor}">${writeOk ? '✓' : '✗'} ${escHtml(statusText)}</span>
+      </div>
+      ${writeOk ? `
+      <div class="plan-result-body">
+        <div class="prompt-label">Claude prompt — paste in VS Code</div>
+        <div class="prompt-text">${escHtml(prompt)}</div>
+        <button class="copy-btn" onclick="copyText(this, ${JSON.stringify(prompt)})">Copy prompt</button>
+      </div>` : ''}`;
+    body.appendChild(block);
+  }
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+function handleOverlayClick(e) { if (e.target === document.getElementById('modal-overlay')) closeModal(); }
+
+// ══════════════════════════════════════════════════════════════
+// ADD PROBLEM
+// ══════════════════════════════════════════════════════════════
+function parseLC(url) {
+  const m = url.match(/leetcode\.com\/problems\/([a-z0-9-]+)/);
+  return m ? m[1] : null;
+}
+function slugToName(slug) {
+  return slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+function openAddModal() {
+  ['add-url','add-name','add-topic'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('add-num').value = '';
+  document.getElementById('add-diff').value = '';
+  document.getElementById('add-error').textContent = '';
+  document.getElementById('add-submit').disabled = false;
+  document.getElementById('add-submit').textContent = 'Add problem';
+  document.getElementById('add-modal-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('add-url').focus(), 50);
+}
+function closeAddModal() { document.getElementById('add-modal-overlay').classList.add('hidden'); }
+function handleAddOverlayClick(e) { if (e.target === document.getElementById('add-modal-overlay')) closeAddModal(); }
+function onAddUrlInput() {
+  const slug = parseLC(document.getElementById('add-url').value);
+  if (slug) {
+    const nameEl = document.getElementById('add-name');
+    if (!nameEl.value) nameEl.value = slugToName(slug);
+  }
+}
+async function submitAdd() {
+  const url   = document.getElementById('add-url').value.trim();
+  const name  = document.getElementById('add-name').value.trim();
+  const num   = parseInt(document.getElementById('add-num').value, 10);
+  const topic = document.getElementById('add-topic').value.trim();
+  const diff  = document.getElementById('add-diff').value;
+  const errEl = document.getElementById('add-error');
+  const slug  = parseLC(url);
+  errEl.textContent = '';
+  if (!slug)           { errEl.textContent = 'Enter a valid LeetCode problem URL.'; return; }
+  if (!name)           { errEl.textContent = 'Problem name is required.'; return; }
+  if (!num || num <= 0){ errEl.textContent = 'Enter a valid LC number.'; return; }
+  if (!topic)          { errEl.textContent = 'Topic is required.'; return; }
+  if (!diff)           { errEl.textContent = 'Select a difficulty.'; return; }
+  const btn = document.getElementById('add-submit');
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try {
+    const data = await apiCall('POST', '/api/add', { slug, name, number: num, topic, difficulty: diff });
+    if (!data.ok) { errEl.textContent = data.error || 'Server error.'; }
+    else {
+      closeAddModal();
+      ALL.push(data.problem);
+      applyFilters();
+      showToast(`Added: ${name}`);
+    }
+  } catch (e) { errEl.textContent = e.message; }
+  finally { btn.disabled = false; btn.textContent = 'Add problem'; }
+}
+
+// ══════════════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════════════
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy prompt'; btn.classList.remove('copied'); }, 1800);
+  }).catch(() => showToast('Copy failed — select text manually', true));
+}
+
+// ══════════════════════════════════════════════════════════════
+// PILL GROUPS
+// ══════════════════════════════════════════════════════════════
+document.querySelectorAll('.pill-group').forEach(group => {
+  group.addEventListener('click', e => {
+    const pill = e.target.closest('.pill');
+    if (!pill) return;
+    const isRelGroup = group.id === 'af-rel';
+    if (isRelGroup) {
+      // Multi-select: clicking "All" deactivates individual; clicking individual deactivates "All"
+      if (pill.dataset.val === '') {
+        group.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+      } else {
+        const allPill = group.querySelector('.pill[data-val=""]');
+        allPill.classList.remove('active');
+        pill.classList.toggle('active');
+        // If nothing selected, reactivate "All"
+        if (!group.querySelector('.pill.active')) allPill.classList.add('active');
+      }
+    } else {
+      group.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    }
+    // Trigger correct filter
+    if (group.closest('#tab-panel-algorithms')) applyAlgoFilters();
+    else applyFilters();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>

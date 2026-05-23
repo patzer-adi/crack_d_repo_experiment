@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{TITLE}} — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC CSS ONLY — bar charts, freq arrays, panel-height overrides */
+  /* Do not redefine any class already in static/lesson.css */
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>{{TITLE}}</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/{{SLUG}}/" target="_blank">LC #{{LC_NUM}}</a>
+    <span class="badge badge-med">{{DIFFICULTY}}</span>
+    <span class="badge badge-arr">{{TAGS}}</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <!-- PER-PROBLEM: 4 × .acard (Q / A / unlock line). See design/sec0_clarifying.md -->
+  </div>
+  <!-- PER-PROBLEM (optional): .infobox titled "Assumptions we carry forward" -->
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title"><!-- PER-PROBLEM: one-line kernel as title --></p>
+
+  <p class="body"><!-- PER-PROBLEM: kernel paragraph (one paragraph, algorithm-derivable) --></p>
+
+  <!-- PER-PROBLEM: foundational concept visual (.number-line, bar chart, freq badges, etc.) -->
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d"><!-- PER-PROBLEM: dense kernel paragraph from which algorithm is derivable --></p>
+  </div>
+
+  <!-- PER-PROBLEM (optional): equivalence chain in a .chain-box with concrete pill examples per row -->
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body"><!-- PER-PROBLEM: one paragraph stating the naive approach and its complexity --></p>
+
+  <!-- PER-PROBLEM: brute-force animation panel. For array problems: .bf-nums + .bf-num cells.
+       Live "Checks" counter is mandatory. Controls in .ctrl-row. -->
+
+  <button class="reveal-btn" onclick="toggleEl('code-bf')">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><!-- PER-PROBLEM: brute-force C++ code with explicit braces --></pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body"><!-- PER-PROBLEM: one paragraph framing the chain of optimisations --></p>
+  <div class="skeleton">
+    <!-- PER-PROBLEM: one .wt-item per translation (.wt-num + .wt-body containing .wt-name, .wt-desc, .wt-gain) -->
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <!-- PER-PROBLEM: 4–6 .algo-step rows (.algo-n + .algo-t with <b> emphasis on verbs) -->
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main')">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><!-- PER-PROBLEM: optimal C++ code with EXPLICIT BRACES (design/code_style.md) --></pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <!-- PER-PROBLEM: .cv-var-card per variable (.cv-var-name + .cv-var-val). Start dimmed. -->
+      </div>
+      <div id="cv-narration" class="cv-narration"><!-- per-step narration --></div>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <!-- PER-PROBLEM: example switcher buttons (.ex-btn), prev/play/next/reset (.ctrl-btn) -->
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+
+  <!-- PER-PROBLEM: visual strip (.num-strip / .arr-strip / .bf-bar-con / problem-specific) -->
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <!-- PER-PROBLEM: .formula-grid with .fitem-label/.fitem-val cells + .formula-eq -->
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"><!-- per-step what --></div>
+      <div class="step-why"><!-- per-step why --></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row">
+    <!-- PER-PROBLEM: example switcher + prev/play/next/reset. MUST hard-reset on switch. -->
+  </div>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <!-- PER-PROBLEM: 3–5 × .corner (.cnum + .corner-title + .corner-body) -->
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <!-- PER-PROBLEM: 5–8 × .chk-item (.chk-icon + .chk-text with <b> label) -->
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <!-- PER-PROBLEM: 2–3 × .tab-btn (first .active) -->
+  </div>
+  <!-- PER-PROBLEM: matching .tab-pane blocks, each with tags + paragraph + reveal-btn + code-block -->
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v"><!-- PER-PROBLEM: big-O --></div>
+      <div class="ccard-n"><!-- PER-PROBLEM: one-sentence justification --></div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v"><!-- PER-PROBLEM: big-O --></div>
+      <div class="ccard-n"><!-- PER-PROBLEM: one-sentence justification --></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <!-- PER-PROBLEM: 2–4 related-problem lines, each naming the LC #, title, and what differs -->
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  /* PROBLEM-SPECIFIC SCRIPT ONLY */
+  /* Override bfTogglePlay / cvTogglePlay / drTogglePlay if non-default speed needed */
+
+  /* PER-PROBLEM: EXAMPLES array (for cv + dr) */
+  /* PER-PROBLEM: BF_EXAMPLES array (for brute force, often a subset) */
+  /* PER-PROBLEM: CV_LINES array — every line of the optimal code with line numbers */
+
+  /* PER-PROBLEM: bfGen(input) — returns step objects */
+  /* PER-PROBLEM: bfRender(st) — reflects state in DOM */
+  /* PER-PROBLEM: bfLoadEx(idx) — hard-reset + load example */
+
+  /* PER-PROBLEM: cvGen(input) — returns step objects {line, vars, dim, narration, match} */
+  /* PER-PROBLEM: cvRender(st) — reflects state in DOM */
+  /* PER-PROBLEM: cvLoadEx(idx) — hard-reset + load example */
+
+  /* PER-PROBLEM: drGen(input) — returns step objects */
+  /* PER-PROBLEM: drRender(st) — reflects state in DOM */
+  /* PER-PROBLEM: drLoadEx(idx) — hard-reset + load example */
+
+  /* Init calls: cvBuildCode(CV_LINES); cvLoadEx(0); drLoadEx(0); bfLoadEx(0); */
+</script>
+
+</body>
+</html>

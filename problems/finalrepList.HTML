@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Interview — 150 LC Prep List</title>
+<style>
+  :root {
+    --bg:#ffffff;--bg2:#f7f7f5;--bg3:#f0ede8;
+    --text:#1a1a1a;--text2:#555550;--text3:#888880;--border:#e0ddd8;
+    --t1-bg:#fff0f0;--t1:#a32d2d;--t1-head:#fcebeb;--t1-acc:#e24b4a;
+    --t2-bg:#fdf6ea;--t2:#854f0b;--t2-head:#faeeda;--t2-acc:#ba7517;
+    --t3-bg:#f7f7f5;--t3:#5f5e5a;--t3-head:#eeece8;--t3-acc:#888880;
+    --green-bg:#eaf3de;--green:#3b6d11;
+    --teal-bg:#e1f5ee;--teal:#0f6e56;
+    --blue-bg:#e6f1fb;--blue:#185fa5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+  .page{max-width:980px;margin:0 auto;padding:40px 24px 60px}
+  h1{font-size:26px;font-weight:700;margin-bottom:6px}
+  h2{font-size:18px;font-weight:700;margin:40px 0 8px}
+  p{color:var(--text2);margin-bottom:10px}
+  a{color:#185fa5;text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  .nav{position:sticky;top:0;background:rgba(255,255,255,0.96);backdrop-filter:blur(6px);border-bottom:1px solid var(--border);padding:10px 0;margin-bottom:32px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .nav a{font-size:12px;color:var(--text2);padding:4px 10px;border-radius:20px;border:1px solid transparent}
+  .nav a:hover{border-color:var(--border);text-decoration:none}
+  .nav a.t1{background:var(--t1-head);color:var(--t1);border-color:#f7c1c1}
+  .nav a.t2{background:var(--t2-head);color:var(--t2);border-color:#fac775}
+  .nav a.t3{background:var(--t3-head);color:var(--t3);border-color:#d3d1c7}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:32px}
+  .stat{border-radius:10px;padding:16px 18px}
+  .stat.t1{background:var(--t1-head);border:1px solid #f7c1c1}
+  .stat.t2{background:var(--t2-head);border:1px solid #fac775}
+  .stat.t3{background:var(--t3-head);border:1px solid #d3d1c7}
+  .stat-num{font-size:28px;font-weight:700}
+  .stat.t1 .stat-num{color:var(--t1)}
+  .stat.t2 .stat-num{color:var(--t2)}
+  .stat.t3 .stat-num{color:var(--t3)}
+  .stat-label{font-size:13px;font-weight:600;margin-top:2px}
+  .stat-sub{font-size:12px;color:var(--text2);margin-top:4px}
+
+  .tier-banner{border-radius:10px;padding:14px 18px;margin:32px 0 14px;display:flex;align-items:center;gap:14px}
+  .tier-banner.t1{background:var(--t1-head);border:1.5px solid #f09595}
+  .tier-banner.t2{background:var(--t2-head);border:1.5px solid #ef9f27}
+  .tier-banner.t3{background:var(--t3-head);border:1.5px solid #b4b2a9}
+  .tier-num{font-size:36px;font-weight:800;line-height:1}
+  .tier-banner.t1 .tier-num{color:var(--t1-acc)}
+  .tier-banner.t2 .tier-num{color:var(--t2-acc)}
+  .tier-banner.t3 .tier-num{color:var(--t3-acc)}
+  .tier-info{flex:1}
+  .tier-title{font-size:16px;font-weight:700}
+  .tier-banner.t1 .tier-title{color:var(--t1)}
+  .tier-banner.t2 .tier-title{color:var(--t2)}
+  .tier-banner.t3 .tier-title{color:var(--t3)}
+  .tier-desc{font-size:13px;color:var(--text2);margin-top:3px}
+  .tier-pill{font-size:13px;font-weight:700;padding:5px 14px;border-radius:20px;white-space:nowrap;color:#fff}
+  .t1 .tier-pill{background:var(--t1-acc)}
+  .t2 .tier-pill{background:var(--t2-acc)}
+  .t3 .tier-pill{background:var(--t3-acc)}
+
+  .tbl-wrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px}
+  table{width:100%;border-collapse:collapse}
+  th{background:var(--bg2);text-align:left;font-size:11px;font-weight:700;color:var(--text3);padding:8px 12px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.04em}
+  td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:13px}
+  tr:last-child td{border-bottom:none}
+  tr.done-row{background:#fafff8}
+  tr:hover td{background:var(--bg2)}
+  .num{font-family:monospace;font-size:12px;color:var(--text3)}
+  .topic{font-size:11px;color:var(--text3)}
+  .sec td{background:var(--bg2)!important;font-weight:700;font-size:11px;color:var(--text2);letter-spacing:.05em;text-transform:uppercase;padding:6px 12px}
+  .sec:hover td{background:var(--bg2)!important}
+
+  .badge{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px}
+  .e{background:var(--green-bg);color:#27500a}
+  .m{background:var(--t2-head);color:var(--t2)}
+  .h{background:var(--t1-head);color:var(--t1)}
+  .done{background:var(--teal-bg);color:var(--teal)}
+  .new{background:var(--bg3);color:var(--text2)}
+
+  .prog-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:32px}
+  .prow{display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid var(--border)}
+  .prow:nth-child(odd):last-child,.prow:nth-child(even):last-child{border-bottom:none}
+  .prow:nth-last-child(-n+2){border-bottom:none}
+  .plabel{min-width:170px;font-size:12px}
+  .pbar{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;min-width:40px}
+  .pfill{height:100%;background:#1d9e75;border-radius:3px}
+  .pcount{font-size:11px;color:var(--text3);white-space:nowrap}
+
+  .week-card{border:1px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden}
+  .week-head{background:var(--bg2);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px}
+  .wtitle{font-weight:700;font-size:14px}
+  .wdates{font-size:12px;color:var(--text2);margin-left:8px}
+  .week-body{padding:14px 16px}
+  .tip{background:var(--bg2);border-left:3px solid #d3d1c7;padding:8px 12px;border-radius:0 6px 6px 0;font-size:13px;color:var(--text2);margin-bottom:12px}
+  .dtable{width:100%;border-collapse:collapse;font-size:13px}
+  .dtable th{font-size:11px;color:var(--text3);font-weight:700;padding:5px 8px;text-align:left;background:none;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.04em}
+  .dtable td{padding:7px 8px;border-top:1px solid var(--border);vertical-align:top}
+  .dtable tr:first-child td{border-top:none}
+  .dname{font-weight:600;white-space:nowrap;min-width:130px;color:var(--text2);font-size:12px}
+  .mwarn td{background:#fdf3de}
+  .mred td{background:#fef0f0}
+  .mgreen td{background:#f0faf0}
+  .mb{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+  .mb.red{background:var(--t1-head);color:var(--t1)}
+  .mb.amber{background:var(--t2-head);color:var(--t2)}
+  .mb.green{background:var(--green-bg);color:var(--green)}
+  .mb.blue{background:var(--blue-bg);color:var(--blue)}
+
+  @media print{.nav{display:none}.page{padding:20px}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="nav">
+  <span style="font-size:12px;color:var(--text3);margin-right:2px">Jump to →</span>
+  <a href="#tier1" class="t1">Tier 1 · 75 Must-Do</a>
+  <a href="#tier2" class="t2">Tier 2 · 55 Essential</a>
+  <a href="#tier3" class="t3">Tier 3 · 20 Skip-if-crunched</a>
+  <a href="#plan" style="margin-left:6px">Study Plan</a>
+  <a href="#progress">Progress</a>
+</div>
+
+<h1>Google Interview — 150 LeetCode Prep List</h1>
+<p style="margin-bottom:28px">Curated for Google SWE L5/L6 · May 3 → June 20, 2026 · 5 hrs/day · <strong style="color:var(--teal)">✓ = already in your 196</strong> · ★ = premium (use NeetCode.io free)</p>
+
+<div class="stats">
+  <div class="stat t1"><div class="stat-num">75</div><div class="stat-label">Tier 1 — Must Do</div><div class="stat-sub">Cannot miss · forms the core of every Google round</div></div>
+  <div class="stat t2"><div class="stat-num">55</div><div class="stat-label">Tier 2 — Essential</div><div class="stat-sub">Complete before onsite · deepens every pattern</div></div>
+  <div class="stat t3"><div class="stat-num">20</div><div class="stat-label">Tier 3 — Skip if crunched</div><div class="stat-sub">Good-to-have · drop these first if time runs short</div></div>
+</div>
+
+<h2 id="progress">Progress by Topic</h2>
+<p>Green bar = problems already done in your existing 196.</p>
+<div class="prog-grid">
+  <div class="prow"><span class="plabel">Arrays (15)</span><div class="pbar"><div class="pfill" style="width:60%"></div></div><span class="pcount">9/15</span></div>
+  <div class="prow"><span class="plabel">Sliding Window (10)</span><div class="pbar"><div class="pfill" style="width:20%"></div></div><span class="pcount">2/10</span></div>
+  <div class="prow"><span class="plabel">Binary Search (10)</span><div class="pbar"><div class="pfill" style="width:40%"></div></div><span class="pcount">4/10</span></div>
+  <div class="prow"><span class="plabel">Linked Lists (8)</span><div class="pbar"><div class="pfill" style="width:62%"></div></div><span class="pcount">5/8</span></div>
+  <div class="prow"><span class="plabel">Stack &amp; Queue (8)</span><div class="pbar"><div class="pfill" style="width:62%"></div></div><span class="pcount">5/8</span></div>
+  <div class="prow"><span class="plabel">Trees &amp; BST (15)</span><div class="pbar"><div class="pfill" style="width:7%"></div></div><span class="pcount">1/15</span></div>
+  <div class="prow"><span class="plabel">Heaps (8)</span><div class="pbar"><div class="pfill" style="width:12%"></div></div><span class="pcount">1/8</span></div>
+  <div class="prow"><span class="plabel">Graphs (20)</span><div class="pbar"><div class="pfill" style="width:20%"></div></div><span class="pcount">4/20</span></div>
+  <div class="prow"><span class="plabel">Dynamic Programming (25)</span><div class="pbar"><div class="pfill" style="width:8%"></div></div><span class="pcount">2/25</span></div>
+  <div class="prow"><span class="plabel">Backtracking (8)</span><div class="pbar"><div class="pfill" style="width:25%"></div></div><span class="pcount">2/8</span></div>
+  <div class="prow"><span class="plabel">Tries (4)</span><div class="pbar"><div class="pfill" style="width:0%"></div></div><span class="pcount">0/4</span></div>
+  <div class="prow"><span class="plabel">Greedy (7)</span><div class="pbar"><div class="pfill" style="width:0%"></div></div><span class="pcount">0/7</span></div>
+  <div class="prow"><span class="plabel">Bit Manipulation (6)</span><div class="pbar"><div class="pfill" style="width:17%"></div></div><span class="pcount">1/6</span></div>
+  <div class="prow"><span class="plabel">Design &amp; Math (6)</span><div class="pbar"><div class="pfill" style="width:33%"></div></div><span class="pcount">2/6</span></div>
+</div>
+
+<!-- ═══════════════ TIER 1 ═══════════════ -->
+<div id="tier1">
+<div class="tier-banner t1">
+  <div class="tier-num">1</div>
+  <div class="tier-info">
+    <div class="tier-title">Tier 1 — Must Do · Cannot be missed under any circumstance</div>
+    <div class="tier-desc">These 75 cover every core pattern Google tests. Walk in having done only these and you still have a real shot at clearing the onsite.</div>
+  </div>
+  <div class="tier-pill">75 problems</div>
+</div>
+</div>
+
+<div class="tbl-wrap"><table>
+<thead><tr><th style="width:35px">#</th><th style="width:55px">LC #</th><th>Problem</th><th style="width:160px">Topic</th><th style="width:72px">Diff</th><th style="width:70px">Status</th></tr></thead>
+<tbody>
+<tr class="sec"><td colspan="6">Arrays &amp; Two Pointers — 7</td></tr>
+<tr class="done-row"><td>1</td><td class="num">1</td><td><a href="https://leetcode.com/problems/two-sum/" target="_blank">Two Sum</a></td><td class="topic">Arrays</td><td><span class="badge e">Easy</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>2</td><td class="num">15</td><td><a href="https://leetcode.com/problems/3sum/" target="_blank">3Sum</a></td><td class="topic">Arrays</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>3</td><td class="num">11</td><td><a href="https://leetcode.com/problems/container-with-most-water/" target="_blank">Container With Most Water</a></td><td class="topic">Arrays</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>4</td><td class="num">42</td><td><a href="https://leetcode.com/problems/trapping-rain-water/" target="_blank">Trapping Rain Water</a></td><td class="topic">Arrays</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+<tr class="done-row"><td>5</td><td class="num">238</td><td><a href="https://leetcode.com/problems/product-of-array-except-self/" target="_blank">Product of Array Except Self</a></td><td class="topic">Arrays</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>6</td><td class="num">53</td><td><a href="https://leetcode.com/problems/maximum-subarray/" target="_blank">Maximum Subarray</a></td><td class="topic">Arrays</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>7</td><td class="num">56</td><td><a href="https://leetcode.com/problems/merge-intervals/" target="_blank">Merge Intervals</a></td><td class="topic">Arrays</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+
+<tr class="sec"><td colspan="6">Sliding Window — 5</td></tr>
+<tr class="done-row"><td>8</td><td class="num">3</td><td><a href="https://leetcode.com/problems/longest-substring-without-repeating-characters/" target="_blank">Longest Substring Without Repeating Characters</a></td><td class="topic">Sliding Window</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>9</td><td class="num">76</td><td><a href="https://leetcode.com/problems/minimum-window-substring/" target="_blank">Minimum Window Substring</a></td><td class="topic">Sliding Window</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>10</td><td class="num">424</td><td><a href="https://leetcode.com/problems/longest-repeating-character-replacement/" target="_blank">Longest Repeating Character Replacement</a></td><td class="topic">Sliding Window</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>11</td><td class="num">567</td><td><a href="https://leetcode.com/problems/permutation-in-string/" target="_blank">Permutation in String</a></td><td class="topic">Sliding Window</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr class="done-row"><td>12</td><td class="num">5</td><td><a href="https://leetcode.com/problems/longest-palindromic-substring/" target="_blank">Longest Palindromic Substring</a></td><td class="topic">Sliding Window</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+
+<tr class="sec"><td colspan="6">Binary Search — 4</td></tr>
+<tr class="done-row"><td>13</td><td class="num">33</td><td><a href="https://leetcode.com/problems/search-in-rotated-sorted-array/" target="_blank">Search in Rotated Sorted Array</a></td><td class="topic">Binary Search</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>14</td><td class="num">153</td><td><a href="https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/" target="_blank">Find Minimum in Rotated Sorted Array</a></td><td class="topic">Binary Search</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr class="done-row"><td>15</td><td class="num">875</td><td><a href="https://leetcode.com/problems/koko-eating-bananas/" target="_blank">Koko Eating Bananas</a></td><td class="topic">Binary Search</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>16</td><td class="num">4</td><td><a href="https://leetcode.com/problems/median-of-two-sorted-arrays/" target="_blank">Median of Two Sorted Arrays</a></td><td class="topic">Binary Search</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Linked Lists — 6</td></tr>
+<tr class="done-row"><td>17</td><td class="num">206</td><td><a href="https://leetcode.com/problems/reverse-linked-list/" target="_blank">Reverse Linked List</a></td><td class="topic">Linked Lists</td><td><span class="badge e">Easy</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>18</td><td class="num">21</td><td><a href="https://leetcode.com/problems/merge-two-sorted-lists/" target="_blank">Merge Two Sorted Lists</a></td><td class="topic">Linked Lists</td><td><span class="badge e">Easy</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>19</td><td class="num">23</td><td><a href="https://leetcode.com/problems/merge-k-sorted-lists/" target="_blank">Merge K Sorted Lists</a></td><td class="topic">Linked Lists</td><td><span class="badge h">Hard</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>20</td><td class="num">19</td><td><a href="https://leetcode.com/problems/remove-nth-node-from-end-of-list/" target="_blank">Remove Nth Node From End of List</a></td><td class="topic">Linked Lists</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>21</td><td class="num">142</td><td><a href="https://leetcode.com/problems/linked-list-cycle-ii/" target="_blank">Linked List Cycle II</a></td><td class="topic">Linked Lists</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>22</td><td class="num">146</td><td><a href="https://leetcode.com/problems/lru-cache/" target="_blank">LRU Cache</a></td><td class="topic">Linked Lists</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Stack &amp; Queue — 5</td></tr>
+<tr class="done-row"><td>23</td><td class="num">20</td><td><a href="https://leetcode.com/problems/valid-parentheses/" target="_blank">Valid Parentheses</a></td><td class="topic">Stack</td><td><span class="badge e">Easy</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>24</td><td class="num">155</td><td><a href="https://leetcode.com/problems/min-stack/" target="_blank">Min Stack</a></td><td class="topic">Stack</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>25</td><td class="num">739</td><td><a href="https://leetcode.com/problems/daily-temperatures/" target="_blank">Daily Temperatures</a></td><td class="topic">Stack</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>26</td><td class="num">84</td><td><a href="https://leetcode.com/problems/largest-rectangle-in-histogram/" target="_blank">Largest Rectangle in Histogram</a></td><td class="topic">Stack</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>27</td><td class="num">394</td><td><a href="https://leetcode.com/problems/decode-string/" target="_blank">Decode String</a></td><td class="topic">Stack</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Trees &amp; BST — 8</td></tr>
+<tr class="done-row"><td>28</td><td class="num">102</td><td><a href="https://leetcode.com/problems/binary-tree-level-order-traversal/" target="_blank">Binary Tree Level Order Traversal</a></td><td class="topic">Trees</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>29</td><td class="num">199</td><td><a href="https://leetcode.com/problems/binary-tree-right-side-view/" target="_blank">Binary Tree Right Side View</a></td><td class="topic">Trees</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>30</td><td class="num">236</td><td><a href="https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/" target="_blank">Lowest Common Ancestor of a Binary Tree</a></td><td class="topic">Trees</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>31</td><td class="num">124</td><td><a href="https://leetcode.com/problems/binary-tree-maximum-path-sum/" target="_blank">Binary Tree Maximum Path Sum</a></td><td class="topic">Trees</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>32</td><td class="num">297</td><td><a href="https://leetcode.com/problems/serialize-and-deserialize-binary-tree/" target="_blank">Serialize and Deserialize Binary Tree</a></td><td class="topic">Trees</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>33</td><td class="num">105</td><td><a href="https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/" target="_blank">Construct Binary Tree from Preorder and Inorder</a></td><td class="topic">Trees</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>34</td><td class="num">98</td><td><a href="https://leetcode.com/problems/validate-binary-search-tree/" target="_blank">Validate Binary Search Tree</a></td><td class="topic">BST</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>35</td><td class="num">230</td><td><a href="https://leetcode.com/problems/kth-smallest-element-in-a-bst/" target="_blank">Kth Smallest Element in a BST</a></td><td class="topic">BST</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Heaps / Priority Queue — 5</td></tr>
+<tr><td>36</td><td class="num">347</td><td><a href="https://leetcode.com/problems/top-k-frequent-elements/" target="_blank">Top K Frequent Elements</a></td><td class="topic">Heaps</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>37</td><td class="num">973</td><td><a href="https://leetcode.com/problems/k-closest-points-to-origin/" target="_blank">K Closest Points to Origin</a></td><td class="topic">Heaps</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>38</td><td class="num">621</td><td><a href="https://leetcode.com/problems/task-scheduler/" target="_blank">Task Scheduler</a></td><td class="topic">Heaps</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>39</td><td class="num">295</td><td><a href="https://leetcode.com/problems/find-median-from-data-stream/" target="_blank">Find Median from Data Stream</a></td><td class="topic">Heaps</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+<tr class="done-row"><td>40</td><td class="num">215</td><td><a href="https://leetcode.com/problems/kth-largest-element-in-an-array/" target="_blank">Kth Largest Element in an Array</a></td><td class="topic">Heaps</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+
+<tr class="sec"><td colspan="6">Graphs — BFS / DFS / Topological Sort / Dijkstra — 10</td></tr>
+<tr><td>41</td><td class="num">200</td><td><a href="https://leetcode.com/problems/number-of-islands/" target="_blank">Number of Islands</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>42</td><td class="num">133</td><td><a href="https://leetcode.com/problems/clone-graph/" target="_blank">Clone Graph</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>43</td><td class="num">417</td><td><a href="https://leetcode.com/problems/pacific-atlantic-water-flow/" target="_blank">Pacific Atlantic Water Flow</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr class="done-row"><td>44</td><td class="num">207</td><td><a href="https://leetcode.com/problems/course-schedule/" target="_blank">Course Schedule</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>45</td><td class="num">210</td><td><a href="https://leetcode.com/problems/course-schedule-ii/" target="_blank">Course Schedule II</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>46</td><td class="num">994</td><td><a href="https://leetcode.com/problems/rotting-oranges/" target="_blank">Rotting Oranges</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>47</td><td class="num">127</td><td><a href="https://leetcode.com/problems/word-ladder/" target="_blank">Word Ladder</a></td><td class="topic">Graphs</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>48</td><td class="num">743</td><td><a href="https://leetcode.com/problems/network-delay-time/" target="_blank">Network Delay Time (Dijkstra)</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>49</td><td class="num">547</td><td><a href="https://leetcode.com/problems/number-of-provinces/" target="_blank">Number of Provinces</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>50</td><td class="num">269</td><td><a href="https://neetcode.io/problems/foreign-dictionary" target="_blank">Alien Dictionary ★</a></td><td class="topic">Graphs</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Dynamic Programming — 14</td></tr>
+<tr class="done-row"><td>51</td><td class="num">70</td><td><a href="https://leetcode.com/problems/climbing-stairs/" target="_blank">Climbing Stairs</a></td><td class="topic">DP — 1D</td><td><span class="badge e">Easy</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>52</td><td class="num">198</td><td><a href="https://leetcode.com/problems/house-robber/" target="_blank">House Robber</a></td><td class="topic">DP — 1D</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>53</td><td class="num">213</td><td><a href="https://leetcode.com/problems/house-robber-ii/" target="_blank">House Robber II</a></td><td class="topic">DP — 1D</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>54</td><td class="num">322</td><td><a href="https://leetcode.com/problems/coin-change/" target="_blank">Coin Change</a></td><td class="topic">DP — Unbounded</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>55</td><td class="num">300</td><td><a href="https://leetcode.com/problems/longest-increasing-subsequence/" target="_blank">Longest Increasing Subsequence</a></td><td class="topic">DP — Subsequence</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>56</td><td class="num">1143</td><td><a href="https://leetcode.com/problems/longest-common-subsequence/" target="_blank">Longest Common Subsequence</a></td><td class="topic">DP — 2D</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>57</td><td class="num">139</td><td><a href="https://leetcode.com/problems/word-break/" target="_blank">Word Break</a></td><td class="topic">DP — Unbounded</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>58</td><td class="num">55</td><td><a href="https://leetcode.com/problems/jump-game/" target="_blank">Jump Game</a></td><td class="topic">DP / Greedy</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>59</td><td class="num">45</td><td><a href="https://leetcode.com/problems/jump-game-ii/" target="_blank">Jump Game II</a></td><td class="topic">DP / Greedy</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>60</td><td class="num">416</td><td><a href="https://leetcode.com/problems/partition-equal-subset-sum/" target="_blank">Partition Equal Subset Sum</a></td><td class="topic">DP — 0/1 Knapsack</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>61</td><td class="num">91</td><td><a href="https://leetcode.com/problems/decode-ways/" target="_blank">Decode Ways</a></td><td class="topic">DP — 1D</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>62</td><td class="num">72</td><td><a href="https://leetcode.com/problems/edit-distance/" target="_blank">Edit Distance</a></td><td class="topic">DP — 2D</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>63</td><td class="num">152</td><td><a href="https://leetcode.com/problems/maximum-product-subarray/" target="_blank">Maximum Product Subarray</a></td><td class="topic">DP — 1D</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>64</td><td class="num">121</td><td><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock/" target="_blank">Best Time to Buy and Sell Stock</a></td><td class="topic">DP — Stock</td><td><span class="badge e">Easy</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Backtracking — 5</td></tr>
+<tr class="done-row"><td>65</td><td class="num">46</td><td><a href="https://leetcode.com/problems/permutations/" target="_blank">Permutations</a></td><td class="topic">Backtracking</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>66</td><td class="num">78</td><td><a href="https://leetcode.com/problems/subsets/" target="_blank">Subsets</a></td><td class="topic">Backtracking</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>67</td><td class="num">39</td><td><a href="https://leetcode.com/problems/combination-sum/" target="_blank">Combination Sum</a></td><td class="topic">Backtracking</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>68</td><td class="num">79</td><td><a href="https://leetcode.com/problems/word-search/" target="_blank">Word Search</a></td><td class="topic">Backtracking</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>69</td><td class="num">22</td><td><a href="https://leetcode.com/problems/generate-parentheses/" target="_blank">Generate Parentheses</a></td><td class="topic">Backtracking</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Tries — 1</td></tr>
+<tr><td>70</td><td class="num">208</td><td><a href="https://leetcode.com/problems/implement-trie-prefix-tree/" target="_blank">Implement Trie (Prefix Tree)</a></td><td class="topic">Tries</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Greedy — 2</td></tr>
+<tr><td>71</td><td class="num">134</td><td><a href="https://leetcode.com/problems/gas-station/" target="_blank">Gas Station</a></td><td class="topic">Greedy</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>72</td><td class="num">763</td><td><a href="https://leetcode.com/problems/partition-labels/" target="_blank">Partition Labels</a></td><td class="topic">Greedy</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Bit Manipulation — 1</td></tr>
+<tr class="done-row"><td>73</td><td class="num">136</td><td><a href="https://leetcode.com/problems/single-number/" target="_blank">Single Number</a></td><td class="topic">Bits</td><td><span class="badge e">Easy</span></td><td><span class="badge done">✓ Done</span></td></tr>
+
+<tr class="sec"><td colspan="6">Design &amp; Math — 2</td></tr>
+<tr class="done-row"><td>74</td><td class="num">128</td><td><a href="https://leetcode.com/problems/longest-consecutive-sequence/" target="_blank">Longest Consecutive Sequence</a></td><td class="topic">Math</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>75</td><td class="num">49</td><td><a href="https://leetcode.com/problems/group-anagrams/" target="_blank">Group Anagrams</a></td><td class="topic">Math</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+</tbody></table></div>
+
+<!-- ═══════════════ TIER 2 ═══════════════ -->
+<div id="tier2">
+<div class="tier-banner t2">
+  <div class="tier-num">2</div>
+  <div class="tier-info">
+    <div class="tier-title">Tier 2 — Essential · Complete before the onsite</div>
+    <div class="tier-desc">These 55 deepen your coverage of every pattern. Missing a few won't kill you, but finishing all 55 puts you at a genuinely strong level across the board.</div>
+  </div>
+  <div class="tier-pill">55 problems</div>
+</div>
+</div>
+
+<div class="tbl-wrap"><table>
+<thead><tr><th style="width:35px">#</th><th style="width:55px">LC #</th><th>Problem</th><th style="width:160px">Topic</th><th style="width:72px">Diff</th><th style="width:70px">Status</th></tr></thead>
+<tbody>
+<tr class="sec"><td colspan="6">Arrays — 7</td></tr>
+<tr><td>76</td><td class="num">57</td><td><a href="https://leetcode.com/problems/insert-interval/" target="_blank">Insert Interval</a></td><td class="topic">Arrays</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>77</td><td class="num">435</td><td><a href="https://leetcode.com/problems/non-overlapping-intervals/" target="_blank">Non-overlapping Intervals</a></td><td class="topic">Arrays</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>78</td><td class="num">287</td><td><a href="https://leetcode.com/problems/find-the-duplicate-number/" target="_blank">Find the Duplicate Number</a></td><td class="topic">Arrays</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr class="done-row"><td>79</td><td class="num">75</td><td><a href="https://leetcode.com/problems/sort-colors/" target="_blank">Sort Colors</a></td><td class="topic">Arrays</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>80</td><td class="num">48</td><td><a href="https://leetcode.com/problems/rotate-image/" target="_blank">Rotate Image</a></td><td class="topic">Arrays</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>81</td><td class="num">54</td><td><a href="https://leetcode.com/problems/spiral-matrix/" target="_blank">Spiral Matrix</a></td><td class="topic">Arrays</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr class="done-row"><td>82</td><td class="num">73</td><td><a href="https://leetcode.com/problems/set-matrix-zeroes/" target="_blank">Set Matrix Zeroes</a></td><td class="topic">Arrays</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+
+<tr class="sec"><td colspan="6">Sliding Window — 4</td></tr>
+<tr><td>83</td><td class="num">239</td><td><a href="https://leetcode.com/problems/sliding-window-maximum/" target="_blank">Sliding Window Maximum</a></td><td class="topic">Sliding Window</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>84</td><td class="num">438</td><td><a href="https://leetcode.com/problems/find-all-anagrams-in-a-string/" target="_blank">Find All Anagrams in a String</a></td><td class="topic">Sliding Window</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>85</td><td class="num">1004</td><td><a href="https://leetcode.com/problems/max-consecutive-ones-iii/" target="_blank">Max Consecutive Ones III</a></td><td class="topic">Sliding Window</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>86</td><td class="num">209</td><td><a href="https://leetcode.com/problems/minimum-size-subarray-sum/" target="_blank">Minimum Size Subarray Sum</a></td><td class="topic">Sliding Window</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Binary Search — 5</td></tr>
+<tr class="done-row"><td>87</td><td class="num">704</td><td><a href="https://leetcode.com/problems/binary-search/" target="_blank">Binary Search</a></td><td class="topic">Binary Search</td><td><span class="badge e">Easy</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>88</td><td class="num">74</td><td><a href="https://leetcode.com/problems/search-a-2d-matrix/" target="_blank">Search a 2D Matrix</a></td><td class="topic">Binary Search</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>89</td><td class="num">1011</td><td><a href="https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/" target="_blank">Capacity to Ship Packages Within D Days</a></td><td class="topic">Binary Search</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr class="done-row"><td>90</td><td class="num">162</td><td><a href="https://leetcode.com/problems/find-peak-element/" target="_blank">Find Peak Element</a></td><td class="topic">Binary Search</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>91</td><td class="num">981</td><td><a href="https://leetcode.com/problems/time-based-key-value-store/" target="_blank">Time Based Key-Value Store</a></td><td class="topic">Binary Search</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Linked Lists — 2</td></tr>
+<tr><td>92</td><td class="num">138</td><td><a href="https://leetcode.com/problems/copy-list-with-random-pointer/" target="_blank">Copy List with Random Pointer</a></td><td class="topic">Linked Lists</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>93</td><td class="num">143</td><td><a href="https://leetcode.com/problems/reorder-list/" target="_blank">Reorder List</a></td><td class="topic">Linked Lists</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Stack &amp; Queue — 2</td></tr>
+<tr class="done-row"><td>94</td><td class="num">150</td><td><a href="https://leetcode.com/problems/evaluate-reverse-polish-notation/" target="_blank">Evaluate Reverse Polish Notation</a></td><td class="topic">Stack</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr class="done-row"><td>95</td><td class="num">735</td><td><a href="https://leetcode.com/problems/asteroid-collision/" target="_blank">Asteroid Collision</a></td><td class="topic">Stack</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+
+<tr class="sec"><td colspan="6">Trees &amp; BST — 6</td></tr>
+<tr><td>96</td><td class="num">543</td><td><a href="https://leetcode.com/problems/diameter-of-binary-tree/" target="_blank">Diameter of Binary Tree</a></td><td class="topic">Trees</td><td><span class="badge e">Easy</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>97</td><td class="num">113</td><td><a href="https://leetcode.com/problems/path-sum-ii/" target="_blank">Path Sum II</a></td><td class="topic">Trees</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>98</td><td class="num">114</td><td><a href="https://leetcode.com/problems/flatten-binary-tree-to-linked-list/" target="_blank">Flatten Binary Tree to Linked List</a></td><td class="topic">Trees</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>99</td><td class="num">110</td><td><a href="https://leetcode.com/problems/balanced-binary-tree/" target="_blank">Balanced Binary Tree</a></td><td class="topic">Trees</td><td><span class="badge e">Easy</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>100</td><td class="num">173</td><td><a href="https://leetcode.com/problems/binary-search-tree-iterator/" target="_blank">Binary Search Tree Iterator</a></td><td class="topic">BST</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>101</td><td class="num">235</td><td><a href="https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/" target="_blank">Lowest Common Ancestor of a BST</a></td><td class="topic">BST</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Heaps — 1</td></tr>
+<tr><td>102</td><td class="num">767</td><td><a href="https://leetcode.com/problems/reorganize-string/" target="_blank">Reorganize String</a></td><td class="topic">Heaps</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Graphs — 8</td></tr>
+<tr><td>103</td><td class="num">695</td><td><a href="https://leetcode.com/problems/max-area-of-island/" target="_blank">Max Area of Island</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>104</td><td class="num">684</td><td><a href="https://leetcode.com/problems/redundant-connection/" target="_blank">Redundant Connection</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>105</td><td class="num">787</td><td><a href="https://leetcode.com/problems/cheapest-flights-within-k-stops/" target="_blank">Cheapest Flights Within K Stops</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr class="done-row"><td>106</td><td class="num">785</td><td><a href="https://leetcode.com/problems/is-graph-bipartite/" target="_blank">Is Graph Bipartite?</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>107</td><td class="num">130</td><td><a href="https://leetcode.com/problems/surrounded-regions/" target="_blank">Surrounded Regions</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>108</td><td class="num">261</td><td><a href="https://neetcode.io/problems/graph-valid-tree" target="_blank">Graph Valid Tree ★</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>109</td><td class="num">286</td><td><a href="https://neetcode.io/problems/walls-and-gates" target="_blank">Walls and Gates ★</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>110</td><td class="num">721</td><td><a href="https://leetcode.com/problems/accounts-merge/" target="_blank">Accounts Merge</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Dynamic Programming — 8</td></tr>
+<tr><td>111</td><td class="num">377</td><td><a href="https://leetcode.com/problems/combination-sum-iv/" target="_blank">Combination Sum IV</a></td><td class="topic">DP — Unbounded</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>112</td><td class="num">494</td><td><a href="https://leetcode.com/problems/target-sum/" target="_blank">Target Sum</a></td><td class="topic">DP — 0/1 Knapsack</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>113</td><td class="num">309</td><td><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/" target="_blank">Buy and Sell Stock with Cooldown</a></td><td class="topic">DP — Stock</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>114</td><td class="num">714</td><td><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-transaction-fee/" target="_blank">Buy and Sell Stock with Transaction Fee</a></td><td class="topic">DP — Stock</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>115</td><td class="num">64</td><td><a href="https://leetcode.com/problems/minimum-path-sum/" target="_blank">Minimum Path Sum</a></td><td class="topic">DP — Grid</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>116</td><td class="num">647</td><td><a href="https://leetcode.com/problems/palindromic-substrings/" target="_blank">Palindromic Substrings</a></td><td class="topic">DP — Palindrome</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>117</td><td class="num">516</td><td><a href="https://leetcode.com/problems/longest-palindromic-subsequence/" target="_blank">Longest Palindromic Subsequence</a></td><td class="topic">DP — Palindrome</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>118</td><td class="num">115</td><td><a href="https://leetcode.com/problems/distinct-subsequences/" target="_blank">Distinct Subsequences</a></td><td class="topic">DP — 2D</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Backtracking — 3</td></tr>
+<tr><td>119</td><td class="num">51</td><td><a href="https://leetcode.com/problems/n-queens/" target="_blank">N-Queens</a></td><td class="topic">Backtracking</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>120</td><td class="num">131</td><td><a href="https://leetcode.com/problems/palindrome-partitioning/" target="_blank">Palindrome Partitioning</a></td><td class="topic">Backtracking</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr class="done-row"><td>121</td><td class="num">216</td><td><a href="https://leetcode.com/problems/combination-sum-iii/" target="_blank">Combination Sum III</a></td><td class="topic">Backtracking</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+
+<tr class="sec"><td colspan="6">Tries — 2</td></tr>
+<tr><td>122</td><td class="num">212</td><td><a href="https://leetcode.com/problems/word-search-ii/" target="_blank">Word Search II</a></td><td class="topic">Tries</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>123</td><td class="num">211</td><td><a href="https://leetcode.com/problems/design-add-and-search-words-data-structure/" target="_blank">Design Add and Search Words</a></td><td class="topic">Tries</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Greedy — 3</td></tr>
+<tr><td>124</td><td class="num">846</td><td><a href="https://leetcode.com/problems/hand-of-straights/" target="_blank">Hand of Straights</a></td><td class="topic">Greedy</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>125</td><td class="num">1899</td><td><a href="https://leetcode.com/problems/merge-triplets-to-form-target-triplet/" target="_blank">Merge Triplets to Form Target Triplet</a></td><td class="topic">Greedy</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>126</td><td class="num">678</td><td><a href="https://leetcode.com/problems/valid-parenthesis-string/" target="_blank">Valid Parenthesis String</a></td><td class="topic">Greedy</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Bit Manipulation — 4</td></tr>
+<tr><td>127</td><td class="num">190</td><td><a href="https://leetcode.com/problems/reverse-bits/" target="_blank">Reverse Bits</a></td><td class="topic">Bits</td><td><span class="badge e">Easy</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>128</td><td class="num">268</td><td><a href="https://leetcode.com/problems/missing-number/" target="_blank">Missing Number</a></td><td class="topic">Bits</td><td><span class="badge e">Easy</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>129</td><td class="num">371</td><td><a href="https://leetcode.com/problems/sum-of-two-integers/" target="_blank">Sum of Two Integers</a></td><td class="topic">Bits</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>130</td><td class="num">338</td><td><a href="https://leetcode.com/problems/counting-bits/" target="_blank">Counting Bits</a></td><td class="topic">Bits</td><td><span class="badge e">Easy</span></td><td><span class="badge new">New</span></td></tr>
+</tbody></table></div>
+
+<!-- ═══════════════ TIER 3 ═══════════════ -->
+<div id="tier3">
+<div class="tier-banner t3">
+  <div class="tier-num">3</div>
+  <div class="tier-info">
+    <div class="tier-title">Tier 3 — Skip if time-crunched · Do only if Tier 1 + 2 are fully clean</div>
+    <div class="tier-desc">These 20 are either niche, very hard, or cover patterns already handled by Tier 1 + 2. Drop these first whenever the schedule gets tight.</div>
+  </div>
+  <div class="tier-pill">20 problems</div>
+</div>
+</div>
+
+<div class="tbl-wrap"><table>
+<thead><tr><th style="width:35px">#</th><th style="width:55px">LC #</th><th>Problem</th><th style="width:160px">Topic</th><th style="width:72px">Diff</th><th style="width:70px">Status</th></tr></thead>
+<tbody>
+<tr class="sec"><td colspan="6">Arrays — 1</td></tr>
+<tr><td>131</td><td class="num">41</td><td><a href="https://leetcode.com/problems/first-missing-positive/" target="_blank">First Missing Positive</a></td><td class="topic">Arrays</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Sliding Window — 1</td></tr>
+<tr><td>132</td><td class="num">1493</td><td><a href="https://leetcode.com/problems/longest-subarray-of-1s-after-deleting-one-element/" target="_blank">Longest Subarray of 1s After Deleting One Element</a></td><td class="topic">Sliding Window</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Binary Search — 1</td></tr>
+<tr><td>133</td><td class="num">410</td><td><a href="https://leetcode.com/problems/split-array-largest-sum/" target="_blank">Split Array Largest Sum</a></td><td class="topic">Binary Search</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Stack — 1</td></tr>
+<tr><td>134</td><td class="num">853</td><td><a href="https://leetcode.com/problems/car-fleet/" target="_blank">Car Fleet</a></td><td class="topic">Stack</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">BST — 1</td></tr>
+<tr><td>135</td><td class="num">450</td><td><a href="https://leetcode.com/problems/delete-node-in-a-bst/" target="_blank">Delete Node in a BST</a></td><td class="topic">BST</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Heaps — 2</td></tr>
+<tr><td>136</td><td class="num">355</td><td><a href="https://leetcode.com/problems/design-twitter/" target="_blank">Design Twitter</a></td><td class="topic">Heaps</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>137</td><td class="num">502</td><td><a href="https://leetcode.com/problems/ipo/" target="_blank">IPO</a></td><td class="topic">Heaps</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Graphs — 2</td></tr>
+<tr class="done-row"><td>138</td><td class="num">797</td><td><a href="https://leetcode.com/problems/all-paths-from-source-to-target/" target="_blank">All Paths From Source to Target</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge done">✓ Done</span></td></tr>
+<tr><td>139</td><td class="num">752</td><td><a href="https://leetcode.com/problems/open-the-lock/" target="_blank">Open the Lock</a></td><td class="topic">Graphs</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Dynamic Programming — 3</td></tr>
+<tr><td>140</td><td class="num">120</td><td><a href="https://leetcode.com/problems/triangle/" target="_blank">Triangle</a></td><td class="topic">DP — Grid</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>141</td><td class="num">10</td><td><a href="https://leetcode.com/problems/regular-expression-matching/" target="_blank">Regular Expression Matching</a></td><td class="topic">DP — 2D</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>142</td><td class="num">312</td><td><a href="https://leetcode.com/problems/burst-balloons/" target="_blank">Burst Balloons</a></td><td class="topic">DP — Interval</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Tries — 1</td></tr>
+<tr><td>143</td><td class="num">648</td><td><a href="https://leetcode.com/problems/replace-words/" target="_blank">Replace Words</a></td><td class="topic">Tries</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Greedy — 2</td></tr>
+<tr><td>144</td><td class="num">452</td><td><a href="https://leetcode.com/problems/minimum-number-of-arrows-to-burst-balloons/" target="_blank">Minimum Number of Arrows to Burst Balloons</a></td><td class="topic">Greedy</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>145</td><td class="num">406</td><td><a href="https://leetcode.com/problems/queue-reconstruction-by-height/" target="_blank">Queue Reconstruction by Height</a></td><td class="topic">Greedy</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Bit Manipulation — 1</td></tr>
+<tr><td>146</td><td class="num">231</td><td><a href="https://leetcode.com/problems/power-of-two/" target="_blank">Power of Two</a></td><td class="topic">Bits</td><td><span class="badge e">Easy</span></td><td><span class="badge new">New</span></td></tr>
+
+<tr class="sec"><td colspan="6">Design — 4</td></tr>
+<tr><td>147</td><td class="num">460</td><td><a href="https://leetcode.com/problems/lfu-cache/" target="_blank">LFU Cache</a></td><td class="topic">Design</td><td><span class="badge h">Hard</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>148</td><td class="num">622</td><td><a href="https://leetcode.com/problems/design-circular-queue/" target="_blank">Design Circular Queue</a></td><td class="topic">Design</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>149</td><td class="num">232</td><td><a href="https://leetcode.com/problems/implement-queue-using-stacks/" target="_blank">Implement Queue using Stacks</a></td><td class="topic">Design</td><td><span class="badge e">Easy</span></td><td><span class="badge new">New</span></td></tr>
+<tr><td>150</td><td class="num">752</td><td><a href="https://leetcode.com/problems/open-the-lock/" target="_blank">Open the Lock (BFS variant)</a></td><td class="topic">Design</td><td><span class="badge m">Medium</span></td><td><span class="badge new">New</span></td></tr>
+</tbody></table></div>
+
+<!-- ═══════════════ STUDY PLAN ═══════════════ -->
+<h2 id="plan">7-Week Study Plan</h2>
+<p style="margin-bottom:16px">Tier 1 problems are always attempted first within each week. If the technical screen forces a schedule reset, focus exclusively on any remaining Tier 1 problems before touching Tier 2 or 3.</p>
+
+<div class="week-card">
+  <div class="week-head"><div><span class="wtitle">Week 1 — Arrays + Sliding Window</span><span class="wdates">May 3–9</span></div><span class="mb amber">📞 Recruiter call May 5–6</span></div>
+  <div class="week-body">
+    <div class="tip">💡 T1 first, every day. Already-done = 20-min revision. New problems = solve before reading solutions. Nail two-pointer and variable-window patterns cold.</div>
+    <table class="dtable"><tr><th>Day</th><th>Focus</th><th style="width:45px;text-align:right">Hrs</th></tr>
+    <tr><td class="dname">May 3 (Sat)</td><td>T1 Arrays #1–7: Two Sum, 3Sum, Container, Trapping Rain, Product Except Self, Max Subarray, Merge Intervals</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 4 (Sun)</td><td>T2 Arrays #76–82: Insert Interval, Non-overlapping, Find Duplicate, Sort Colors, Rotate Image, Spiral Matrix, Set Matrix</td><td style="text-align:right">5h</td></tr>
+    <tr class="mwarn"><td class="dname">May 5 (Mon)</td><td>📞 Recruiter call + T1 Sliding Window #8–12: Longest Substring, Min Window Substring, Longest Repeating, Permutation in String, Palindromic Substring</td><td style="text-align:right">3h</td></tr>
+    <tr><td class="dname">May 6 (Tue)</td><td>T2 Sliding Window #83–86: Sliding Window Max, Find All Anagrams, Max Consecutive III, Min Size Subarray</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 7 (Wed)</td><td>T1 Binary Search #13–16: Search Rotated, Find Min Rotated, Koko, Median Two Arrays</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 8 (Thu)</td><td>T2 Binary Search #87–91: Binary Search, Search 2D Matrix, Capacity to Ship, Find Peak, Time-Based KV</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 9 (Fri)</td><td>REVISION: Redo 5 hardest new problems from this week, timed 30 min each. No peeking.</td><td style="text-align:right">4h</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="week-card">
+  <div class="week-head"><div><span class="wtitle">Week 2 — Linked Lists + Stack &amp; Queue</span><span class="wdates">May 10–16</span></div><span class="mb green">LRU Cache is a Google favourite</span></div>
+  <div class="week-body">
+    <div class="tip">💡 LRU Cache = doubly linked list + hashmap — don't just know the concept, implement it from scratch. Mono-stack pattern underlies Daily Temperatures, Largest Rectangle, and Car Fleet.</div>
+    <table class="dtable"><tr><th>Day</th><th>Focus</th><th style="width:45px;text-align:right">Hrs</th></tr>
+    <tr><td class="dname">May 10 (Sat)</td><td>T1 Linked Lists #17–22: Reverse LL, Merge Two, Merge K, Remove Nth, Cycle II, LRU Cache</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 11 (Sun)</td><td>T2 Linked Lists #92–93: Copy List Random Pointer, Reorder List + T3 Binary Search #133: Split Array</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 12 (Mon)</td><td>T1 Stack #23–27: Valid Parens, Min Stack, Daily Temperatures, Largest Rectangle, Decode String</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 13 (Tue)</td><td>T2 Stack #94–95: Eval Polish, Asteroid Collision + T3 Stack #134: Car Fleet</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 14 (Wed)</td><td>Buffer / catch-up day for any problems from weeks 1–2 that weren't clean</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 15 (Thu)</td><td>Buffer continued or get ahead on Trees (T1 #28–31)</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 16 (Fri)</td><td>MOCK CONTEST: 4 random problems from weeks 1–2, timed 2 hours. Talk through every approach.</td><td style="text-align:right">4h</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="week-card">
+  <div class="week-head"><div><span class="wtitle">Week 3 — Trees &amp; Heaps</span><span class="wdates">May 17–23</span></div><span class="mb green">Post-order DFS unlocks every Tree hard</span></div>
+  <div class="week-body">
+    <div class="tip">💡 Ask "what do I return from recursion?" before writing a single line. Two-heap pattern (min + max) solves Find Median from Data Stream — practice it until it's automatic.</div>
+    <table class="dtable"><tr><th>Day</th><th>Focus</th><th style="width:45px;text-align:right">Hrs</th></tr>
+    <tr><td class="dname">May 17 (Sat)</td><td>T1 Trees #28–31: Level Order BFS, Right Side View, LCA of BT, Max Path Sum</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 18 (Sun)</td><td>T1 Trees #32–35: Serialize/Deserialize, Construct from Pre+Inorder, Validate BST, Kth Smallest BST</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 19 (Mon)</td><td>T2 Trees #96–101: Diameter, Path Sum II, Flatten to LL, Balanced BT, BST Iterator, LCA of BST</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 20 (Tue)</td><td>T1 Heaps #36–40: Top K Frequent, K Closest Points, Task Scheduler, Find Median Stream, Kth Largest</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 21 (Wed)</td><td>T2 Heaps #102: Reorganize String + T3 Heaps #136–137: Design Twitter, IPO + T3 BST #135: Delete Node</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 22 (Thu)</td><td>Buffer / catch-up or start Graphs T1 #41–43 if ahead</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 23 (Fri)</td><td>REVISION: 5 hardest Tree + Heap problems timed. Write approach aloud first, then code.</td><td style="text-align:right">4h</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="week-card">
+  <div class="week-head"><div><span class="wtitle">Week 4 — Graphs</span><span class="wdates">May 24–30</span></div><span class="mb red">🎯 Technical Screen ~May 26–27</span></div>
+  <div class="week-body">
+    <div class="tip">💡 Before the screen: redo Course Schedule II, Number of Islands, Word Ladder cold. Morning of the screen = light revision only, no new problems. Be rested, not cram-tired.</div>
+    <table class="dtable"><tr><th>Day</th><th>Focus</th><th style="width:45px;text-align:right">Hrs</th></tr>
+    <tr><td class="dname">May 24 (Sat)</td><td>T1 Graphs #41–45: Number of Islands, Clone Graph, Pacific Atlantic, Course Schedule, Course Schedule II</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 25 (Sun)</td><td>T1 Graphs #46–50: Rotting Oranges, Word Ladder, Network Delay (Dijkstra), Number of Provinces, Alien Dictionary</td><td style="text-align:right">5h</td></tr>
+    <tr class="mred"><td class="dname">May 26 (Mon)</td><td>⚡ TECHNICAL SCREEN — morning: light revision of 2 favourite mediums only. No new problems. Rest.</td><td style="text-align:right">2h</td></tr>
+    <tr><td class="dname">May 27 (Tue)</td><td>T2 Graphs #103–107: Max Area of Island, Redundant Connection, Cheapest Flights K Stops, Is Bipartite, Surrounded Regions</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 28 (Wed)</td><td>T2 Graphs #108–110: Graph Valid Tree ★, Walls &amp; Gates ★, Accounts Merge</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 29 (Thu)</td><td>T3 Graphs #138–139: All Paths Source to Target, Open the Lock. Buffer for anything unfinished.</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">May 30 (Fri)</td><td>MOCK CONTEST: 3 graph problems timed. Explicitly explain Dijkstra and Union Find before coding each one.</td><td style="text-align:right">4h</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="week-card">
+  <div class="week-head"><div><span class="wtitle">Week 5 — Dynamic Programming</span><span class="wdates">May 31–June 6</span></div><span class="mb green">1D DP + Knapsack variants mastered</span></div>
+  <div class="week-body">
+    <div class="tip">💡 Every DP problem: state → transition → base case. Always. Coin Change and LCS are the two foundational problems — perfect them before moving on. Allocate 6 hrs on hard days.</div>
+    <table class="dtable"><tr><th>Day</th><th>Focus</th><th style="width:45px;text-align:right">Hrs</th></tr>
+    <tr><td class="dname">May 31 (Sat)</td><td>T1 DP #51–54: Climbing Stairs, House Robber, House Robber II, Coin Change</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 1 (Sun)</td><td>T1 DP #55–59: LIS, LCS, Word Break, Jump Game, Jump Game II</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 2 (Mon)</td><td>T1 DP #60–64: Partition Equal Subset Sum, Decode Ways, Edit Distance, Max Product Subarray, Buy/Sell Stock</td><td style="text-align:right">6h</td></tr>
+    <tr><td class="dname">Jun 3 (Tue)</td><td>T2 DP #111–114: Combination Sum IV, Target Sum, Buy/Sell Cooldown, Buy/Sell Fee</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 4 (Wed)</td><td>T2 DP #115–118: Min Path Sum, Palindromic Substrings, Longest Palindromic Subseq, Distinct Subsequences</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 5 (Thu)</td><td>T3 DP #140–142: Triangle, Regular Expression Matching, Burst Balloons</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 6 (Fri)</td><td>MOCK CONTEST: 4 DP problems timed. Edit Distance + LCS must be clean and fast without notes.</td><td style="text-align:right">4h</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="week-card">
+  <div class="week-head"><div><span class="wtitle">Week 6 — Backtracking + Tries + Greedy + Bits + Design</span><span class="wdates">June 7–13</span></div><span class="mb green">🎉 All 150 done by June 13</span></div>
+  <div class="week-body">
+    <div class="tip">💡 Backtracking: choose → recurse → unchoose. Every time. Tries: implement from scratch without notes — 30 min well spent. Greedy: always justify why local optimal = global optimal before coding.</div>
+    <table class="dtable"><tr><th>Day</th><th>Focus</th><th style="width:45px;text-align:right">Hrs</th></tr>
+    <tr><td class="dname">Jun 7 (Sat)</td><td>T1 Backtracking #65–69: Permutations, Subsets, Combination Sum, Word Search, Generate Parentheses</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 8 (Sun)</td><td>T2 Backtracking #119–121: N-Queens, Palindrome Partitioning, Combination Sum III</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 9 (Mon)</td><td>T1 Tries #70: Implement Trie + T2: Word Search II, Design Add/Search Words + T3: Replace Words</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 10 (Tue)</td><td>T1 Greedy #71–72: Gas Station, Partition Labels + T2: Hand of Straights, Merge Triplets, Valid Parenthesis String</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 11 (Wed)</td><td>T3 Greedy #144–145 + T2 Bits #127–130: Reverse Bits, Missing Number, Sum Two Ints, Counting Bits + T1 #73: Single Number</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 12 (Thu)</td><td>T3 Design #147–150 + T1 Math #74–75: Longest Consecutive, Group Anagrams (quick revision)</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 13 (Fri)</td><td>🎉 ALL 150 DONE — Full mock contest: 4 problems, 2 hours, talk through everything aloud.</td><td style="text-align:right">4h</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="week-card">
+  <div class="week-head"><div><span class="wtitle">Week 7 — Revision + Mock Interviews</span><span class="wdates">June 14–20</span></div><span class="mb blue">🏆 Onsite ~June 18–20</span></div>
+  <div class="week-body">
+    <div class="tip">💡 No new problems. One full mock interview per day: 2 problems × 45 min, talking aloud throughout. The gap between "can solve it" and "can explain it under interview pressure" is what this week closes.</div>
+    <table class="dtable"><tr><th>Day</th><th>Focus</th><th style="width:45px;text-align:right">Hrs</th></tr>
+    <tr><td class="dname">Jun 14 (Sun)</td><td>Mock #1: 2 random mediums — one Graph, one DP. Was your approach explanation clear before you coded?</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 15 (Mon)</td><td>Mock #2: 1 medium + 1 hard. Practice: state time/space complexity out loud before writing anything.</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 16 (Tue)</td><td>Focused revision: Trees + Heaps (your weakest new area). 5 problems timed, 30 min each.</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 17 (Wed)</td><td>Mock #3: Full simulation — 5 min clarifying questions, code, optimise, then walk through 3 test cases.</td><td style="text-align:right">5h</td></tr>
+    <tr><td class="dname">Jun 18 (Thu)</td><td>Light day: redo 5 favourite mediums fast. Eat well. Sleep by 10 pm.</td><td style="text-align:right">3h</td></tr>
+    <tr class="mgreen"><td class="dname">Jun 19–20</td><td>🏆 ONSITE — You've prepared systematically. Trust the process.</td><td style="text-align:right">—</td></tr>
+    </table>
+  </div>
+</div>
+
+<p style="margin-top:28px;font-size:12px;color:var(--text3)">★ Problems marked ★ are premium on LC — use NeetCode.io or LintCode for free access. Tier totals: 75 + 55 + 20 = 150. Generated May 2026.</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merge Intervals — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC: number-line strip with horizontal interval bars */
+  .mi-axis{position:relative;height:24px;border-bottom:0.5px solid var(--border);margin:0 .25rem .25rem;font-family:var(--mono);font-size:9px;color:var(--text3)}
+  .mi-tick{position:absolute;bottom:0;width:1px;height:6px;background:var(--border2);transform:translateX(-0.5px)}
+  .mi-tick-lbl{position:absolute;bottom:8px;transform:translateX(-50%)}
+  .mi-track{position:relative;margin:0 .25rem .35rem;height:18px}
+  .mi-bar{position:absolute;top:1px;height:16px;border-radius:3px;border:0.5px solid var(--border);background:var(--bg2);font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text2);display:flex;align-items:center;justify-content:center;padding:0 4px;transition:all .25s;box-sizing:border-box;white-space:nowrap}
+  .mi-bar.next{background:var(--bg-warn);border-color:var(--border-warn);color:var(--text-warn);transform:translateY(-1px)}
+  .mi-bar.open{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info)}
+  .mi-bar.finalised{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success)}
+  .mi-bar.dim{opacity:.45}
+  .mi-rowlbl{font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:4px;display:block}
+  .mi-section{background:var(--bg3);border-radius:var(--r);padding:.5rem .25rem;margin:.35rem 0}
+  .iv-pill{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:5px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text2);margin-right:4px;margin-bottom:3px}
+  .iv-pill.open{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info)}
+  .iv-pill.next{background:var(--bg-warn);border-color:var(--border-warn);color:var(--text-warn)}
+  .iv-pill.finalised{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success)}
+  .decision-badge{display:inline-block;font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:6px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text2)}
+  .decision-badge.extend{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info)}
+  .decision-badge.finalise{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Merge Intervals</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/merge-intervals/" target="_blank">LC #56</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Arrays</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">These four questions decide whether the algorithm collapses to a one-pass sweep or stays an O(n²) tangle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <p class="acard-q">Are the input intervals sorted?</p>
+      <p class="acard-a">No — they arrive in arbitrary order.</p>
+      <span class="acard-u">→ we must sort first. Sorting by start key is what turns an O(n²) all-pairs overlap check into one linear sweep.</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Do <code>[1,4]</code> and <code>[4,7]</code> overlap?</p>
+      <p class="acard-a">Yes — intervals are closed and touching counts as overlap. <code>[1,4] ∪ [4,7] = [1,7]</code>.</p>
+      <span class="acard-u">→ overlap test must be <code>next.start &lt;= open.end</code> with <code>≤</code>, not strict <code>&lt;</code>.</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can intervals be identical or fully contained?</p>
+      <p class="acard-a">Yes — duplicates and full containment are both allowed.</p>
+      <span class="acard-u">→ extend with <code>open.end = max(open.end, next.end)</code>: the next end may be smaller (containment) or equal (duplicate).</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can the input be empty?</p>
+      <p class="acard-a">Per LC the constraint is <code>n ≥ 1</code>, but defending against empty is cheap.</p>
+      <span class="acard-u">→ a single early-return guard for empty input; otherwise we can safely seed the sweep with <code>intervals[0]</code>.</span>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Closed intervals; touching counts as overlap; duplicates and containment allowed. We may freely sort the input (no stability requirement).</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Sort by start, then sweep with a single "open" interval.</p>
+
+  <p class="body">Once intervals are sorted by start, overlap becomes a <em>local</em> condition. If <code>next.start &gt; open.end</code>, then no later interval can overlap <code>open</code> either — every subsequent start is at least as large. So we can finalise <code>open</code> and move on, with no risk of missing a merge later. The sort is what makes a single linear sweep correct.</p>
+
+  <!-- Foundational visual: animated walkthrough on [[8,12],[1,4],[7,9],[2,5]] showing sort + sweep.
+       Pattern (PLAN-017): current next interval (warning-orange), open interval being built (info-blue),
+       finalised intervals (success-green). Sort step is its own animated transition. -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <!-- Legend -->
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-warn);border:0.5px solid var(--border-warn);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>current next</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);border:0.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>open (being built)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-success);border:0.5px solid var(--border-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>finalised</span>
+      <span><span style="color:var(--text2);font-weight:700;font-size:13px;vertical-align:middle">↹</span> sort step</span>
+    </div>
+
+    <!-- Track 1: sorted input — current `next` highlighted -->
+    <div style="margin-bottom:.5rem">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:.25rem"><span id="si-track-lbl">input intervals</span></div>
+      <div id="si-input-track" class="mi-section" style="position:relative;height:36px;min-height:36px"></div>
+      <div class="mi-axis" id="si-axis-input"></div>
+    </div>
+
+    <!-- Track 2: open + finalised -->
+    <div style="margin-top:.625rem">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:.25rem">building output</div>
+      <div id="si-output-track" class="mi-section" style="position:relative;height:36px;min-height:36px"></div>
+      <div class="mi-axis" id="si-axis-output"></div>
+    </div>
+
+    <!-- Decision panel -->
+    <div style="display:flex;gap:1rem;align-items:center;margin:.625rem 0;flex-wrap:wrap;font-family:var(--mono);font-size:13px">
+      <span>open = <b id="si-open-disp" style="color:var(--text-info)">—</b></span>
+      <span>next = <b id="si-next-disp" style="color:var(--text-warn)">—</b></span>
+      <span id="si-decision-badge" class="decision-badge">—</span>
+    </div>
+
+    <!-- Caption -->
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <!-- Controls -->
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d" style="font-family:var(--mono);font-size:13px;line-height:2">
+      sort by start &nbsp;·&nbsp; sweep with one "open" interval<br>
+      next.start ≤ open.end → open.end = max(open.end, next.end) &nbsp;<span style="color:var(--text3)">[extend]</span><br>
+      next.start &gt; open.end → emit open; open = next &nbsp;<span style="color:var(--text3)">[finalise]</span>
+    </p>
+  </div>
+</div>
+
+<script>
+  // §1 animation — sort + sweep walkthrough on [[8,12],[1,4],[7,9],[2,5]] (unsorted)
+  const SI_INPUT = [[8,12],[1,4],[7,9],[2,5]];
+  const SI_AXIS_MIN = 0;
+  const SI_AXIS_MAX = 13;
+  let siSteps = siGenSteps(SI_INPUT);
+  let siCur = 0;
+  let siTimer = null;
+
+  function siGenSteps(input) {
+    const steps = [];
+    const sorted = [...input].sort((a, b) => a[0] - b[0]);
+
+    // Step 0: show unsorted input
+    steps.push({
+      phase: 'unsorted', intervals: [...input], i: -1, open: null,
+      finalized: [], decision: null,
+      caption: `Input: ${input.length} intervals in arbitrary order. Before we can sweep, we sort by start.`,
+    });
+
+    // Step 1: after sort
+    steps.push({
+      phase: 'sorted', intervals: [...sorted], i: -1, open: null,
+      finalized: [], decision: null, isSortPivot: true,
+      caption: `↹ Sorted by start. Now overlap is a local condition: only adjacent intervals (in sorted order) can possibly overlap.`,
+    });
+
+    // Step 2: init open = sorted[0]
+    let open = [...sorted[0]];
+    steps.push({
+      phase: 'init', intervals: [...sorted], i: 0, open: [...open],
+      finalized: [], decision: null,
+      caption: `Initialise: open = sorted[0] = [${open[0]}, ${open[1]}]. The sweep begins.`,
+    });
+
+    // Steps: for each subsequent interval, extend or finalise
+    const finalized = [];
+    for (let i = 1; i < sorted.length; i++) {
+      const next = sorted[i];
+      const overlap = next[0] <= open[1];
+      let caption;
+      if (overlap) {
+        const newEnd = Math.max(open[1], next[1]);
+        open = [open[0], newEnd];
+        caption = `i=${i} next=[${next[0]},${next[1]}]: next.start (${next[0]}) ≤ open.end (${open[1] === newEnd ? newEnd : '...'}) → extend; open = [${open[0]}, ${newEnd}].`;
+        steps.push({
+          phase: 'step', intervals: [...sorted], i, open: [...open],
+          finalized: finalized.map(x => [...x]), decision: 'extend',
+          caption,
+        });
+      } else {
+        finalized.push([...open]);
+        open = [...next];
+        caption = `i=${i} next=[${next[0]},${next[1]}]: next.start (${next[0]}) > open.end → finalise [${finalized[finalized.length-1][0]}, ${finalized[finalized.length-1][1]}]; open = [${next[0]}, ${next[1]}].`;
+        steps.push({
+          phase: 'step', intervals: [...sorted], i, open: [...open],
+          finalized: finalized.map(x => [...x]), decision: 'finalise',
+          caption,
+        });
+      }
+    }
+
+    // Flush
+    finalized.push([...open]);
+    steps.push({
+      phase: 'flush', intervals: [...sorted], i: sorted.length, open: null,
+      finalized: finalized.map(x => [...x]), decision: null,
+      caption: `Flush the final open interval to the output. Done — result has ${finalized.length} merged intervals.`,
+    });
+
+    return steps;
+  }
+
+  function siRender(st) {
+    // Scale for the number line
+    const containerWidth = 380;  // approximate pixels
+    const unit = containerWidth / (SI_AXIS_MAX - SI_AXIS_MIN);
+
+    // Build axis ticks (every 2 units)
+    function buildAxis(elId) {
+      const ax = document.getElementById(elId);
+      ax.innerHTML = '';
+      for (let t = SI_AXIS_MIN; t <= SI_AXIS_MAX; t++) {
+        const tick = document.createElement('div');
+        tick.className = 'mi-tick';
+        tick.style.left = `${(t - SI_AXIS_MIN) * unit}px`;
+        ax.appendChild(tick);
+        if (t % 2 === 0) {
+          const lbl = document.createElement('div');
+          lbl.className = 'mi-tick-lbl';
+          lbl.style.left = `${(t - SI_AXIS_MIN) * unit}px`;
+          lbl.textContent = t;
+          ax.appendChild(lbl);
+        }
+      }
+    }
+    buildAxis('si-axis-input');
+    buildAxis('si-axis-output');
+
+    // Track 1: input intervals
+    const inputTrack = document.getElementById('si-input-track');
+    inputTrack.innerHTML = '';
+    inputTrack.style.width = `${containerWidth}px`;
+    st.intervals.forEach((iv, idx) => {
+      const bar = document.createElement('div');
+      bar.className = 'mi-bar';
+      // Layer them on alternate rows so overlapping bars are visible
+      const yRow = idx % 2;
+      bar.style.top = `${yRow * 18}px`;
+      bar.style.left = `${(iv[0] - SI_AXIS_MIN) * unit}px`;
+      bar.style.width = `${(iv[1] - iv[0]) * unit}px`;
+      bar.textContent = `[${iv[0]},${iv[1]}]`;
+      if (idx === st.i && st.phase === 'step') bar.classList.add('next');
+      else if (idx < st.i) bar.classList.add('dim');
+      inputTrack.appendChild(bar);
+    });
+    document.getElementById('si-track-lbl').textContent =
+      st.phase === 'unsorted' ? 'input intervals (unsorted)' : 'sorted intervals';
+
+    // Track 2: open + finalized
+    const outputTrack = document.getElementById('si-output-track');
+    outputTrack.innerHTML = '';
+    outputTrack.style.width = `${containerWidth}px`;
+    st.finalized.forEach(iv => {
+      const bar = document.createElement('div');
+      bar.className = 'mi-bar finalised';
+      bar.style.top = '0px';
+      bar.style.left = `${(iv[0] - SI_AXIS_MIN) * unit}px`;
+      bar.style.width = `${(iv[1] - iv[0]) * unit}px`;
+      bar.textContent = `[${iv[0]},${iv[1]}]`;
+      outputTrack.appendChild(bar);
+    });
+    if (st.open) {
+      const bar = document.createElement('div');
+      bar.className = 'mi-bar open';
+      bar.style.top = '18px';
+      bar.style.left = `${(st.open[0] - SI_AXIS_MIN) * unit}px`;
+      bar.style.width = `${(st.open[1] - st.open[0]) * unit}px`;
+      bar.textContent = `[${st.open[0]},${st.open[1]}]`;
+      outputTrack.appendChild(bar);
+    }
+
+    // Decision panel
+    document.getElementById('si-open-disp').textContent =
+      st.open ? `[${st.open[0]}, ${st.open[1]}]` : '—';
+    const nextIv = (st.phase === 'step' && st.i >= 0) ? st.intervals[st.i] : null;
+    document.getElementById('si-next-disp').textContent =
+      nextIv ? `[${nextIv[0]}, ${nextIv[1]}]` : '—';
+    const badge = document.getElementById('si-decision-badge');
+    if (st.decision) {
+      badge.textContent = st.decision;
+      badge.className = 'decision-badge ' + st.decision;
+    } else if (st.isSortPivot) {
+      badge.textContent = '↹ sort';
+      badge.className = 'decision-badge';
+    } else if (st.phase === 'init') {
+      badge.textContent = 'init';
+      badge.className = 'decision-badge';
+    } else if (st.phase === 'flush') {
+      badge.textContent = 'flush';
+      badge.className = 'decision-badge finalise';
+    } else {
+      badge.textContent = '—';
+      badge.className = 'decision-badge';
+    }
+
+    // Caption
+    document.getElementById('si-caption').textContent = st.caption;
+
+    // Step counter
+    const ctr = document.getElementById('si-sctr');
+    if (ctr) ctr.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() {
+    clearInterval(siTimer); siTimer = null;
+    const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto';
+  }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur < siSteps.length - 1) siNext(); else siStopPlay();
+    }, 1400);
+  }
+
+  siRender(siSteps[0]);
+</script>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — check every pair</p>
+  <p class="body">Without sorting, the only safe way to merge is to compare every pair of intervals. Even worse: when two intervals merge, the result may now overlap a third interval we already passed — so we must repeat the all-pairs scan until a full pass produces no new merges. Quadratic per pass, possibly multiple passes.</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">[[1,3],[2,6],[8,10],[15,18]]</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">[[8,12],[1,4],[7,9],[2,5]]</button>
+  </div>
+  <p class="mi-rowlbl" style="margin:.25rem 0">intervals (one row per item)</p>
+  <div id="bf-tracks"></div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    pair (i, j) = <span id="bf-pair" style="font-weight:600;color:var(--text)">—</span> &nbsp;·&nbsp;
+    overlap = <span id="bf-overlap" style="font-weight:600;color:var(--text)">—</span> &nbsp;·&nbsp;
+    pair-checks: <span id="bf-ops" style="font-weight:600;color:var(--text-danger)">0</span>
+  </div>
+  <div class="ctrl-row" style="margin-top:.625rem">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n²) per scan — and possibly multiple scans</p>
+    <p class="infobox-d">Without sorting, a merge can create a new overlap with an already-checked interval. Sort + sweep eliminates this re-checking entirely.</p>
+  </div>
+
+  <button class="reveal-btn" onclick="toggleEl('code-bf', this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+<pre class="cb"><span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt; <span class="fn">mergeBF</span>(<span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; iv) {
+    <span class="kw">bool</span> changed = <span class="kw">true</span>;
+    <span class="kw">while</span> (changed) {
+        changed = <span class="kw">false</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; (<span class="kw">int</span>)iv.<span class="fn">size</span>(); i++) {
+            <span class="kw">for</span> (<span class="kw">int</span> j = i + <span class="nu">1</span>; j &lt; (<span class="kw">int</span>)iv.<span class="fn">size</span>(); j++) {
+                <span class="kw">if</span> (iv[i][<span class="nu">1</span>] &gt;= iv[j][<span class="nu">0</span>] &amp;&amp; iv[j][<span class="nu">1</span>] &gt;= iv[i][<span class="nu">0</span>]) {
+                    iv[i] = { <span class="fn">min</span>(iv[i][<span class="nu">0</span>], iv[j][<span class="nu">0</span>]), <span class="fn">max</span>(iv[i][<span class="nu">1</span>], iv[j][<span class="nu">1</span>]) };
+                    iv.<span class="fn">erase</span>(iv.<span class="fn">begin</span>() + j);
+                    changed = <span class="kw">true</span>; j--;
+                }
+            }
+        }
+    }
+    <span class="kw">return</span> iv;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Four translations to O(n log n)</p>
+  <p class="body">The brute force re-checks pairs that already had their chance to merge. These four translations replace it with a sort plus one linear sweep.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 1 — Reduce overlap to one comparison</p>
+        <p class="wt-desc">Two intervals <code>[a,b]</code> and <code>[c,d]</code> overlap iff <code>a ≤ d &amp;&amp; c ≤ b</code>. If we know the one with the smaller start, the test reduces to a single comparison: <code>next.start ≤ open.end</code>.</p>
+        <p class="wt-gain">→ a per-pair O(1) check, but only useful once we can guarantee the ordering.</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 2 — Sort by start</p>
+        <p class="wt-desc">Sorting by start guarantees that for the interval we are currently building (<code>open</code>), every <em>future</em> interval has a start ≥ the one we are currently looking at. So if the current next interval is disjoint, every later one is disjoint too. Disjoint here means disjoint forever.</p>
+        <p class="wt-gain">→ removes the "may have to re-scan" liability of the brute force. One pass is enough.</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 3 — Sweep with one mutable "open" interval</p>
+        <p class="wt-desc">Carry one mutable <code>[open.start, open.end]</code> through the loop. On overlap, extend <code>open.end</code> in place; on disjoint, push <code>open</code> to the output and replace it with <code>next</code>. After the loop, push the final <code>open</code>.</p>
+        <p class="wt-gain">→ O(1) state per step. No nested loops, no re-scans.</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">4</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 4 — <code>max</code> handles containment and duplicates</p>
+        <p class="wt-desc">Extending with <code>open.end = max(open.end, next.end)</code> covers the cases where <code>next</code> is fully contained in <code>open</code> (<code>next.end &lt; open.end</code>) or identical to it. No special-case branches needed.</p>
+        <p class="wt-gain">→ a single line of arithmetic replaces three or four conditional branches.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t"><b>Sort</b> <code>intervals</code> by start.</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t"><b>Initialise</b> <code>out = []</code> and <code>open = intervals[0]</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t"><b>For each <code>next</code> in <code>intervals[1..]</code>:</b></span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t">If <code>next.start ≤ open.end</code>: <b>extend</b> — <code>open.end = max(open.end, next.end)</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t">Else: <b>finalise</b> — push <code>open</code> to <code>out</code>; <code>open = next</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">6.</span><span class="algo-t"><b>Flush</b> the final <code>open</code> to <code>out</code>; return <code>out</code>.</span></div>
+  </div>
+  <div class="infobox info" style="margin-top:.875rem">
+    <p class="infobox-t">Why the final flush is mandatory</p>
+    <p class="infobox-d">The loop only emits <code>open</code> when a disjoint <code>next</code> is encountered. The last open interval never sees a disjoint successor — there are none — so it must be flushed explicitly after the loop ends.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Canonical C++ solution</p>
+  <p class="body">Try to reproduce this from the six steps before revealing.</p>
+  <button class="reveal-btn" id="reveal-btn" onclick="toggleEl('code-main', document.getElementById('reveal-btn'))">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+<pre class="cb"><span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt; <span class="fn">merge</span>(<span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; intervals) {
+    <span class="fn">sort</span>(intervals.<span class="fn">begin</span>(), intervals.<span class="fn">end</span>());
+    <span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt; out;
+    <span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; open = intervals[<span class="nu">0</span>];
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">1</span>; i &lt; (<span class="kw">int</span>)intervals.<span class="fn">size</span>(); i++) {
+        <span class="kw">int</span> s = intervals[i][<span class="nu">0</span>], e = intervals[i][<span class="nu">1</span>];
+        <span class="kw">if</span> (s &lt;= open[<span class="nu">1</span>]) {                       <span class="cm">// overlap: extend</span>
+            open[<span class="nu">1</span>] = <span class="fn">max</span>(open[<span class="nu">1</span>], e);
+        } <span class="kw">else</span> {                                  <span class="cm">// disjoint: finalise</span>
+            out.<span class="fn">push_back</span>(open);
+            open = { s, e };
+        }
+    }
+    out.<span class="fn">push_back</span>(open);                          <span class="cm">// flush the final open</span>
+    <span class="kw">return</span> out;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">Ex 1: 4 sorted intervals</button>
+    <button class="ex-btn" id="cv-ex1" onclick="cvLoadEx(1)">Ex 2: 8 unsorted</button>
+    <button class="ex-btn" id="cv-ex2" onclick="cvLoadEx(2)">Ex 3: touching [1,4]+[4,7]</button>
+  </div>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div class="mi-section">
+        <span class="mi-rowlbl">intervals (sorted)</span>
+        <div class="mi-axis" id="cv-axis"></div>
+        <div id="cv-rows"></div>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:5px">Variables</p>
+        <div class="cv-var-grid">
+          <div class="cv-var-card dim" id="cvv-i"><p class="cv-var-name">i</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-next"><p class="cv-var-name">next</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-open"><p class="cv-var-name">open</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-outn"><p class="cv-var-name">|out|</p><p class="cv-var-val">—</p></div>
+        </div>
+      </div>
+      <div class="cv-narration" id="cv-narration">Select an example to begin.</div>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="cv-bp" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="cv-bn" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn" onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Interactive dry run</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1: 4 sorted</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">Ex 2: 8 unsorted</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">Ex 3: touching</button>
+  </div>
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:var(--bg-info);border:0.5px solid var(--border-info)"></div><span class="leg-label">open (being built)</span></div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--bg-warn);border:0.5px solid var(--border-warn)"></div><span class="leg-label">next (being checked)</span></div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--bg-success);border:0.5px solid var(--border-success)"></div><span class="leg-label">finalised → output</span></div>
+  </div>
+  <div class="mi-section">
+    <span class="mi-rowlbl" id="dr-rowlbl">input</span>
+    <div class="mi-axis" id="dr-axis"></div>
+    <div id="dr-rows"></div>
+  </div>
+  <div style="margin:.5rem 0">
+    <span class="mi-rowlbl">output (so far)</span>
+    <div id="dr-out" style="min-height:24px"></div>
+  </div>
+  <div class="panels-fixed">
+    <div class="formula-panel" id="dr-formula">
+      <div class="formula-grid">
+        <div><p class="fitem-label">phase</p><p class="fitem-val" id="f-phase">—</p><p class="fitem-sub">sort/sweep/done</p></div>
+        <div><p class="fitem-label">i</p><p class="fitem-val" id="f-i">—</p><p class="fitem-sub">index of next</p></div>
+        <div><p class="fitem-label" style="color:var(--text-warn)">next</p><p class="fitem-val" id="f-next">—</p><p class="fitem-sub">[s, e]</p></div>
+        <div><p class="fitem-label" style="color:var(--text-info)">open</p><p class="fitem-val" id="f-open">—</p><p class="fitem-sub">[s, e]</p></div>
+        <div><p class="fitem-label">decision</p><p class="fitem-val" id="f-dec">—</p><p class="fitem-sub">extend / finalise</p></div>
+      </div>
+      <div class="formula-eq" id="dr-feq">Select an example to begin.</div>
+    </div>
+    <div class="step-panel" id="dr-step">
+      <p class="step-what" id="dr-what">—</p>
+      <p class="step-why" id="dr-why">Use the controls below to step through.</p>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+  <div style="margin-top:.875rem">
+    <p style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-bottom:4px">Final merged intervals</p>
+    <p id="dr-result" style="font-size:16px;font-weight:600;font-family:var(--mono);color:var(--text)">—</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner"><div class="cnum">1</div><div>
+    <p class="corner-title">Single interval — <code>[[1,2]]</code> → <code>[[1,2]]</code></p>
+    <p class="corner-body">The loop body never runs. We seed <code>open = intervals[0]</code> and the final flush emits it. Returns the input unchanged.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">2</div><div>
+    <p class="corner-title">Touching at endpoint — <code>[[1,4], [4,7]]</code> → <code>[[1,7]]</code></p>
+    <p class="corner-body">The overlap test must be <code>≤</code>, not <code>&lt;</code>. With <code>&lt;</code>, touching intervals would be wrongly emitted as separate.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">3</div><div>
+    <p class="corner-title">Fully contained — <code>[[1,10], [3,5]]</code> → <code>[[1,10]]</code></p>
+    <p class="corner-body">Sorted as-is. <code>3 ≤ 10</code>, so extend with <code>max(10, 5) = 10</code>. The contained interval contributes nothing new — exactly what <code>max</code> guarantees.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">4</div><div>
+    <p class="corner-title">Identical duplicates — <code>[[2,5], [2,5]]</code> → <code>[[2,5]]</code></p>
+    <p class="corner-body">Same path as containment: <code>max(5, 5) = 5</code>. Output has one interval.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">5</div><div>
+    <p class="corner-title">No overlaps — <code>[[1,2], [3,4], [5,6]]</code> → unchanged</p>
+    <p class="corner-body">Every iteration takes the finalise branch. Output is the input (post-sort).</p>
+  </div></div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Final flush:</b> the loop emits <code>open</code> only when a disjoint <code>next</code> arrives; the last <code>open</code> needs an explicit push after the loop.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Closed-interval semantics:</b> overlap test uses <code>≤</code> so touching intervals merge.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Containment / duplicates:</b> handled by <code>max(open.end, next.end)</code> — no special branches.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Empty input:</b> guard with an early return, or document the precondition <code>n ≥ 1</code>.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>In-place sort:</b> we mutate the caller's array. If callers shouldn't see this, sort a copy (extra O(n) memory).</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Integer overflow:</b> none — endpoints are stored, never summed.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Sort + sweep (optimal)</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Connected components</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Brute force</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">Time O(n log n)</span><span class="tag tag-space">Space O(n) (output) + O(log n) (sort stack)</span>
+    <p class="body" style="margin-top:.5rem">Sort by start, sweep with one mutable <code>open</code> interval. The algorithm above. Sort dominates the time; the sweep itself is O(n).</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">Time O(n log n)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body" style="margin-top:.5rem">Build a graph: one node per interval, an edge between any two that overlap. Run a connected-components search; for each component, output one merged interval (its min start, max end). Same complexity as sort + sweep but with worse constants and far more code. Useful framing only when intervals are already part of a graph problem.</p>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">Time O(n²) or worse</span><span class="tag tag-space">Space O(1) extra</span>
+    <p class="body" style="margin-top:.5rem">Repeatedly scan all pairs and merge any that overlap, until a full pass produces no change. Correct but ugly: a single merge can create a new overlap with an interval the scan already passed. Useful only as the derivation anchor for the translations above.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard" style="border-color:var(--border-danger)"><p class="ccard-l">Brute force</p><p class="ccard-v">O(n²)+ / O(1)</p><p class="ccard-n">All pairs per pass; possibly multiple passes.</p></div>
+    <div class="ccard" style="border-color:var(--border-warn)"><p class="ccard-l">Connected components</p><p class="ccard-v">O(n log n) / O(n)</p><p class="ccard-n">Graph build + DFS/Union-Find. Same bound, more code.</p></div>
+    <div class="ccard" style="border-color:var(--border-success)"><p class="ccard-l">Sort + sweep ✓</p><p class="ccard-v">O(n log n) / O(log n) extra</p><p class="ccard-n">Sort dominates; one O(n) sweep with a single mutable <code>open</code>.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p class="body">The <strong>sort-then-sweep</strong> template: any problem where a "global" predicate (overlap, conflict, coverage) reduces to a local check after sorting. Sort makes the relevant condition local; the sweep maintains O(1) state to evaluate it.</p>
+    <p class="body">In an interview: brute force first (all pairs), then point out that sorting by start makes overlap a local condition — once <code>next.start &gt; open.end</code>, no later interval can overlap <code>open</code>. Then code the sweep.</p>
+    <p class="body">Related: <strong>LC 57 Insert Interval</strong> — same merge logic, but the input is already sorted and only one new interval is being inserted; O(n) without sort. <strong>LC 252 / 253 Meeting Rooms (II)</strong> — sort by start; variant 1 asks "any overlap?"; variant 2 asks "max simultaneous overlaps" (heap of end-times). <strong>LC 435 Non-overlapping Intervals</strong> — sort by <em>end</em> instead, then greedily keep the earliest-ending interval. <strong>LC 1288 Remove Covered Intervals</strong> — sort by start asc, end desc; count strictly increasing ends.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  /* ─── DATA ─── */
+  const EXAMPLES    = [
+    [[1,3],[2,6],[8,10],[15,18]],
+    [[8,12],[1,4],[14,20],[7,9],[22,25],[2,5],[13,15],[24,28]],
+    [[1,4],[4,7]],
+  ];
+  const BF_EXAMPLES = [
+    [[1,3],[2,6],[8,10],[15,18]],
+    [[8,12],[1,4],[7,9],[2,5]],
+  ];
+
+  /* ─── shared geometry: render an interval as an absolute bar over [minX, maxX] ─── */
+  function renderTrack(parent, intervals, opts){
+    if(!intervals.length) return;
+    const all = (opts && opts.allIvs) || intervals;
+    let minX = Infinity, maxX = -Infinity;
+    all.forEach(iv => { minX = Math.min(minX, iv[0]); maxX = Math.max(maxX, iv[1]); });
+    if(opts && opts.bound){ minX = Math.min(minX, opts.bound[0]); maxX = Math.max(maxX, opts.bound[1]); }
+    const span = Math.max(1, maxX - minX);
+    intervals.forEach((iv, idx) => {
+      const track = document.createElement('div'); track.className='mi-track';
+      const bar = document.createElement('div');
+      const cls = opts && opts.classOf ? opts.classOf(idx, iv) : '';
+      bar.className = 'mi-bar' + (cls ? ' ' + cls : '');
+      const left = ((iv[0] - minX) / span) * 100;
+      const width = Math.max(((iv[1] - iv[0]) / span) * 100, 4);
+      bar.style.left = left + '%';
+      bar.style.width = width + '%';
+      bar.textContent = `[${iv[0]},${iv[1]}]`;
+      track.appendChild(bar);
+      parent.appendChild(track);
+    });
+  }
+  function renderAxis(elId, allIvs, bound){
+    const el = document.getElementById(elId); el.innerHTML='';
+    let minX = Infinity, maxX = -Infinity;
+    allIvs.forEach(iv => { minX = Math.min(minX, iv[0]); maxX = Math.max(maxX, iv[1]); });
+    if(bound){ minX = Math.min(minX, bound[0]); maxX = Math.max(maxX, bound[1]); }
+    const span = Math.max(1, maxX - minX);
+    const ticks = new Set();
+    allIvs.forEach(iv => { ticks.add(iv[0]); ticks.add(iv[1]); });
+    [...ticks].sort((a,b)=>a-b).forEach(v => {
+      const left = ((v - minX) / span) * 100;
+      const t = document.createElement('div'); t.className='mi-tick'; t.style.left = left + '%';
+      el.appendChild(t);
+      const lbl = document.createElement('span'); lbl.className='mi-tick-lbl'; lbl.style.left = left + '%'; lbl.textContent = v;
+      el.appendChild(lbl);
+    });
+  }
+
+  /* ─── BRUTE FORCE (single all-pairs scan, no actual mutation) ─── */
+  let bfSteps=[], bfCur=0, bfTimer=null;
+  function bfGen(intervals){
+    const out=[], n=intervals.length;
+    let ops=0;
+    out.push({intervals, n, i:-1, j:-1, overlap:null, ops:0, msg:'Without sorting, every pair must be checked.'});
+    for(let i=0;i<n;i++){
+      for(let j=i+1;j<n;j++){
+        ops++;
+        const a = intervals[i], b = intervals[j];
+        const ov = a[1] >= b[0] && b[1] >= a[0];
+        out.push({intervals, n, i, j, overlap:ov, ops, msg:`(${i},${j}): [${a[0]},${a[1]}] vs [${b[0]},${b[1]}] → ${ov ? 'OVERLAP' : 'disjoint'}.`});
+      }
+    }
+    out.push({intervals, n, i:-1, j:-1, overlap:null, ops, msg:`Done one full scan. ${ops} pair checks. (Real brute force would now repeat until no merges.)`});
+    return out;
+  }
+  function bfRender(st){
+    const con = document.getElementById('bf-tracks'); con.innerHTML='';
+    renderTrack(con, st.intervals, {
+      allIvs: st.intervals,
+      classOf: (idx) => idx === st.i ? 'open' : idx === st.j ? 'next' : ''
+    });
+    document.getElementById('bf-pair').textContent = (st.i>=0 && st.j>=0) ? `(${st.i}, ${st.j})` : '—';
+    document.getElementById('bf-overlap').textContent = st.overlap === null ? '—' : (st.overlap ? 'YES' : 'no');
+    document.getElementById('bf-ops').textContent = st.ops;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur+1} / ${bfSteps.length}`;
+    document.getElementById('bf-prev').disabled = bfCur===0;
+    document.getElementById('bf-next').disabled = bfCur===bfSteps.length-1;
+  }
+  function bfNext(){ if(bfCur<bfSteps.length-1){ bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev(){ if(bfCur>0){ bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset(){ bfStopPlay(); bfCur=0; bfRender(bfSteps[0]); }
+  function bfLoadEx(idx){
+    bfStopPlay(); bfCur=0;
+    [0,1].forEach(i=>document.getElementById('bf-ex'+i).classList.toggle('active', i===idx));
+    bfSteps = bfGen(BF_EXAMPLES[idx]);
+    bfRender(bfSteps[0]);
+  }
+
+  /* ─── CODE VISUALIZATION ─── */
+  const CV_LINES=[
+    {n:1,  c:'vector<vector<int>> merge(vector<vector<int>>& intervals) {'},
+    {n:2,  c:'    sort(intervals.begin(), intervals.end());'},
+    {n:3,  c:'    vector<vector<int>> out;'},
+    {n:4,  c:'    vector<int> open = intervals[0];'},
+    {n:5,  c:'    for (int i = 1; i < (int)intervals.size(); i++) {'},
+    {n:6,  c:'        int s = intervals[i][0], e = intervals[i][1];'},
+    {n:7,  c:'        if (s <= open[1]) {'},
+    {n:8,  c:'            open[1] = max(open[1], e);'},
+    {n:9,  c:'        } else {'},
+    {n:10, c:'            out.push_back(open);'},
+    {n:11, c:'            open = { s, e };'},
+    {n:12, c:'        }'},
+    {n:13, c:'    }'},
+    {n:14, c:'    out.push_back(open);'},
+    {n:15, c:'    return out;'},
+    {n:16, c:'}'},
+  ];
+  let cvSteps=[], cvCur=0, cvTimer=null;
+  function cvGen(intervals){
+    const steps = [];
+    const sorted = [...intervals].map(x => [...x]).sort((a,b)=>a[0]-b[0]);
+    const n = sorted.length;
+    const out = [];
+    let open = null;
+    const snap = (line, narr, phase, changed, vars) => steps.push({
+      line, narr, phase, changed: changed||[],
+      sorted, n,
+      i: vars.i, next: vars.next, open: open ? [...open] : null,
+      out: out.map(x=>[...x]),
+      finalisedIdx: vars.finalisedIdx || [],
+    });
+    snap(1, 'Enter merge.', 'init', [], {i:null, next:null});
+    snap(2, `sort intervals → [${sorted.map(iv=>`[${iv[0]},${iv[1]}]`).join(', ')}].`, 'active', [], {i:null,next:null});
+    snap(3, 'out = [].', 'active', [], {i:null,next:null});
+    open = [...sorted[0]];
+    snap(4, `open = sorted[0] = [${open[0]},${open[1]}].`, 'active', ['open'], {i:0, next:sorted[0]});
+    const finalisedIdx = [];
+    for(let i=1;i<n;i++){
+      snap(5, `Loop: i = ${i}.`, 'active', ['i'], {i, next:sorted[i], finalisedIdx:[...finalisedIdx]});
+      const s = sorted[i][0], e = sorted[i][1];
+      snap(6, `s = ${s}, e = ${e}.`, 'active', ['next'], {i, next:[s,e], finalisedIdx:[...finalisedIdx]});
+      if(s <= open[1]){
+        snap(7, `s(${s}) <= open.end(${open[1]}): overlap → extend.`, 'extend', [], {i, next:[s,e], finalisedIdx:[...finalisedIdx]});
+        const newEnd = Math.max(open[1], e);
+        snap(8, `open[1] = max(${open[1]}, ${e}) = ${newEnd}.`, 'extend', ['open'], {i, next:[s,e], finalisedIdx:[...finalisedIdx]});
+        open[1] = newEnd;
+      } else {
+        snap(7, `s(${s}) > open.end(${open[1]}): disjoint → finalise.`, 'finalise', [], {i, next:[s,e], finalisedIdx:[...finalisedIdx]});
+        out.push([...open]);
+        finalisedIdx.push(i-1 === 0 ? 0 : i-1); // visual hint only
+        snap(10, `out.push([${open[0]},${open[1]}]). |out| = ${out.length}.`, 'finalise', ['outn'], {i, next:[s,e], finalisedIdx:[...finalisedIdx]});
+        open = [s, e];
+        snap(11, `open = [${s},${e}].`, 'finalise', ['open'], {i, next:[s,e], finalisedIdx:[...finalisedIdx]});
+      }
+    }
+    snap(14, `Flush: out.push([${open[0]},${open[1]}]). |out| = ${out.length+1}.`, 'finalise', ['outn'], {i:null, next:null, finalisedIdx:[...finalisedIdx]});
+    out.push([...open]);
+    snap(15, `Return out = [${out.map(iv=>`[${iv[0]},${iv[1]}]`).join(', ')}].`, 'done', [], {i:null,next:null,finalisedIdx:[...finalisedIdx]});
+    return steps;
+  }
+  function cvRender(st){
+    document.querySelectorAll('.cv-line').forEach(el=>el.classList.remove('active','active-match'));
+    const al = document.getElementById('cvL'+st.line);
+    if(al){
+      al.classList.add(st.phase==='extend' || st.phase==='finalise' ? 'active-match' : 'active');
+      if(visPx(document.querySelector('.cv-section'))>0) al.scrollIntoView({block:'nearest', behavior:'smooth'});
+    }
+    // build full bound = sorted ∪ open
+    const allIvs = [...st.sorted];
+    if(st.open) allIvs.push(st.open);
+    renderAxis('cv-axis', allIvs);
+    const con = document.getElementById('cv-rows'); con.innerHTML='';
+    renderTrack(con, st.sorted, {
+      allIvs,
+      classOf: (idx) => idx === st.i ? 'next' : idx < (st.i ?? 0) ? 'finalised dim' : ''
+    });
+    // open + out
+    if(st.open){
+      const lbl = document.createElement('span'); lbl.className='mi-rowlbl'; lbl.style.marginTop='6px'; lbl.textContent='open / out';
+      con.appendChild(lbl);
+      renderTrack(con, [st.open], { allIvs, classOf: () => 'open' });
+      st.out.forEach(iv => renderTrack(con, [iv], { allIvs, classOf: () => 'finalised' }));
+    }
+    const VARS=['i','next','open','outn'];
+    VARS.forEach(id=>{
+      const card=document.getElementById('cvv-'+id); if(!card) return;
+      card.classList.remove('hl','hl-match','dim');
+      let val;
+      if(id==='i')         val = st.i===null    ? '—' : st.i;
+      else if(id==='next') val = st.next        ? `[${st.next[0]},${st.next[1]}]` : '—';
+      else if(id==='open') val = st.open        ? `[${st.open[0]},${st.open[1]}]` : '—';
+      else if(id==='outn') val = st.out.length;
+      card.querySelector('.cv-var-val').textContent = val;
+      if(st.changed.includes(id)) card.classList.add(st.phase==='extend' || st.phase==='finalise' ? 'hl-match' : 'hl');
+      if(val==='—') card.classList.add('dim');
+    });
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase==='extend' || st.phase==='finalise' ? ' is-match' : st.phase!=='done' ? ' is-active' : '');
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur+1} / ${cvSteps.length}`;
+    document.getElementById('cv-bp').disabled = cvCur===0;
+    document.getElementById('cv-bn').disabled = cvCur===cvSteps.length-1;
+  }
+  function cvNext(){ if(cvCur<cvSteps.length-1){ cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev(){ if(cvCur>0){ cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset(){ cvStopPlay(); cvCur=0; cvRender(cvSteps[0]); }
+  function cvLoadEx(idx){
+    cvStopPlay(); cvCur=0;
+    [0,1,2].forEach(i=>document.getElementById('cv-ex'+i).classList.toggle('active', i===idx));
+    cvSteps = cvGen(EXAMPLES[idx]);
+    cvBuildCode(CV_LINES);
+    cvRender(cvSteps[0]);
+  }
+
+  /* ─── DRY RUN ─── */
+  let drSteps=[], drCur=0, drTimer=null;
+  function drGen(intervals){
+    const steps = [];
+    const sorted = [...intervals].map(x=>[...x]).sort((a,b)=>a[0]-b[0]);
+    const isAlreadySorted = JSON.stringify(intervals) === JSON.stringify(sorted);
+    const n = sorted.length;
+    const out = [];
+    let open = null;
+    const snap = (what, why, phase, vars, displayInput) => steps.push({
+      input: intervals, sorted, displayInput: displayInput || sorted, n,
+      i: vars.i, next: vars.next, open: open ? [...open] : null, dec: vars.dec,
+      out: out.map(x=>[...x]),
+      what, why, phase,
+    });
+    if(!isAlreadySorted){
+      snap(`Step 0: input as given (out of order).`,
+           `${n} intervals in arbitrary order. Sort by start before sweeping.`,
+           'init', {i:null,next:null,dec:'—'},
+           intervals);
+      snap(`Sort by start.`,
+           `Sorted: [${sorted.map(iv=>`[${iv[0]},${iv[1]}]`).join(', ')}]. Now overlap is a local condition.`,
+           'sort', {i:null,next:null,dec:'sorted'});
+    }
+    open = [...sorted[0]];
+    snap(`Init: open = sorted[0] = [${open[0]},${open[1]}].`,
+         `Seed the sweep with the first sorted interval. Loop starts at i = 1.`,
+         'init', {i:0,next:sorted[0],dec:'init'});
+    for(let i=1;i<n;i++){
+      const s = sorted[i][0], e = sorted[i][1];
+      if(s <= open[1]){
+        const newEnd = Math.max(open[1], e);
+        snap(`i=${i}: extend → open = [${open[0]},${newEnd}].`,
+             `s(${s}) ≤ open.end(${open[1]}): overlap. open.end = max(${open[1]}, ${e}) = ${newEnd}.`,
+             'extend', {i, next:sorted[i], dec:'extend'});
+        open[1] = newEnd;
+      } else {
+        out.push([...open]);
+        snap(`i=${i}: finalise [${open[0]},${open[1]}]; open = [${s},${e}].`,
+             `s(${s}) > open.end(${open[1]}): disjoint. Push the finished open to out, then start fresh at the new interval.`,
+             'finalise', {i, next:sorted[i], dec:'finalise'});
+        open = [s, e];
+      }
+    }
+    out.push([...open]);
+    snap(`Flush final open [${open[0]},${open[1]}] to out.`,
+         `The loop only emits open on a disjoint successor. The last open never sees one — it must be flushed explicitly.`,
+         'flush', {i:null,next:null,dec:'flush'});
+    snap(`Done. out = [${out.map(iv=>`[${iv[0]},${iv[1]}]`).join(', ')}].`,
+         `${n} intervals → ${out.length} merged intervals. O(n log n) total (sort), O(n) sweep.`,
+         'done', {i:null,next:null,dec:'—'});
+    return steps;
+  }
+  function drRender(st){
+    // input row (which set to display)
+    const display = st.displayInput || st.sorted;
+    document.getElementById('dr-rowlbl').textContent = (st.phase === 'init' && display !== st.sorted) ? 'input (unsorted)' : 'sorted';
+    const allIvs = [...st.sorted];
+    if(st.open) allIvs.push(st.open);
+    st.out.forEach(iv => allIvs.push(iv));
+    renderAxis('dr-axis', allIvs);
+    const con = document.getElementById('dr-rows'); con.innerHTML='';
+    renderTrack(con, display, {
+      allIvs,
+      classOf: (idx, iv) => {
+        if(display !== st.sorted) return ''; // unsorted view: plain
+        if(idx === st.i) return 'next';
+        // dim intervals already absorbed
+        if(idx < (st.i ?? 0)) return 'dim';
+        return '';
+      }
+    });
+    // open as its own row
+    if(st.open){
+      const lbl = document.createElement('span'); lbl.className='mi-rowlbl'; lbl.style.marginTop='6px'; lbl.textContent='open';
+      con.appendChild(lbl);
+      renderTrack(con, [st.open], { allIvs, classOf: () => 'open' });
+    }
+    // output bars
+    const outDiv = document.getElementById('dr-out'); outDiv.innerHTML='';
+    if(st.out.length === 0){
+      outDiv.innerHTML = '<span style="font-family:var(--mono);font-size:11px;color:var(--text3)">(empty)</span>';
+    } else {
+      st.out.forEach(iv => {
+        const pill = document.createElement('span'); pill.className='iv-pill finalised'; pill.textContent=`[${iv[0]},${iv[1]}]`;
+        outDiv.appendChild(pill);
+      });
+    }
+    // formula
+    const phaseLabel = ({sort:'sort', init:'init', extend:'sweep', finalise:'sweep', flush:'flush', done:'done'})[st.phase] || '—';
+    document.getElementById('f-phase').textContent = phaseLabel;
+    document.getElementById('f-i').textContent     = st.i===null ? '—' : st.i;
+    document.getElementById('f-next').textContent  = st.next ? `[${st.next[0]},${st.next[1]}]` : '—';
+    document.getElementById('f-open').textContent  = st.open ? `[${st.open[0]},${st.open[1]}]` : '—';
+    document.getElementById('f-dec').textContent   = st.dec;
+    const feq = st.phase==='done'
+      ? `<span class="eq-hl">out = [${st.out.map(iv=>`[${iv[0]},${iv[1]}]`).join(', ')}]</span>`
+      : st.phase==='extend'
+        ? `next.start ≤ open.end &nbsp;·&nbsp; open.end = max(open.end, next.end) &nbsp;·&nbsp; <span class="decision-badge extend">extend</span>`
+        : st.phase==='finalise'
+          ? `next.start &gt; open.end &nbsp;·&nbsp; out.push(open); open = next &nbsp;·&nbsp; <span class="decision-badge finalise">finalise</span>`
+          : st.phase==='flush'
+            ? `out.push(open) &nbsp;·&nbsp; final flush`
+            : st.phase==='sort'
+              ? `sort intervals by start`
+              : `seed open ← intervals[0]`;
+    document.getElementById('dr-feq').innerHTML = feq;
+    const fp = document.getElementById('dr-formula');
+    fp.className = 'formula-panel' + (st.phase==='extend' || st.phase==='finalise' ? ' is-match' : '');
+    const sp = document.getElementById('dr-step');
+    sp.className = 'step-panel' + (st.phase==='extend' || st.phase==='finalise' ? ' match' : '');
+    document.getElementById('dr-what').textContent = st.what;
+    document.getElementById('dr-why').textContent  = st.why;
+    const rl = document.getElementById('dr-result');
+    if(st.phase==='done'){
+      rl.textContent = '[' + st.out.map(iv=>`[${iv[0]},${iv[1]}]`).join(', ') + ']';
+      rl.style.color='var(--text-success)';
+    } else { rl.textContent = '…'; rl.style.color='var(--text3)'; }
+    document.getElementById('dr-sctr').textContent = `Step ${drCur+1} / ${drSteps.length}`;
+    document.getElementById('dr-bp').disabled = drCur===0;
+    document.getElementById('dr-bn').disabled = drCur===drSteps.length-1;
+  }
+  function drNext(){ if(drCur<drSteps.length-1){ drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev(){ if(drCur>0){ drCur--; drRender(drSteps[drCur]); } }
+  function drReset(){ drStopPlay(); drCur=0; drRender(drSteps[0]); }
+  function drLoadEx(idx){
+    drStopPlay(); drCur=0;
+    [0,1,2].forEach(i=>document.getElementById('dr-ex'+i).classList.toggle('active', i===idx));
+    drSteps = drGen(EXAMPLES[idx]);
+    drRender(drSteps[0]);
+  }
+
+  /* ─── INIT ─── */
+  bfLoadEx(0);
+  cvLoadEx(0);
+  drLoadEx(0);
+</script>
+
+</body>
+</html>

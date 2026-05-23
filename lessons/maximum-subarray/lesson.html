@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maximum Subarray — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC: signed-number cells, current-window highlight, best-window highlight */
+  .ks-row{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end}
+  .ks-cellwrap{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
+  .ks-cell{width:42px;height:42px;border-radius:5px;border:0.5px solid var(--border);background:var(--bg2);font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;justify-content:center;transition:all .2s}
+  .ks-cell.neg{color:var(--text-danger)}
+  .ks-cell.cur{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info);transform:translateY(-2px)}
+  .ks-cell.win{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info)}
+  .ks-cell.best{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success)}
+  .ks-cell.win.best{background:linear-gradient(135deg, var(--bg-success), var(--bg-info));border-color:var(--border-success);color:var(--text-success)}
+  .ks-cell.dim{opacity:.45}
+  .ks-idx{font-family:var(--mono);font-size:9px;color:var(--text3)}
+  .decision-badge{display:inline-block;font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:6px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text2)}
+  .decision-badge.extend{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info)}
+  .decision-badge.restart{background:var(--bg-warn);border-color:var(--border-warn);color:var(--text-warn)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Maximum Subarray</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/maximum-subarray/" target="_blank">LC #53</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Arrays</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Each answer narrows the design space. The "all negatives" question alone rules out a whole family of wrong solutions.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <p class="acard-q">Can the array contain only negative numbers?</p>
+      <p class="acard-a">Yes — the array has ≥ 1 element but every element may be negative.</p>
+      <span class="acard-u">→ rules out "track running sum, return 0 if it never goes positive". Answer for <code>[-3,-1,-4,-2]</code> is <code>-1</code>, not <code>0</code> — we accept the least bad single element.</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Must the subarray be contiguous?</p>
+      <p class="acard-a">Yes — that's the defining constraint.</p>
+      <span class="acard-u">→ no subset-sum machinery; we only consider windows defined by <code>(start, end)</code> pairs.</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Do we return the sum, or the subarray itself?</p>
+      <p class="acard-a">Just the sum (the integer).</p>
+      <span class="acard-u">→ no need to track start/end indices. Two integers — <code>cur</code> and <code>best</code> — are enough.</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Are we guaranteed at least one element?</p>
+      <p class="acard-a">Yes; the constraint is <code>n ≥ 1</code>.</p>
+      <span class="acard-u">→ initialise <code>cur = best = nums[0]</code> and start the loop at <code>i = 1</code>. No empty-array branch needed.</span>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Non-empty integer array; negatives allowed; return a single integer (the sum). Initialise both running variables to <code>nums[0]</code> so an all-negative input still returns the maximum element.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Best subarray ending at i: extend the previous one, or restart at i.</p>
+
+  <p class="body">Watch the running sum walk the array. Where it stays positive, extending pays. Where it would go negative, dragging it forward only hurts — better to drop everything and restart at the current element. The optimal subarray ending at each position is one of these two choices; the global answer is the highest peak the running sum ever reaches.</p>
+
+  <!-- Foundational visual: animated 9-step walkthrough of Kadane's on nums = [-2,1,-3,4,-1,2,1,-5,4].
+       Visual layers (PLAN-017 convention): current window (info-blue), best window so far (success-green),
+       restart point (↻ marker between cells). Reader controls below. -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <!-- Legend for the three visual layers -->
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);border:0.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>current run</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-success);border:0.5px solid var(--border-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>best window so far</span>
+      <span><span style="color:var(--text-warn);font-weight:700;font-size:14px;vertical-align:middle">↻</span> restart point</span>
+    </div>
+
+    <!-- Row 1: nums array — current cell highlighted, run window + best window shown, ↻ at restart points -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:.75rem">
+      <div style="width:80px;font-family:var(--mono);font-size:10px;color:var(--text3);text-align:right">nums</div>
+      <div id="si-strip" class="ks-row" style="gap:4px"></div>
+    </div>
+
+    <!-- Row 2: calculation breakdown (cur(i-1), nums[i], extend, restart, chosen cur) -->
+    <div style="background:var(--bg);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:13px;line-height:1.9;color:var(--text2);min-height:80px">
+      <div id="si-calc-init" style="display:none;color:var(--text3)">Step 0 (init): cur = best = nums[0] = <span id="si-init-val">—</span></div>
+      <div id="si-calc-step" style="display:none">
+        <div>cur(i−1) = <span id="si-curprev" style="color:var(--text);font-weight:600">—</span> &nbsp;·&nbsp; nums[i] = <span id="si-numsi" style="color:var(--text);font-weight:600">—</span></div>
+        <div>extend = cur(i−1) + nums[i] = <span id="si-extend-val" style="color:var(--text-info);font-weight:600">—</span> &nbsp;·&nbsp; restart = nums[i] = <span id="si-restart-val" style="color:var(--text-warn);font-weight:600">—</span></div>
+        <div>cur = max(extend, restart) = <span id="si-cur-val" style="color:var(--text);font-weight:700">—</span> &nbsp;<span id="si-decision-badge" class="decision-badge">—</span></div>
+      </div>
+    </div>
+
+    <!-- Row 3: cur and best — large state display with ★ on new best -->
+    <div style="display:flex;gap:1.5rem;align-items:center;padding:.625rem .875rem;background:var(--bg);border-radius:var(--r);font-family:var(--mono);font-size:14px;margin:.5rem 0">
+      <div>cur = <span id="si-cur-big" style="font-weight:700;color:var(--text-info);font-size:18px">—</span></div>
+      <div>best = <span id="si-best-big" style="font-weight:700;color:var(--text-success);font-size:18px">—</span> <span id="si-best-star" style="color:var(--text-success);font-size:14px;margin-left:.25rem"></span></div>
+    </div>
+
+    <!-- Caption -->
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <!-- Controls -->
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d" style="font-family:var(--mono);font-size:13px;line-height:2">
+      cur(i) = max(nums[i], cur(i−1) + nums[i])<br>
+      best&nbsp;&nbsp; = max(best, cur(i))<br>
+      <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:var(--text3)">The recurrence depends only on cur(i−1), so two integers carry the entire state forward.</span>
+    </p>
+  </div>
+</div>
+
+<script>
+  // §1 animation — Kadane's walkthrough on nums = [-2,1,-3,4,-1,2,1,-5,4]
+  const SI_NUMS = [-2, 1, -3, 4, -1, 2, 1, -5, 4];
+  let siSteps = siGenSteps(SI_NUMS);
+  let siCur = 0;
+  let siTimer = null;
+
+  function siGenSteps(nums) {
+    const steps = [];
+    let cur = nums[0], best = nums[0];
+    let runStart = 0;
+    let bestStart = 0, bestEnd = 0;   // window that produced `best`
+    const restartAt = new Set();      // indices where a restart occurred
+    steps.push({
+      i: 0, runStart: 0, isInit: true,
+      numsI: nums[0], cur, best, newBest: true,
+      bestStart, bestEnd, restartAt: new Set(restartAt),
+      caption: `Start: cur and best both initialised to nums[0] = ${nums[0]}. The current run and the best run so far are both the single cell at index 0.`,
+    });
+    for (let i = 1; i < nums.length; i++) {
+      const curPrev = cur;
+      const extend = curPrev + nums[i];
+      const restart = nums[i];
+      const action = restart > extend ? 'restart' : 'extend';
+      if (action === 'restart') {
+        runStart = i;
+        restartAt.add(i);
+      }
+      cur = Math.max(extend, restart);
+      const newBest = cur > best;
+      if (newBest) {
+        best = cur;
+        bestStart = runStart;
+        bestEnd = i;
+      }
+      const caption = action === 'restart'
+        ? `cur(${i - 1}) = ${curPrev} was hurting. Extending gives ${extend}; starting fresh at nums[${i}] = ${nums[i]} gives ${restart}. Restart wins (↻ marker); the run resets to [${i}].`
+        : `cur(${i - 1}) = ${curPrev} was helping. Extending gives ${extend}; restart would only get ${restart}. Extend wins; the run grows to [${runStart}..${i}]${newBest ? '. New peak — best window updates to [' + bestStart + '..' + bestEnd + '].' : '.'}`;
+      steps.push({
+        i, runStart, isInit: false,
+        numsI: nums[i], curPrev, extend, restart, cur, action, best, newBest,
+        bestStart, bestEnd, restartAt: new Set(restartAt),
+        caption,
+      });
+    }
+    return steps;
+  }
+
+  function siRender(st) {
+    // Row 1: nums cells — current window (info-blue), best window (success-green), restart marker (↻)
+    const strip = document.getElementById('si-strip');
+    strip.innerHTML = '';
+    SI_NUMS.forEach((v, idx) => {
+      // Restart marker before this cell, if applicable
+      if (st.restartAt.has(idx)) {
+        const mark = document.createElement('div');
+        mark.style.cssText = 'display:flex;align-items:center;font-size:18px;color:var(--text-warn);margin:0 -2px;font-weight:700';
+        mark.textContent = '↻';
+        mark.title = 'restart point — prior run was dropped here';
+        strip.appendChild(mark);
+      }
+      const wrap = document.createElement('div');
+      wrap.className = 'ks-cellwrap';
+      const cell = document.createElement('div');
+      cell.className = 'ks-cell' + (v < 0 ? ' neg' : '');
+
+      const inBestWin = (idx >= st.bestStart && idx <= st.bestEnd);
+      const inCurWin = (idx >= st.runStart && idx <= st.i);
+
+      if (inCurWin && inBestWin) {
+        // Both — gradient highlight (current dominates with strong border, best provides green tint)
+        cell.style.background = 'linear-gradient(135deg, var(--bg-info), var(--bg-success))';
+        cell.style.borderColor = 'var(--border-info)';
+        cell.style.color = 'var(--text)';
+        cell.style.fontWeight = '700';
+      } else if (inCurWin) {
+        cell.classList.add('win');
+        if (idx === st.i) cell.classList.add('cur');
+      } else if (inBestWin) {
+        cell.classList.add('best');
+      } else {
+        cell.classList.add('dim');
+      }
+      cell.textContent = v;
+      const lbl = document.createElement('div');
+      lbl.className = 'ks-idx';
+      let lblText = String(idx);
+      if (idx === st.i) lblText = `${idx} ← i`;
+      lbl.textContent = lblText;
+      if (idx === st.i) lbl.style.color = 'var(--text-info)';
+      wrap.appendChild(cell);
+      wrap.appendChild(lbl);
+      strip.appendChild(wrap);
+    });
+
+    // Row 2: calculation panel
+    const initPanel = document.getElementById('si-calc-init');
+    const stepPanel = document.getElementById('si-calc-step');
+    if (st.isInit) {
+      initPanel.style.display = 'block';
+      stepPanel.style.display = 'none';
+      document.getElementById('si-init-val').textContent = st.numsI;
+    } else {
+      initPanel.style.display = 'none';
+      stepPanel.style.display = 'block';
+      document.getElementById('si-curprev').textContent = st.curPrev;
+      document.getElementById('si-numsi').textContent = st.numsI;
+      document.getElementById('si-extend-val').textContent = st.extend;
+      document.getElementById('si-restart-val').textContent = st.restart;
+      document.getElementById('si-cur-val').textContent = st.cur;
+      const badge = document.getElementById('si-decision-badge');
+      badge.textContent = st.action;
+      badge.className = 'decision-badge ' + st.action;
+    }
+
+    // Row 3: cur and best
+    document.getElementById('si-cur-big').textContent = st.cur;
+    document.getElementById('si-best-big').textContent = st.best;
+    document.getElementById('si-best-star').textContent = st.newBest ? '★ new peak' : '';
+
+    // Caption
+    document.getElementById('si-caption').textContent = st.caption;
+
+    // Step counter
+    const ctr = document.getElementById('si-sctr');
+    if (ctr) ctr.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() {
+    clearInterval(siTimer); siTimer = null;
+    const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto';
+  }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur < siSteps.length - 1) siNext(); else siStopPlay();
+    }, 1400);
+  }
+
+  siRender(siSteps[0]);
+</script>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — sum every (start, end) window</p>
+  <p class="body">For every starting index <code>i</code>, walk forward summing into <code>s</code>, and at every position <code>j</code> compare <code>s</code> against the running best. n starts × up to n ends per start = O(n²) work.</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">[-2,1,-3,4,-1,2,1,-5,4]</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">[1,-2,3,-1,2]</button>
+  </div>
+  <div id="bf-strip" class="ks-row" style="margin-bottom:.5rem"></div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    start <span id="bf-i" style="font-weight:600;color:var(--text-info)">—</span> &nbsp;·&nbsp;
+    end <span id="bf-j" style="font-weight:600;color:var(--text-info)">—</span> &nbsp;·&nbsp;
+    window sum = <span id="bf-s" style="font-weight:600;color:var(--text)">—</span> &nbsp;·&nbsp;
+    best = <span id="bf-best" style="font-weight:600;color:var(--text-success)">—</span> &nbsp;·&nbsp;
+    additions: <span id="bf-ops" style="font-weight:600;color:var(--text-danger)">0</span>
+  </div>
+  <div class="ctrl-row" style="margin-top:.625rem">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n²) time</p>
+    <p class="infobox-d">Every start re-sums prefixes the previous start already saw. Kadane's collapses this nested loop into a single pass by reusing one running sum.</p>
+  </div>
+
+  <button class="reveal-btn" onclick="toggleEl('code-bf', this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+<pre class="cb"><span class="kw">int</span> <span class="fn">maxSubArray_BF</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>(), best = nums[<span class="nu">0</span>];
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        <span class="kw">int</span> s = <span class="nu">0</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> j = i; j &lt; n; j++) {
+            s += nums[j];                    <span class="cm">// O(1) per (i,j) pair</span>
+            best = <span class="fn">max</span>(best, s);
+        }
+    }
+    <span class="kw">return</span> best;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Four translations to O(n) time, O(1) extra space</p>
+  <p class="body">The brute force re-explores every window from scratch. These four named translations turn the search into a single linear scan.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 1 — Search end-positions, not (start, end) pairs</p>
+        <p class="wt-desc">"Maximum sum over all windows" = "max over all <code>i</code> of (best window <em>ending at</em> <code>i</code>)". Reduces a 2D <code>(start, end)</code> search to a 1D pass over end positions.</p>
+        <p class="wt-gain">→ identifies the right per-index quantity to track: <code>cur(i)</code>, the best subarray ending at <code>i</code>.</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 2 — The DP recurrence</p>
+        <p class="wt-desc"><code>cur(i)</code> is built from <code>cur(i−1)</code> by exactly one decision: extend the previous subarray with <code>nums[i]</code>, or start a new subarray at <code>nums[i]</code>. Whichever is larger.</p>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:12px;line-height:2;color:var(--text2)">
+          cur(i) = max( <span style="color:var(--text-warn)">nums[i]</span>, &nbsp; cur(i−1) + <span style="color:var(--text-warn)">nums[i]</span> )
+        </div>
+        <p class="wt-gain">→ each step is O(1). All windows ending at <code>i</code> collapse into one number.</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 3 — Restart ⇔ drop a negative prefix</p>
+        <p class="wt-desc">Equivalent rewrite: <code>cur(i) = nums[i] + max(0, cur(i−1))</code>. If the running sum is negative, throw it away — the new subarray is just <code>nums[i]</code> on its own. This is the rule of thumb behind "extend vs. restart".</p>
+        <p class="wt-gain">→ explains <em>why</em> the DP works: a negative prefix can only hurt every future window that contains it.</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">4</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 4 — Collapse the DP array to one variable</p>
+        <p class="wt-desc"><code>cur(i)</code> only depends on <code>cur(i−1)</code>, so we don't need an array — one integer <code>cur</code> overwritten each step. A second integer <code>best</code> tracks the running maximum of <code>cur</code>.</p>
+        <p class="wt-gain">→ space: O(n) DP array → O(1). Two integers replace the whole table.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t"><b>Initialise</b> <code>cur = nums[0]</code>, <code>best = nums[0]</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t"><b>For each <code>i</code> from 1 to n−1:</b></span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t"><b>Decide</b> — <code>cur = max(nums[i], cur + nums[i])</code>. Equivalent to: extend if <code>cur ≥ 0</code>, otherwise restart at <code>nums[i]</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t"><b>Record</b> — <code>best = max(best, cur)</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t"><b>Return</b> <code>best</code>.</span></div>
+  </div>
+  <div class="infobox info" style="margin-top:.875rem">
+    <p class="infobox-t">Why initialise to <code>nums[0]</code>, not 0</p>
+    <p class="infobox-d">If we initialise <code>best = 0</code>, an all-negative input like <code>[-3,-1,-4]</code> wrongly returns <code>0</code> (an empty subarray, which the problem disallows). Starting at <code>nums[0]</code> ensures we always return a real element's contribution.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Canonical C++ solution</p>
+  <p class="body">Try to reproduce this from the five steps before revealing.</p>
+  <button class="reveal-btn" id="reveal-btn" onclick="toggleEl('code-main', document.getElementById('reveal-btn'))">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+<pre class="cb"><span class="kw">int</span> <span class="fn">maxSubArray</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> cur = nums[<span class="nu">0</span>];
+    <span class="kw">int</span> best = nums[<span class="nu">0</span>];
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">1</span>; i &lt; (<span class="kw">int</span>)nums.<span class="fn">size</span>(); i++) {
+        cur = <span class="fn">max</span>(nums[i], cur + nums[i]);   <span class="cm">// extend or restart</span>
+        best = <span class="fn">max</span>(best, cur);                <span class="cm">// record</span>
+    }
+    <span class="kw">return</span> best;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">Ex 1: [-2,1,-3,4,-1,2,1,-5,4]</button>
+    <button class="ex-btn" id="cv-ex1" onclick="cvLoadEx(1)">Ex 2: [5,-3,2,4,-7,3,2,1,-2,6,-3]</button>
+    <button class="ex-btn" id="cv-ex2" onclick="cvLoadEx(2)">Ex 3: [-3,-1,-4,-2] (all neg)</button>
+  </div>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px">nums[] — blue: current window, green: best window</p>
+        <div id="cv-strip" class="ks-row"></div>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:5px">Variables</p>
+        <div class="cv-var-grid">
+          <div class="cv-var-card dim" id="cvv-i"><p class="cv-var-name">i</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-num"><p class="cv-var-name">nums[i]</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-cur"><p class="cv-var-name">cur</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-best"><p class="cv-var-name">best</p><p class="cv-var-val">—</p></div>
+        </div>
+      </div>
+      <div class="cv-narration" id="cv-narration">Select an example to begin.</div>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="cv-bp" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="cv-bn" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn" onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Interactive dry run</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1: [-2,1,-3,4,-1,2,1,-5,4]</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">Ex 2: [5,-3,2,4,-7,3,2,1,-2,6,-3]</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">Ex 3: [-3,-1,-4,-2] (all neg)</button>
+  </div>
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:var(--bg-info);border:0.5px solid var(--border-info)"></div><span class="leg-label">current window</span></div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--bg-success);border:0.5px solid var(--border-success)"></div><span class="leg-label">best window so far</span></div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--bg-warn);border:0.5px solid var(--border-warn)"></div><span class="leg-label">restart point</span></div>
+  </div>
+  <div id="dr-strip" class="ks-row" style="margin:.5rem 0 .75rem"></div>
+  <div class="panels-fixed">
+    <div class="formula-panel" id="dr-formula">
+      <div class="formula-grid">
+        <div><p class="fitem-label">i</p><p class="fitem-val" id="f-i">—</p><p class="fitem-sub">index</p></div>
+        <div><p class="fitem-label">nums[i]</p><p class="fitem-val" id="f-num">—</p><p class="fitem-sub">value</p></div>
+        <div><p class="fitem-label" style="color:var(--text-info)">cur</p><p class="fitem-val" id="f-cur">—</p><p class="fitem-sub">best ending here</p></div>
+        <div><p class="fitem-label" style="color:var(--text-success)">best</p><p class="fitem-val" id="f-best">—</p><p class="fitem-sub">global best</p></div>
+        <div><p class="fitem-label">decision</p><p class="fitem-val" id="f-dec">—</p><p class="fitem-sub">extend / restart</p></div>
+      </div>
+      <div class="formula-eq" id="dr-feq">Select an example to begin.</div>
+    </div>
+    <div class="step-panel" id="dr-step">
+      <p class="step-what" id="dr-what">—</p>
+      <p class="step-why" id="dr-why">Use the controls below to step through.</p>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+  <div style="margin-top:.875rem">
+    <p style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-bottom:4px">Maximum subarray sum</p>
+    <p id="dr-result" style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--text)">—</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner"><div class="cnum">1</div><div>
+    <p class="corner-title">Single element — <code>[7]</code> or <code>[-7]</code></p>
+    <p class="corner-body">Loop body never runs. Returns the initial <code>best = nums[0]</code>. Works for both positive and negative singletons.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">2</div><div>
+    <p class="corner-title">All negatives — <code>[-3, -1, -4, -2]</code> → <code>-1</code></p>
+    <p class="corner-body">Every step restarts (extending only worsens the sum). The answer is the largest single element. This is exactly why <code>cur</code> and <code>best</code> initialise to <code>nums[0]</code>, not <code>0</code> — initialising to <code>0</code> would wrongly return the sum of an empty subarray.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">3</div><div>
+    <p class="corner-title">All positives — <code>[1, 2, 3]</code> → <code>6</code></p>
+    <p class="corner-body">Every step extends; no restart ever fires. <code>cur</code> and <code>best</code> climb in lockstep to the total.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">4</div><div>
+    <p class="corner-title">Lone positive between negatives — <code>[-5, 3, -5]</code> → <code>3</code></p>
+    <p class="corner-body">i=1 restarts at <code>3</code> (cur=−5+3=−2 &lt; 3); best becomes 3. i=2 extends to <code>−2</code>; best stays 3.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">5</div><div>
+    <p class="corner-title">Zero in the mix — <code>[0, -1, 2]</code> → <code>2</code></p>
+    <p class="corner-body">A zero "extends" without changing <code>cur</code>. The two branches of the <code>max</code> tie, so behaviour is well-defined regardless of which arm wins.</p>
+  </div></div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>All-negative input handled:</b> <code>cur</code> and <code>best</code> initialise to <code>nums[0]</code>, so we never spuriously return <code>0</code>.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Single-element input handled:</b> the loop runs zero iterations; <code>best = nums[0]</code> is returned directly.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Order of updates:</b> compute <code>cur</code> first, then update <code>best</code> from it. Reversing the order would miss the case where the new <code>cur</code> is itself the new global maximum.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Integer overflow:</b> per LC constraints (n ≤ 10⁵, |nums[i]| ≤ 10⁴), max possible sum ≈ 10⁹ — fits in <code>int</code>. Use <code>long long</code> if constraints loosen.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>One pass, O(1) extra space:</b> two integer locals, no auxiliary array.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Kadane's (optimal)</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Divide &amp; conquer</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Brute force</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body" style="margin-top:.5rem">Single pass, two integers. The DP recurrence collapses to one variable because <code>cur(i)</code> only depends on <code>cur(i−1)</code>. The algorithm above.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">Time O(n log n)</span><span class="tag tag-space">Space O(log n)</span>
+    <p class="body" style="margin-top:.5rem">Split the array at the midpoint. The maximum subarray is either entirely in the left half, entirely in the right half, or spans the midpoint. The cross-midpoint case requires an O(n) scan outward from the centre. T(n) = 2T(n/2) + O(n) → O(n log n). Strictly worse than Kadane's, but a reasonable interview alternative.</p>
+<pre class="cb" style="margin-top:.75rem"><span class="kw">int</span> <span class="fn">solve</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; a, <span class="kw">int</span> l, <span class="kw">int</span> r) {
+    <span class="kw">if</span> (l == r) <span class="kw">return</span> a[l];
+    <span class="kw">int</span> m = (l + r) / <span class="nu">2</span>;
+    <span class="kw">int</span> bl = <span class="fn">solve</span>(a, l, m), br = <span class="fn">solve</span>(a, m+<span class="nu">1</span>, r);
+    <span class="kw">int</span> sl = INT_MIN, s = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = m;   i &gt;= l; i--) { s += a[i]; sl = <span class="fn">max</span>(sl, s); }
+    <span class="kw">int</span> sr = INT_MIN; s = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = m+<span class="nu">1</span>; i &lt;= r; i++) { s += a[i]; sr = <span class="fn">max</span>(sr, s); }
+    <span class="kw">return</span> <span class="fn">max</span>({bl, br, sl + sr});
+}</pre>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">Time O(n²)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body" style="margin-top:.5rem">Iterate every <code>(start, end)</code> pair, maintaining a running sum across the inner loop. Correct but TLEs for large n. Useful only as the derivation anchor for the translations above.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard" style="border-color:var(--border-danger)"><p class="ccard-l">Brute force</p><p class="ccard-v">O(n²) / O(1)</p><p class="ccard-n">Every (start, end) pair, with a running inner sum.</p></div>
+    <div class="ccard" style="border-color:var(--border-warn)"><p class="ccard-l">Divide &amp; conquer</p><p class="ccard-v">O(n log n) / O(log n)</p><p class="ccard-n">T(n) = 2T(n/2) + O(n) for the cross-midpoint scan.</p></div>
+    <div class="ccard" style="border-color:var(--border-success)"><p class="ccard-l">Kadane's ✓</p><p class="ccard-v">O(n) / O(1)</p><p class="ccard-n">One pass; two integer locals; recurrence collapses the DP table.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p class="body">The <strong>"best ending here" reframing</strong>: when a search asks for the optimum over all contiguous windows, ask instead for the optimum window <em>ending at every i</em>. That per-index quantity often satisfies a one-step recurrence and collapses the search to a single pass.</p>
+    <p class="body">In an interview: brute force first (O(n²)), then state the recurrence <code>cur(i) = max(nums[i], cur(i−1) + nums[i])</code>, then point out the recurrence only references <code>cur(i−1)</code> so the DP array reduces to one variable.</p>
+    <p class="body">Related: <strong>LC 152 Maximum Product Subarray</strong> — same shape, but signs flip on negatives so we must track running min <em>and</em> max simultaneously. <strong>LC 918 Maximum Sum Circular Subarray</strong> — extends Kadane's: answer is either a normal max-subarray or <code>total − min-subarray</code>. <strong>LC 121 Best Time to Buy and Sell Stock</strong> — same single-pass running variable, but the recurrence is <code>best = max(best, prices[i] − min_so_far)</code>. <strong>LC 1567 Maximum Length of Subarray With Positive Product</strong> — track running positive/negative run lengths instead of a sum.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  /* ─── DATA ─── */
+  const EXAMPLES    = [[-2,1,-3,4,-1,2,1,-5,4], [5,-3,2,4,-7,3,2,1,-2,6,-3], [-3,-1,-4,-2]];
+  const BF_EXAMPLES = [[-2,1,-3,4,-1,2,1,-5,4], [1,-2,3,-1,2]];
+
+  /* ─── BRUTE FORCE ─── */
+  let bfSteps=[], bfCur=0, bfTimer=null;
+  function bfGen(nums){
+    const out=[], n=nums.length;
+    let ops=0, best=nums[0];
+    out.push({nums, n, i:-1, j:-1, s:null, best, ops:0, msg:'For each starting index i, walk j forward summing the window. Track the global best.'});
+    for(let i=0;i<n;i++){
+      let s=0;
+      out.push({nums, n, i, j:-1, s:0, best, ops, msg:`i=${i}: start a fresh window from index ${i}, s=0.`});
+      for(let j=i;j<n;j++){
+        ops++;
+        s += nums[j];
+        if(s > best) best = s;
+        out.push({nums, n, i, j, s, best, ops, msg:`(i=${i}, j=${j}): s += nums[${j}](${nums[j]}) = ${s}; best=${best}.`});
+      }
+    }
+    out.push({nums, n, i:-1, j:-1, s:null, best, ops, msg:`Done. Maximum subarray sum = ${best}. Additions: ${ops}.`});
+    return out;
+  }
+  function ksRenderRow(elId, nums, opts){
+    const con = document.getElementById(elId); con.innerHTML='';
+    nums.forEach((v,i)=>{
+      const w = document.createElement('div'); w.className='ks-cellwrap';
+      const c = document.createElement('div'); c.className='ks-cell';
+      if(v < 0) c.classList.add('neg');
+      if(opts && opts.win && opts.win.includes(i)) c.classList.add('win');
+      if(opts && opts.best && opts.best.includes(i)) c.classList.add('best');
+      if(opts && opts.cur === i) c.classList.add('cur');
+      c.textContent = v;
+      const idx = document.createElement('div'); idx.className='ks-idx'; idx.textContent=i;
+      w.appendChild(c); w.appendChild(idx); con.appendChild(w);
+    });
+  }
+  function bfRender(st){
+    const win = (st.i>=0 && st.j>=st.i) ? Array.from({length: st.j - st.i + 1}, (_, k) => st.i + k) : [];
+    ksRenderRow('bf-strip', st.nums, {win, cur: st.j>=0 ? st.j : st.i});
+    document.getElementById('bf-i').textContent  = st.i>=0 ? st.i : '—';
+    document.getElementById('bf-j').textContent  = st.j>=0 ? st.j : '—';
+    document.getElementById('bf-s').textContent  = st.s===null ? '—' : st.s;
+    document.getElementById('bf-best').textContent = st.best;
+    document.getElementById('bf-ops').textContent= st.ops;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur+1} / ${bfSteps.length}`;
+    document.getElementById('bf-prev').disabled = bfCur===0;
+    document.getElementById('bf-next').disabled = bfCur===bfSteps.length-1;
+  }
+  function bfNext(){ if(bfCur<bfSteps.length-1){ bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev(){ if(bfCur>0){ bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset(){ bfStopPlay(); bfCur=0; bfRender(bfSteps[0]); }
+  function bfLoadEx(idx){
+    bfStopPlay(); bfCur=0;
+    [0,1].forEach(i=>document.getElementById('bf-ex'+i).classList.toggle('active', i===idx));
+    bfSteps = bfGen(BF_EXAMPLES[idx]);
+    bfRender(bfSteps[0]);
+  }
+
+  /* ─── CODE VISUALIZATION ─── */
+  const CV_LINES=[
+    {n:1, c:'int maxSubArray(vector<int>& nums) {'},
+    {n:2, c:'    int cur  = nums[0];'},
+    {n:3, c:'    int best = nums[0];'},
+    {n:4, c:'    for (int i = 1; i < (int)nums.size(); i++) {'},
+    {n:5, c:'        cur  = max(nums[i], cur + nums[i]);'},
+    {n:6, c:'        best = max(best, cur);'},
+    {n:7, c:'    }'},
+    {n:8, c:'    return best;'},
+    {n:9, c:'}'},
+  ];
+  let cvSteps=[], cvCur=0, cvTimer=null;
+  function cvGen(nums){
+    const steps=[], n=nums.length;
+    let cur, best, curStart=0, bestStart=0, bestEnd=0;
+    const snap=(line, narr, phase, changed, vars)=>steps.push({
+      line, narr, phase, changed: changed||[],
+      i: vars.i, num: vars.num, cur: vars.cur, best: vars.best,
+      curStart: vars.curStart, curEnd: vars.curEnd,
+      bestStart: vars.bestStart, bestEnd: vars.bestEnd,
+      nums, n,
+    });
+    snap(1, 'Enter maxSubArray.', 'init', [], {i:null,num:null,cur:null,best:null,curStart:-1,curEnd:-1,bestStart:-1,bestEnd:-1});
+    cur = nums[0];
+    snap(2, `cur  = nums[0] = ${cur}.`, 'active', ['cur'], {i:0,num:nums[0],cur,best:null,curStart:0,curEnd:0,bestStart:-1,bestEnd:-1});
+    best = nums[0];
+    snap(3, `best = nums[0] = ${best}.`, 'active', ['best'], {i:0,num:nums[0],cur,best,curStart:0,curEnd:0,bestStart:0,bestEnd:0});
+    bestStart = 0; bestEnd = 0;
+    for(let i=1;i<n;i++){
+      snap(4, `Loop: i = ${i}.`, 'active', ['i'], {i,num:nums[i],cur,best,curStart,curEnd:i-1,bestStart,bestEnd});
+      const extend = cur + nums[i];
+      const decision = extend >= nums[i] ? 'extend' : 'restart';
+      const newCur = Math.max(nums[i], extend);
+      const phaseDec = decision === 'restart' ? 'restart' : 'extend';
+      if(decision === 'restart') curStart = i;
+      const curEnd = i;
+      snap(5, `cur = max(nums[${i}]=${nums[i]}, cur+nums[${i}]=${extend}) = ${newCur} → ${decision}.`, phaseDec, ['cur','num'], {i,num:nums[i],cur:newCur,best,curStart,curEnd,bestStart,bestEnd});
+      cur = newCur;
+      const newBest = Math.max(best, cur);
+      if(newBest > best){ bestStart = curStart; bestEnd = curEnd; }
+      snap(6, newBest > best ? `best = max(${best}, ${cur}) = ${cur}. New best window!` : `best = max(${best}, ${cur}) = ${best}.`, newBest > best ? 'newbest' : 'active', ['best'], {i,num:nums[i],cur,best:newBest,curStart,curEnd,bestStart,bestEnd});
+      best = newBest;
+    }
+    snap(8, `Return best = ${best}.`, 'done', [], {i:null,num:null,cur,best,curStart,curEnd:n-1,bestStart,bestEnd});
+    return steps;
+  }
+  function rangeOf(s, e){ if(s<0||e<0||s>e) return []; return Array.from({length: e-s+1}, (_,k)=>s+k); }
+  function cvRender(st){
+    document.querySelectorAll('.cv-line').forEach(el=>el.classList.remove('active','active-match'));
+    const al = document.getElementById('cvL'+st.line);
+    if(al){
+      al.classList.add(st.phase==='extend' || st.phase==='restart' || st.phase==='newbest' ? 'active-match' : 'active');
+      if(visPx(document.querySelector('.cv-section'))>0) al.scrollIntoView({block:'nearest', behavior:'smooth'});
+    }
+    const win  = rangeOf(st.curStart, st.curEnd);
+    const best = rangeOf(st.bestStart, st.bestEnd);
+    ksRenderRow('cv-strip', st.nums, {win, best, cur: st.i});
+    const VARS=['i','num','cur','best'];
+    VARS.forEach(id=>{
+      const card=document.getElementById('cvv-'+id); if(!card) return;
+      card.classList.remove('hl','hl-match','dim');
+      let val;
+      if(id==='i')        val = st.i===null    ? '—' : st.i;
+      else if(id==='num') val = st.num===null  ? '—' : st.num;
+      else if(id==='cur') val = st.cur===null  ? '—' : st.cur;
+      else if(id==='best')val = st.best===null ? '—' : st.best;
+      card.querySelector('.cv-var-val').textContent = val;
+      if(st.changed.includes(id)) card.classList.add(st.phase==='restart' || st.phase==='extend' || st.phase==='newbest' ? 'hl-match' : 'hl');
+      if(val==='—') card.classList.add('dim');
+    });
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase==='extend' || st.phase==='restart' || st.phase==='newbest' ? ' is-match' : st.phase!=='done' ? ' is-active' : '');
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur+1} / ${cvSteps.length}`;
+    document.getElementById('cv-bp').disabled = cvCur===0;
+    document.getElementById('cv-bn').disabled = cvCur===cvSteps.length-1;
+  }
+  function cvNext(){ if(cvCur<cvSteps.length-1){ cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev(){ if(cvCur>0){ cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset(){ cvStopPlay(); cvCur=0; cvRender(cvSteps[0]); }
+  function cvLoadEx(idx){
+    cvStopPlay(); cvCur=0;
+    [0,1,2].forEach(i=>document.getElementById('cv-ex'+i).classList.toggle('active', i===idx));
+    cvSteps = cvGen(EXAMPLES[idx]);
+    cvBuildCode(CV_LINES);
+    cvRender(cvSteps[0]);
+  }
+
+  /* ─── DRY RUN ─── */
+  let drSteps=[], drCur=0, drTimer=null;
+  function drGen(nums){
+    const steps=[], n=nums.length;
+    let cur = nums[0], best = nums[0];
+    let curStart = 0, curEnd = 0, bestStart = 0, bestEnd = 0;
+    const snap=(what, why, phase, vars)=>steps.push({
+      nums, n,
+      i: vars.i, num: vars.num, cur: vars.cur, best: vars.best, dec: vars.dec,
+      curStart: vars.curStart, curEnd: vars.curEnd,
+      bestStart: vars.bestStart, bestEnd: vars.bestEnd,
+      what, why, phase,
+    });
+    snap(`Init: cur = best = nums[0] = ${nums[0]}.`,
+         `Both running variables start at the first element. This makes all-negative inputs return the largest single element rather than 0.`,
+         'init',
+         {i:0,num:nums[0],cur,best,dec:'init',curStart,curEnd,bestStart,bestEnd});
+    for(let i=1;i<n;i++){
+      const extend = cur + nums[i];
+      const decision = extend >= nums[i] ? 'extend' : 'restart';
+      const newCur = Math.max(nums[i], extend);
+      if(decision === 'restart') curStart = i;
+      curEnd = i;
+      const newBest = Math.max(best, newCur);
+      const isNewBest = newBest > best;
+      if(isNewBest){ bestStart = curStart; bestEnd = curEnd; }
+      const why = decision === 'restart'
+        ? `cur+nums[i] = ${cur}+${nums[i]} = ${extend} < nums[i] = ${nums[i]}. Drop the negative running prefix; restart at index ${i} with cur = ${nums[i]}.`
+        : `cur+nums[i] = ${cur}+${nums[i]} = ${extend} ≥ nums[i] = ${nums[i]}. Extend the current window; cur = ${extend}.`;
+      const what = `i=${i}: ${decision} → cur=${newCur}` + (isNewBest ? `, new best=${newBest}` : `, best stays ${newBest}`);
+      snap(what, why, isNewBest ? 'newbest' : decision,
+        {i, num:nums[i], cur:newCur, best:newBest, dec: decision,
+         curStart, curEnd, bestStart, bestEnd});
+      cur = newCur; best = newBest;
+    }
+    snap(`Done. Maximum subarray sum = ${best}.`,
+         `Best subarray spans indices [${bestStart}..${bestEnd}] with sum ${best}.`,
+         'done',
+         {i:null,num:null,cur,best,dec:'—',curStart,curEnd,bestStart,bestEnd});
+    return steps;
+  }
+  function drRender(st){
+    const win  = rangeOf(st.curStart, st.curEnd);
+    const best = rangeOf(st.bestStart, st.bestEnd);
+    ksRenderRow('dr-strip', st.nums, {win, best, cur: st.i});
+    document.getElementById('f-i').textContent    = st.i===null ? '—' : st.i;
+    document.getElementById('f-num').textContent  = st.num===null ? '—' : st.num;
+    document.getElementById('f-cur').textContent  = st.cur;
+    document.getElementById('f-best').textContent = st.best;
+    document.getElementById('f-dec').textContent  = st.dec;
+    const feq = st.phase==='done'
+      ? `<span class="eq-hl">max subarray sum = ${st.best}</span>`
+      : st.phase==='restart'
+        ? `cur = max(nums[${st.i}], cur + nums[${st.i}]) = nums[${st.i}] = <span class="eq-hl">${st.cur}</span> &nbsp;·&nbsp; <span class="decision-badge restart">restart</span>`
+        : st.phase==='extend' || st.phase==='newbest'
+          ? `cur = max(nums[${st.i}], cur + nums[${st.i}]) = <span class="eq-hl">${st.cur}</span> &nbsp;·&nbsp; <span class="decision-badge extend">extend</span>`
+          : `cur = best = nums[0] = ${st.cur}`;
+    document.getElementById('dr-feq').innerHTML = feq;
+    const fp = document.getElementById('dr-formula');
+    fp.className = 'formula-panel' + (st.phase==='extend' || st.phase==='restart' || st.phase==='newbest' ? ' is-match' : '');
+    const sp = document.getElementById('dr-step');
+    sp.className = 'step-panel' + (st.phase==='newbest' ? ' match' : st.phase==='restart' || st.phase==='extend' ? ' match' : '');
+    document.getElementById('dr-what').textContent = st.what;
+    document.getElementById('dr-why').textContent  = st.why;
+    const rl = document.getElementById('dr-result');
+    if(st.phase==='done'){ rl.textContent = st.best; rl.style.color='var(--text-success)'; }
+    else { rl.textContent = '…'; rl.style.color='var(--text3)'; }
+    document.getElementById('dr-sctr').textContent = `Step ${drCur+1} / ${drSteps.length}`;
+    document.getElementById('dr-bp').disabled = drCur===0;
+    document.getElementById('dr-bn').disabled = drCur===drSteps.length-1;
+  }
+  function drNext(){ if(drCur<drSteps.length-1){ drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev(){ if(drCur>0){ drCur--; drRender(drSteps[drCur]); } }
+  function drReset(){ drStopPlay(); drCur=0; drRender(drSteps[0]); }
+  function drLoadEx(idx){
+    drStopPlay(); drCur=0;
+    [0,1,2].forEach(i=>document.getElementById('dr-ex'+i).classList.toggle('active', i===idx));
+    drSteps = drGen(EXAMPLES[idx]);
+    drRender(drSteps[0]);
+  }
+
+  /* ─── INIT ─── */
+  bfLoadEx(0);
+  cvLoadEx(0);
+  drLoadEx(0);
+</script>
+
+</body>
+</html>

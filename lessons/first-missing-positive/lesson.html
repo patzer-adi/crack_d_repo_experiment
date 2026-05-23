@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>First Missing Positive — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  .fmp-arr {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 1rem 0;
+  }
+  .fmp-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .fmp-val {
+    width: 44px;
+    height: 44px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-weight: 600;
+    background: var(--bg);
+    font-size: 13px;
+  }
+  .fmp-val.correct {
+    border-color: var(--border-success);
+    background: var(--bg-success);
+    color: var(--text-success);
+  }
+  .fmp-val.wrong {
+    border-color: var(--border-danger);
+    background: var(--bg-danger);
+    color: var(--text-danger);
+  }
+  .fmp-val.active {
+    border-color: var(--border-info);
+    background: var(--bg-info);
+    color: var(--text-info);
+  }
+  .fmp-val.swap-partner {
+    border-color: var(--border-warn);
+    background: var(--bg-warn);
+    color: var(--text-warn);
+  }
+  .fmp-val.found {
+    outline: 2px solid var(--text-warn);
+    outline-offset: 1px;
+  }
+  .fmp-idx {
+    font-size: 11px;
+    color: var(--text3);
+    font-weight: 500;
+  }
+  .fmp-home {
+    font-size: 10px;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>First Missing Positive</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/first-missing-positive/" target="_blank">LC #41</a>
+    <span class="badge badge-med">Hard</span>
+    <span class="badge badge-arr">Array</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">What is the range of possible answers?</div>
+      <div class="acard-a">The answer is always in [1, n+1]. If all numbers 1 through n are present, the answer is n+1. Otherwise, the answer is the smallest missing positive.</div>
+      <div class="acard-u">→ The answer range bounds the problem; we only need to check n+1 possibilities.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">What if the array has duplicates?</div>
+      <div class="acard-a">Duplicates don't change the set of present positives. We only care about presence, not count.</div>
+      <div class="acard-u">→ We can collapse duplicates into a single "present" marker.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Can we use extra space?</div>
+      <div class="acard-a">A hash set works (O(n) space). But we can do better: use the array itself as the hash table.</div>
+      <div class="acard-u">→ In-place marking trades modification for O(1) space.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">How can the array index encode the value?</div>
+      <div class="acard-a">For a value k in [1, n], place it at index k-1. Then the presence of k is marked by the value at index k-1.</div>
+      <div class="acard-u">→ Array indices [0, n-1] encode values [1, n] directly.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Pigeonhole: with n slots and n+1 possible answers, place each value at its home index.</p>
+
+  <p class="body">The answer is always in <code>[1, n+1]</code>. We have <em>exactly</em> n slots and care about <em>exactly</em> n values (1 through n) — a perfect pigeonhole. Use index <code>k−1</code> as the home for value <code>k</code>. Swap each in-range value to its home, then scan: the first index whose value doesn't match its home is the answer.</p>
+
+  <!-- Foundational visual: animated 7-step swap-to-home walkthrough on [3, 4, -1, 1].
+       Pattern (PLAN-017 adapted): current cell (info-blue), correctly-placed cells (success-green),
+       out-of-range cells (red), swap-pair arrow shows the partner swap target. -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <!-- Legend -->
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:#dbeafe;border:1.5px solid #3b82f6;border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>current i</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#dcfce7;border:1.5px solid #22c55e;border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>at home (nums[i] = i+1)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#fee2e2;border:1.5px solid #ef4444;border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>out of [1, n]</span>
+      <span><span style="color:var(--text-warn);font-weight:700;font-size:13px;vertical-align:middle">↔</span> swap pair</span>
+    </div>
+
+    <!-- The cell strip — array rendered with home-position annotations -->
+    <div id="si-strip" class="fmp-arr" style="margin:.5rem 0"></div>
+
+    <!-- Phase + scan indicator -->
+    <div style="display:flex;gap:1rem;align-items:center;margin:.625rem 0;font-family:var(--mono);font-size:13px;flex-wrap:wrap">
+      <span>phase: <b id="si-phase">—</b></span>
+      <span id="si-result-pill" style="display:none;padding:3px 10px;border-radius:6px;background:var(--bg-success);border:0.5px solid var(--border-success);color:var(--text-success);font-weight:700">answer = <span id="si-result-val">—</span></span>
+    </div>
+
+    <!-- Caption -->
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <!-- Controls -->
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d" style="font-family:var(--mono);font-size:13px;line-height:2">
+      for each i: while nums[i] ∈ [1, n] and nums[nums[i]−1] ≠ nums[i]: swap nums[i] ↔ nums[nums[i]−1]<br>
+      then scan: return first i+1 where nums[i] ≠ i+1, else n+1<br>
+      <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:var(--text3)">O(n) total swaps amortised — each swap places at least one value at home, and once placed it never moves again. O(1) extra space.</span>
+    </p>
+  </div>
+</div>
+
+<script>
+  // §1 animation — cyclic sort on nums = [3, 4, -1, 1]
+  const SI_NUMS_INIT = [3, 4, -1, 1];
+  let siSteps = siGenSteps([...SI_NUMS_INIT]);
+  let siCur = 0;
+  let siTimer = null;
+
+  function siGenSteps(initial) {
+    const n = initial.length;
+    const steps = [];
+    const nums = [...initial];
+
+    function snapshot(extra) {
+      return Object.assign({
+        nums: [...nums],
+      }, extra);
+    }
+
+    // Step 0: init — show input
+    steps.push(snapshot({
+      phase: 'init', i: -1, swapWith: null, scanI: null, result: null,
+      caption: `Input: [${nums.join(', ')}], n = ${n}. Values 1, 2, 3, 4 each have a home index (k → k−1). Some cells already hold the right value; we swap until no more progress is possible.`,
+    }));
+
+    // Cyclic sort phase
+    for (let i = 0; i < n; i++) {
+      while (nums[i] >= 1 && nums[i] <= n && nums[nums[i] - 1] !== nums[i]) {
+        const target = nums[i] - 1;
+        // Record the swap intent
+        steps.push(snapshot({
+          phase: 'placement', i, swapWith: target, scanI: null, result: null,
+          caption: `i=${i}: nums[i]=${nums[i]} belongs at index ${target} (home of value ${nums[i]}). Swap nums[${i}] ↔ nums[${target}].`,
+        }));
+        // Perform swap
+        const tmp = nums[i]; nums[i] = nums[target]; nums[target] = tmp;
+      }
+    }
+
+    // After placement — show final state
+    steps.push(snapshot({
+      phase: 'placement-done', i: -1, swapWith: null, scanI: null, result: null,
+      caption: `Placement done: [${nums.join(', ')}]. Every cell holding a value in [1, ${n}] is at its home. Out-of-range cells (negative, zero, or > n) mark "missing" positions.`,
+    }));
+
+    // Scan phase
+    let result = null;
+    for (let i = 0; i < n; i++) {
+      if (nums[i] !== i + 1) {
+        result = i + 1;
+        steps.push(snapshot({
+          phase: 'scan', i: -1, swapWith: null, scanI: i, result,
+          caption: `Scan i=${i}: expected ${i + 1}, found ${nums[i]} ≠ ${i + 1}. First mismatch → answer is ${result}.`,
+        }));
+        break;
+      } else {
+        steps.push(snapshot({
+          phase: 'scan', i: -1, swapWith: null, scanI: i, result: null,
+          caption: `Scan i=${i}: nums[${i}]=${nums[i]} = ${i + 1} ✓. Continue.`,
+        }));
+      }
+    }
+    if (result === null) {
+      result = n + 1;
+      steps.push(snapshot({
+        phase: 'scan-done', i: -1, swapWith: null, scanI: n - 1, result,
+        caption: `All n cells correctly placed → answer is n+1 = ${result}.`,
+      }));
+    }
+
+    return steps;
+  }
+
+  function siRender(st) {
+    const n = st.nums.length;
+    const strip = document.getElementById('si-strip');
+    strip.innerHTML = '';
+
+    st.nums.forEach((v, idx) => {
+      const cell = document.createElement('div');
+      cell.className = 'fmp-cell';
+
+      const idxLbl = document.createElement('div');
+      idxLbl.className = 'fmp-idx';
+      idxLbl.textContent = idx + (idx === st.i ? ' ← i' : (idx === st.scanI ? ' ← scan' : ''));
+      if (idx === st.i) idxLbl.style.color = 'var(--text-info)';
+      if (idx === st.scanI) idxLbl.style.color = st.result === (st.scanI + 1) ? 'var(--text-danger)' : 'var(--text-success)';
+
+      const valBox = document.createElement('div');
+      valBox.className = 'fmp-val';
+      const inRange = v >= 1 && v <= n;
+      const atHome = inRange && (v === idx + 1);
+      if (atHome) valBox.classList.add('correct');
+      else if (!inRange) valBox.classList.add('wrong');
+      else if (idx === st.i || idx === st.swapWith) valBox.classList.add('active');
+      valBox.textContent = v;
+
+      const homeLbl = document.createElement('div');
+      homeLbl.className = 'fmp-home';
+      if (atHome) homeLbl.textContent = '✓ home';
+      else if (inRange) homeLbl.textContent = `home: ${v - 1}`;
+      else homeLbl.textContent = 'out of [1,n]';
+
+      cell.appendChild(idxLbl);
+      cell.appendChild(valBox);
+      cell.appendChild(homeLbl);
+      strip.appendChild(cell);
+
+      // Swap-pair connector (arrow between i and swapWith)
+      if (st.swapWith !== null && (idx === Math.min(st.i, st.swapWith))) {
+        // Inline arrow rendered AFTER the cell — but only between this and the next
+        // For simplicity we add a small marker between i and swapWith
+        const dist = Math.abs(st.swapWith - st.i);
+        if (dist > 0) {
+          const arrow = document.createElement('div');
+          arrow.style.cssText = `display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--mono);font-size:18px;color:var(--text-warn);font-weight:700;align-self:center;margin:0 -2px`;
+          arrow.textContent = '↔';
+          arrow.title = `swap nums[${st.i}] ↔ nums[${st.swapWith}]`;
+          strip.appendChild(arrow);
+        }
+      }
+    });
+
+    // Phase + result
+    const phaseEl = document.getElementById('si-phase');
+    phaseEl.textContent = st.phase;
+    const resultPill = document.getElementById('si-result-pill');
+    if (st.result !== null) {
+      resultPill.style.display = 'inline-block';
+      document.getElementById('si-result-val').textContent = st.result;
+    } else {
+      resultPill.style.display = 'none';
+    }
+
+    // Caption
+    document.getElementById('si-caption').textContent = st.caption;
+
+    // Step counter
+    const ctr = document.getElementById('si-sctr');
+    if (ctr) ctr.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() {
+    clearInterval(siTimer); siTimer = null;
+    const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto';
+  }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur < siSteps.length - 1) siNext(); else siStopPlay();
+    }, 1400);
+  }
+
+  siRender(siSteps[0]);
+</script>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">For each candidate <code>k</code> from 1 to n+1, scan the entire array to check if <code>k</code> is present. The first candidate that is missing is the answer. Two nested loops over up to <code>n+1</code> candidates and <code>n</code> values — O(n²) time, O(1) space. Step through to see why a fast in-place approach beats this on every example.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">Ex 1: [1,2,3]</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">Ex 2: [3,4,-1,1]</button>
+    <button class="ex-btn" id="bf-ex2" onclick="bfLoadEx(2)">Ex 3: [7,8,9,11,12]</button>
+  </div>
+  <div id="bf-arr-con" style="margin:.75rem 0;padding:.5rem;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);"></div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    candidate = <span id="bf-k" style="font-weight:600;color:var(--text-warn)">—</span>
+    &nbsp;·&nbsp; scanning index = <span id="bf-j" style="font-weight:600;color:var(--text-info)">—</span>
+    &nbsp;·&nbsp; checks: <span id="bf-ops" style="font-weight:600;color:var(--text-danger)">0</span>
+  </div>
+  <div id="bf-verdict" style="font-family:var(--mono);font-size:13px;margin:.5rem 0;min-height:18px"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n²) time, O(1) space</p>
+    <p class="infobox-d">For each candidate <code>k ∈ [1, n+1]</code>, scan up to <code>n</code> values. Worst case is roughly <code>n(n+1)</code> comparisons. The optimal cyclic-sort approach below pays one O(n) pass instead.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal Code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="kw">int</span> firstMissingPositive_BF(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>();
+    <span class="kw">for</span> (<span class="kw">int</span> k = 1; k &lt;= n + 1; k++) {
+        <span class="kw">bool</span> found = <span class="kw">false</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> v : nums) {
+            <span class="kw">if</span> (v == k) { found = <span class="kw">true</span>; <span class="kw">break</span>; }
+        }
+        <span class="kw">if</span> (!found) <span class="kw">return</span> k;
+    }
+    <span class="kw">return</span> n + 1;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">The optimization from O(n²) brute force to O(n) in-place uses the array itself as a hash table. Instead of searching for each candidate, we mark presence by placing numbers at their home indices, then scan once to find the first missing.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Brute force with search</div>
+        <div class="wt-desc">For each candidate [1, n+1], scan the entire array to check if it exists.</div>
+        <div class="wt-gain" style="color: var(--text3);">O(n²) time, O(1) space</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Hash set</div>
+        <div class="wt-desc">Store all positive integers in a set. Scan [1, n+1] to find the first missing.</div>
+        <div class="wt-gain" style="color: var(--text3);">O(n) time, O(n) space</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">Array as hash table (taught)</div>
+        <div class="wt-desc">Use array indices to mark presence via swapping numbers to home indices. Scan array to find the first wrong value.</div>
+        <div class="wt-gain" style="color: var(--success);">O(n) time, O(1) space</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>First pass (place numbers):</b> Iterate through the array. For each number num, if 1 ≤ num ≤ n and it's not in its home index (nums[num-1] ≠ num), swap nums[i] with nums[num-1]. Repeat until the current element is either in place or out of range.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Second pass (find missing):</b> Iterate through indices [0, n-1]. If nums[i] ≠ i+1, return i+1 (the first missing positive).</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Default:</b> If all indices [0, n-1] have correct values, return n+1.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main')">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">int</span> firstMissingPositive(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;& nums) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>();
+    <span class="cm">// First pass: place each number at its home index</span>
+    <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; n; i++) {
+        <span class="kw">while</span> (1 &lt;= nums[i] && nums[i] &lt;= n && nums[nums[i] - 1] != nums[i]) {
+            <span class="cm">// Swap nums[i] with nums[nums[i] - 1]</span>
+            <span class="kw">int</span> home_idx = nums[i] - 1;
+            <span class="fn">swap</span>(nums[i], nums[home_idx]);
+        }
+    }
+    <span class="cm">// Second pass: find the first missing positive</span>
+    <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; n; i++) {
+        <span class="kw">if</span> (nums[i] != i + 1) {
+            <span class="kw">return</span> i + 1;
+        }
+    }
+    <span class="kw">return</span> n + 1;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Walk through the cyclic-sort code one statement at a time. The variable cards dim until their initialising line fires; the active card lights cyan. Phase 1 swaps values into their home positions (watch the array below jiggle as swap partners light orange). Phase 2 scans left-to-right for the first index whose value isn't <code>i+1</code> — that index, +1, is the answer.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-n"><div class="cv-var-name">n</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-i"><div class="cv-var-name">i</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-num"><div class="cv-var-name">nums[i]</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-home"><div class="cv-var-name">home_idx</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-phase"><div class="cv-var-name">phase</div><div class="cv-var-val">init</div></div>
+        <div class="cv-var-card dim" id="cv-v-ans"><div class="cv-var-name">answer</div><div class="cv-var-val">—</div></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-arr-con" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0;"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">Ex 1: [1,2,3]</button>
+    <button class="ex-btn" id="cv-ex1" onclick="cvLoadEx(1)">Ex 2: [3,4,-1,1]</button>
+    <button class="ex-btn" id="cv-ex2" onclick="cvLoadEx(2)">Ex 3: [7,8,9,11,12]</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn" id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn" onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+
+  <div style="margin-bottom: 1.5rem;" id="dr-arr-con"></div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div class="fitem-label">i / phase</div>
+          <div class="fitem-val" id="f-state">0 / init</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div class="fitem-label">action</div>
+          <div class="fitem-val" id="f-action">—</div>
+        </div>
+      </div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1: [1,2,3]</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">Ex 2: [3,4,-1,1]</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">Ex 3: [7,8,9,11,12]</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">All in place [1, 2, 3, 4]</div>
+    <div class="corner-body">All numbers are already at their home indices. No swaps needed. Scan finds all correct; return n+1=5.</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">Missing first [2, 3, 4]</div>
+    <div class="corner-body">Swap 2 to index 1, 3 to index 2, 4 to index 3. Index 0 should have 1 but has -1 (out of range). Return 1.</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Duplicates [1, 1, 1]</div>
+    <div class="corner-body">First 1 goes to index 0. Other 1's stay (already correct value at home). Index 1 should have 2 but has 1. Return 2.</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">All out of range [10, 11, 12]</div>
+    <div class="corner-body">No numbers in [1, n]. No swaps. Index 0 should have 1 but has 10. Return 1.</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">Negatives and zeros [0, -1, 3, 4]</div>
+    <div class="corner-body">Swap 3 and 4 to their homes. Indices 0 and 1 don't have 1 and 2. Index 0 should have 1 but has 0. Return 1.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Swap condition:</b> Verify 1 ≤ nums[i] ≤ n before accessing nums[nums[i]-1].</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Avoid infinite swaps:</b> Check nums[nums[i]-1] != nums[i] to avoid swapping the same value infinitely.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Duplicate handling:</b> If nums[i] and nums[nums[i]-1] are the same, don't swap; skip to next iteration.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>First pass termination:</b> While loop terminates when nums[i] is out of range or already at home.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Second pass correctness:</b> Return i+1 on first mismatch; if all match, return n+1.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Time complexity O(n):</b> Each number is moved at most once; overall n swaps + 2 passes = O(n).</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab(0)">Array as hash table</button>
+    <button class="tab-btn" onclick="switchTab(1)">Hash set</button>
+    <button class="tab-btn" onclick="switchTab(2)">Brute force</button>
+  </div>
+
+  <div id="tab0" class="tab-pane active">
+    <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+      <span class="tag tag-time">O(n)</span>
+      <span class="tag tag-space">O(1)</span>
+    </div>
+    <p class="body">Place numbers at their home indices via swapping. Mark presence implicitly. Scan to find the first wrong value. Optimal space and time, but modifies the input.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-app0')">▶ Code</button>
+    <div id="code-app0" class="code-block">
+      <pre class="cb"><span class="kw">int</span> firstMissingPositive(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;& nums) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>();
+    <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; n; i++) {
+        <span class="kw">while</span> (1 &lt;= nums[i] && nums[i] &lt;= n && nums[nums[i] - 1] != nums[i]) {
+            <span class="kw">int</span> home_idx = nums[i] - 1;
+            <span class="fn">swap</span>(nums[i], nums[home_idx]);
+        }
+    }
+    <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; n; i++) {
+        <span class="kw">if</span> (nums[i] != i + 1) {
+            <span class="kw">return</span> i + 1;
+        }
+    }
+    <span class="kw">return</span> n + 1;
+}</pre>
+    </div>
+  </div>
+
+  <div id="tab1" class="tab-pane">
+    <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+      <span class="tag tag-time">O(n)</span>
+      <span class="tag tag-space">O(n)</span>
+    </div>
+    <p class="body">Store all positive integers in a hash set. Iterate [1, n+1] and return the first number not in the set. Simple and clear, but uses O(n) extra space.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-app1')">▶ Code</button>
+    <div id="code-app1" class="code-block">
+      <pre class="cb"><span class="kw">int</span> firstMissingPositive(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;& nums) {
+    <span class="kw">unordered_set</span>&lt;<span class="kw">int</span>&gt; seen;
+    <span class="kw">for</span> (<span class="kw">int</span> num : nums) {
+        <span class="kw">if</span> (num > 0) seen.<span class="fn">insert</span>(num);
+    }
+    <span class="kw">for</span> (<span class="kw">int</span> candidate = 1; candidate &lt;= nums.<span class="fn">size</span>() + 1; candidate++) {
+        <span class="kw">if</span> (!seen.<span class="fn">count</span>(candidate)) {
+            <span class="kw">return</span> candidate;
+        }
+    }
+    <span class="kw">return</span> nums.<span class="fn">size</span>() + 1;
+}</pre>
+    </div>
+  </div>
+
+  <div id="tab2" class="tab-pane">
+    <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+      <span class="tag tag-time">O(n²)</span>
+      <span class="tag tag-space">O(1)</span>
+    </div>
+    <p class="body">For each candidate [1, n+1], scan the array to check if it exists. Slow but simple. Use only when n is very small.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-app2')">▶ Code</button>
+    <div id="code-app2" class="code-block">
+      <pre class="cb"><span class="kw">int</span> firstMissingPositive(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;& nums) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>();
+    <span class="kw">for</span> (<span class="kw">int</span> candidate = 1; candidate &lt;= n + 1; candidate++) {
+        <span class="kw">bool</span> found = <span class="kw">false</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> num : nums) {
+            <span class="kw">if</span> (num == candidate) {
+                found = <span class="kw">true</span>;
+                <span class="kw">break</span>;
+            }
+        }
+        <span class="kw">if</span> (!found) <span class="kw">return</span> candidate;
+    }
+    <span class="kw">return</span> n + 1;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(n)</div>
+      <div class="ccard-n">Each number is moved at most once (n swaps), plus two linear passes. O(n) total.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(1) auxiliary</div>
+      <div class="ccard-n">Only a few variables; array is modified in-place.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><strong>LC 268 — Missing Number</strong> — find the missing number in [0, n] (includes 0). Similar idea but simpler since there are exactly n+1 slots for n numbers.</p>
+    <p><strong>LC 442 — Find All Duplicates in an Array</strong> — find all duplicates using the same array-marking technique, but return all duplicates instead of the first missing.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  const EXAMPLES = [
+    {nums: [1,2,3], name: "[1,2,3]"},
+    {nums: [3,4,-1,1], name: "[3,4,-1,1]"},
+    {nums: [7,8,9,11,12], name: "[7,8,9,11,12]"},
+  ];
+
+  const CV_LINES = [
+    {n:1, c:'int firstMissingPositive(vector<int>& nums) {'},
+    {n:2, c:'    int n = nums.size();'},
+    {n:3, c:'    for (int i = 0; i < n; i++) {'},
+    {n:4, c:'        while (1 <= nums[i] && nums[i] <= n &&'},
+    {n:5, c:'               nums[nums[i] - 1] != nums[i]) {'},
+    {n:6, c:'            int home_idx = nums[i] - 1;'},
+    {n:7, c:'            swap(nums[i], nums[home_idx]);'},
+    {n:8, c:'        }'},
+    {n:9, c:'    }'},
+    {n:10, c:'    for (int i = 0; i < n; i++) {'},
+    {n:11, c:'        if (nums[i] != i + 1) {'},
+    {n:12, c:'            return i + 1;'},
+    {n:13, c:'        }'},
+    {n:14, c:'    }'},
+    {n:15, c:'    return n + 1;'},
+    {n:16, c:'}'},
+  ];
+
+  let cvCur = 0, cvTimer = null, cvSteps = [];
+  let drCur = 0, drTimer = null, drSteps = [];
+
+  function buildArray(nums, optsOrHi, containerId, prefix) {
+    // Backwards-compatible: optsOrHi can be a number (legacy hi) or an object
+    // {hi, swap, foundAt}:
+    //   hi      — primary highlight index (current i)
+    //   swap    — swap-partner index (so both ends of a swap glow)
+    //   foundAt — index whose mismatch produced the final answer (phase 2)
+    const con = document.getElementById(containerId);
+    con.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'fmp-arr';
+    const opts = typeof optsOrHi === 'object' && optsOrHi !== null ? optsOrHi : {hi: optsOrHi};
+    const {hi = -1, swap = -1, foundAt = -1} = opts;
+
+    for (let i = 0; i < nums.length; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'fmp-cell';
+
+      const idx = document.createElement('div');
+      idx.className = 'fmp-idx';
+      idx.textContent = i;
+
+      const val = document.createElement('div');
+      val.className = 'fmp-val';
+      val.id = prefix + '_' + i;
+
+      if (hi === i) {
+        val.classList.add('active');
+      } else if (swap === i) {
+        val.classList.add('swap-partner');
+      } else if (nums[i] === i + 1) {
+        val.classList.add('correct');
+      } else {
+        val.classList.add('wrong');
+      }
+      if (foundAt === i) {
+        val.classList.add('found');
+      }
+
+      val.textContent = nums[i];
+
+      cell.appendChild(idx);
+      cell.appendChild(val);
+      wrapper.appendChild(cell);
+    }
+
+    con.appendChild(wrapper);
+  }
+
+  function cvGenSteps(nums) {
+    const steps = [];
+    const arr = [...nums];
+    const n = arr.length;
+
+    steps.push({line: 2, narr: `n = ${n} — array size captured.`,
+                i: -1, phase: 'init', arr: [...arr], changed: ['n']});
+    steps.push({line: 3, narr: 'Start first pass. Walk i from 0 to n−1, repeatedly placing each value into its home.',
+                i: 0, phase: 'p1', arr: [...arr], changed: ['i', 'phase', 'num']});
+
+    for (let i = 0; i < n; i++) {
+      let swapCount = 0;
+      steps.push({line: 4, narr: `Check nums[${i}] = ${arr[i]} — in range [1..n]? not already home?`,
+                  i, phase: 'p1', arr: [...arr], changed: i > 0 ? ['i', 'num'] : []});
+      while (1 <= arr[i] && arr[i] <= n && arr[arr[i] - 1] !== arr[i] && swapCount < 10) {
+        const homeIdx = arr[i] - 1;
+        steps.push({line: 6, narr: `home_idx = nums[${i}] − 1 = ${arr[i]} − 1 = ${homeIdx}.`,
+                    i, phase: 'p1', arr: [...arr], swap: homeIdx, homeIdx, changed: ['home']});
+        [arr[i], arr[homeIdx]] = [arr[homeIdx], arr[i]];
+        steps.push({line: 7, narr: `Swap nums[${i}] ↔ nums[${homeIdx}] → ${arr[i]} now at index ${i}, ${arr[homeIdx]} parked at index ${homeIdx}.`,
+                    i, phase: 'p1', arr: [...arr], swap: homeIdx, homeIdx, changed: ['num']});
+        swapCount++;
+      }
+      if (i < n - 1) {
+        steps.push({line: 3, narr: `i=${i} done (nums[${i}]=${arr[i]} is settled). Advance to i=${i+1}.`,
+                    i: i + 1, phase: 'p1', arr: [...arr], changed: ['i', 'num']});
+      } else {
+        steps.push({line: 9, narr: `First pass complete. Every value v with 1 ≤ v ≤ n now sits at index v−1.`,
+                    i: n - 1, phase: 'p1', arr: [...arr]});
+      }
+    }
+
+    steps.push({line: 10, narr: 'Start second pass: find the first i where nums[i] ≠ i+1.',
+                i: 0, phase: 'p2', arr: [...arr], changed: ['i', 'phase', 'num']});
+
+    let foundAt = -1;
+    for (let i = 0; i < n; i++) {
+      const expected = i + 1;
+      const match = arr[i] === expected;
+      steps.push({line: 11, narr: `nums[${i}] = ${arr[i]}, expected ${expected} — ${match ? 'match, advance' : 'MISMATCH ★'}`,
+                  i, phase: 'p2', arr: [...arr], changed: i > 0 ? ['i', 'num'] : []});
+      if (!match) {
+        foundAt = i;
+        steps.push({line: 12, narr: `Return ${i + 1} — this is the first missing positive.`,
+                    i, phase: 'done', arr: [...arr], foundAt: i,
+                    answer: i + 1, changed: ['ans', 'phase']});
+        break;
+      }
+    }
+
+    if (foundAt === -1) {
+      steps.push({line: 15, narr: `All n positions hold their expected value. Return n+1 = ${n + 1}.`,
+                  i: n - 1, phase: 'done', arr: [...arr],
+                  answer: n + 1, changed: ['ans', 'phase']});
+    }
+
+    return steps;
+  }
+
+  function cvRender(st) {
+    // Active code line highlight
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const lineEl = document.getElementById('cvL' + st.line);
+    if (lineEl) lineEl.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+
+    // State cards (canonical cv-var-card pattern with hl/dim)
+    const setCard = (id, val, hl, matchCard) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (matchCard) card.classList.add('hl-match');
+      else if (hl) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    const ch = st.changed || [];
+    const n = st.arr ? st.arr.length : null;
+    setCard('cv-v-n',    n != null && st.line >= 2 ? n : '—', ch.includes('n'), false);
+    setCard('cv-v-i',    st.i >= 0 ? st.i : '—', ch.includes('i'), false);
+    setCard('cv-v-num',  st.i >= 0 && st.arr ? st.arr[st.i] : '—', ch.includes('num'), false);
+    setCard('cv-v-home', st.homeIdx != null ? st.homeIdx : '—', ch.includes('home'), false);
+    setCard('cv-v-phase', st.phase === 'init' ? 'init' : st.phase === 'p1' ? 'phase 1' : st.phase === 'p2' ? 'phase 2' : 'done', ch.includes('phase'), false);
+    setCard('cv-v-ans',  st.answer != null ? st.answer : '—', ch.includes('ans'), st.phase === 'done');
+
+    // Narration (canonical cv-narration with is-match / is-active states)
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : (st.swap != null ? ' is-active' : ''));
+
+    // Array preview redraw with highlights
+    if (st.arr) {
+      buildArray(st.arr, {hi: st.i, swap: st.swap ?? -1, foundAt: st.foundAt ?? -1}, 'cv-arr-con', 'cv');
+    }
+
+    // Step counter + button enable state
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+
+  function cvLoadEx(idx) {
+    cvStopPlay();
+    cvCur = 0;
+    cvSteps = cvGenSteps(EXAMPLES[idx].nums);
+    [0, 1, 2].forEach(i => {
+      const b = document.getElementById('cv-ex' + i);
+      if (b) b.classList.toggle('active', i === idx);
+    });
+    cvRender(cvSteps[0]);
+  }
+
+  function cvNext() {
+    if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); }
+    else cvStopPlay();
+  }
+  function cvPrev() {
+    if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); }
+  }
+  function cvReset() {
+    cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]);
+  }
+  // cvTogglePlay / cvStopPlay are provided by static/lesson.js — they look for
+  // #cv-bplay and call cvNext(). Keep the canonical names so they bind correctly.
+
+  function drGenSteps(nums) {
+    const steps = [];
+    const arr = [...nums];
+    const n = arr.length;
+
+    steps.push({arr: [...arr], i: -1, phase: 'init', action: 'init',
+                narr: `Initialize n = ${n}. Both passes will operate on this array in place.`});
+
+    for (let i = 0; i < n; i++) {
+      let swapCount = 0;
+      steps.push({arr: [...arr], i, phase: 'p1', action: 'check',
+                  narr: `i=${i}: examine nums[${i}] = ${arr[i]}. In range [1..${n}]? Already at home?`});
+      while (1 <= arr[i] && arr[i] <= n && arr[arr[i] - 1] !== arr[i] && swapCount < 10) {
+        const homeIdx = arr[i] - 1;
+        steps.push({arr: [...arr], i, phase: 'p1', action: 'swap', swap: homeIdx, homeIdx,
+                    narr: `Swap nums[${i}] = ${arr[i]} with nums[${homeIdx}] = ${arr[homeIdx]} — sending ${arr[i]} to its home at index ${homeIdx}.`});
+        [arr[i], arr[homeIdx]] = [arr[homeIdx], arr[i]];
+        swapCount++;
+      }
+    }
+
+    steps.push({arr: [...arr], i: 0, phase: 'p2', action: 'scan',
+                narr: 'Swap phase done. Begin scan: find the first i where nums[i] ≠ i+1.'});
+
+    for (let i = 0; i < n; i++) {
+      const expected = i + 1;
+      if (arr[i] !== expected) {
+        steps.push({arr: [...arr], i, phase: 'done', action: 'found', foundAt: i, answer: expected,
+                    narr: `nums[${i}] = ${arr[i]} ≠ expected ${expected}. Return ${expected} — the first missing positive.`});
+        return steps;
+      }
+    }
+
+    steps.push({arr: [...arr], i: n - 1, phase: 'done', action: 'return', answer: n + 1,
+                narr: `All n positions hold their expected value. Return n + 1 = ${n + 1}.`});
+    return steps;
+  }
+
+  function drRender(st) {
+    // State summary panel
+    document.getElementById('f-state').textContent =
+      `${st.i < 0 ? '—' : st.i} / ${st.phase === 'init' ? 'init' : st.phase === 'p1' ? 'phase 1' : st.phase === 'p2' ? 'phase 2' : 'done'}`;
+    document.getElementById('f-action').textContent = st.action;
+    // Step prose
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl  = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.action;
+    if (whyEl)  whyEl.textContent  = st.narr;
+    // Array preview redraw with highlights (this is the bit that was broken)
+    if (st.arr) {
+      buildArray(st.arr, {hi: st.i, swap: st.swap ?? -1, foundAt: st.foundAt ?? -1}, 'dr-arr-con', 'dr');
+    }
+    // Step counter + button enable
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+
+  function drLoadEx(idx) {
+    drStopPlay();
+    drCur = 0;
+    drSteps = drGenSteps(EXAMPLES[idx].nums);
+    [0, 1, 2].forEach(i => {
+      const b = document.getElementById('dr-ex' + i);
+      if (b) b.classList.toggle('active', i === idx);
+    });
+    drRender(drSteps[0]);
+  }
+
+  function drNext() { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev() { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+  // drTogglePlay / drStopPlay are provided by static/lesson.js — they look for #dr-bplay and call drNext().
+
+  /* ══════════════════════════════
+     BRUTE FORCE (O(n²) candidate scan)
+  ══════════════════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null;
+
+  function bfGenSteps(nums) {
+    const steps = [];
+    const arr = [...nums];
+    const n = arr.length;
+    let ops = 0;
+    steps.push({arr: [...arr], k: 1, j: -1, ops, phase: 'init', verdict: '',
+                narr: `Start with candidate k = 1. Scan the array for it.`});
+    for (let k = 1; k <= n + 1; k++) {
+      let found = false;
+      for (let j = 0; j < n; j++) {
+        ops++;
+        const hit = arr[j] === k;
+        steps.push({arr: [...arr], k, j, ops, phase: 'scan', hit,
+                    narr: `k=${k}, nums[${j}] = ${arr[j]} ${hit ? '== k → found, stop scanning this k' : '≠ k → keep scanning'}`});
+        if (hit) { found = true; break; }
+      }
+      if (!found) {
+        steps.push({arr: [...arr], k, j: -1, ops, phase: 'done', answer: k,
+                    verdict: `★ ${k} is missing from the array — return ${k}.`,
+                    narr: `Scanned all ${n} values; none equals ${k}. Return ${k}.`});
+        return steps;
+      }
+    }
+    return steps;
+  }
+
+  function bfRender(st) {
+    document.getElementById('bf-k').textContent = st.k != null ? st.k : '—';
+    document.getElementById('bf-j').textContent = st.j >= 0 ? st.j : '—';
+    document.getElementById('bf-ops').textContent = st.ops;
+    document.getElementById('bf-verdict').textContent = st.verdict || '';
+    document.getElementById('bf-verdict').style.color = 'var(--text-success)';
+    // Array preview — highlight current scanning index
+    if (st.arr) {
+      buildArray(st.arr, {hi: st.j, foundAt: -1}, 'bf-arr-con', 'bf');
+    }
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+
+  function bfLoadEx(idx) {
+    bfStopPlay();
+    bfCur = 0;
+    bfSteps = bfGenSteps(EXAMPLES[idx].nums);
+    [0, 1, 2].forEach(i => {
+      const b = document.getElementById('bf-ex' + i);
+      if (b) b.classList.toggle('active', i === idx);
+    });
+    bfRender(bfSteps[0]);
+  }
+
+  function bfNext() { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev() { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+  // bfTogglePlay / bfStopPlay are provided by static/lesson.js — they look for #bf-play and call bfNext().
+
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spiral Matrix — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  .sm-matrix {
+    display: inline-flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    margin: 1rem 0;
+  }
+  .sm-row {
+    display: flex;
+    gap: 4px;
+  }
+  .sm-cell {
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    background: var(--bg);
+    transition: all 0.15s ease;
+  }
+  .sm-cell.active {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    color: #0c4a6e;
+  }
+  .sm-cell.done {
+    background: #dbeafe;
+    border-color: #bfdbfe;
+    color: #0c4a6e;
+    opacity: 0.6;
+  }
+  .sm-boundaries {
+    display: flex;
+    gap: 1.5rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+  }
+  .sm-bound-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    background: var(--bg-subtle);
+    font-family: var(--mono);
+    min-width: 120px;
+  }
+  .sm-bound-card .label {
+    font-size: 11px;
+    color: var(--text3);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .sm-bound-card .value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text1);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Spiral Matrix</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/spiral-matrix/" target="_blank">LC #54</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Array</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">What if the matrix has only one row or column?</div>
+      <div class="acard-a">The algorithm naturally handles it. All elements lie on a single boundary, so the remaining boundaries collapse immediately.</div>
+      <div class="acard-u">→ No special case needed; boundary shrinking subsumes m=1 or n=1.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">What is "spiral order"?</div>
+      <div class="acard-a">Clockwise from the outside in: top row left-to-right, right column top-to-bottom, bottom row right-to-left, left column bottom-to-top. Repeat for inner layers.</div>
+      <div class="acard-u">→ Four directional passes per layer, shrinking boundaries after each.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">What if m=0 or n=0 (empty matrix)?</div>
+      <div class="acard-a">Return an empty list.</div>
+      <div class="acard-u">→ Early termination; no elements to traverse.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">How do we avoid revisiting elements?</div>
+      <div class="acard-a">After each directional pass, shrink the corresponding boundary inward. When boundaries cross (top > bottom or left > right), stop.</div>
+      <div class="acard-u">→ Boundary shrinking prevents overlap between passes.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Shrink four boundaries inward; the spiral walks the perimeter of what's left.</p>
+
+  <p class="body">Watch the algorithm from the perspective of the <em>unvisited region</em>. Four integers (top, bottom, left, right) bracket it. Each directional pass walks one edge of that region, then peels the edge away by moving its boundary inward. The next pass walks the next edge of the now-smaller rectangle. Boundaries crossing means done.</p>
+
+  <!-- Foundational visual: animated 5-step boundary-shrinking spiral on 3×3.
+       Pattern (PLAN-017): current pass cells (info-blue), visited cells (success-green),
+       boundary box drawn around the unvisited region (the "active" rectangle). -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <!-- Legend -->
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);border:1.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>current pass</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-success);border:1.5px solid var(--border-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>visited (locked)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg);border:1.5px solid var(--text-warn);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>active region boundary</span>
+      <span><span style="color:var(--text-info);font-weight:700;font-size:14px;vertical-align:middle">→ ↓ ← ↑</span> direction</span>
+    </div>
+
+    <!-- Matrix + boundary box -->
+    <div style="display:flex;justify-content:center;align-items:flex-start;gap:1.25rem;margin:.625rem 0;flex-wrap:wrap">
+      <div style="position:relative;padding:8px">
+        <div id="si-matrix" class="sm-matrix" style="margin:0"></div>
+        <!-- Boundary indicators -->
+        <div id="si-bound-top"    style="position:absolute;height:0;border-top:2px solid var(--text-warn);transition:all .25s"></div>
+        <div id="si-bound-bottom" style="position:absolute;height:0;border-top:2px solid var(--text-warn);transition:all .25s"></div>
+        <div id="si-bound-left"   style="position:absolute;width:0;border-left:2px solid var(--text-warn);transition:all .25s"></div>
+        <div id="si-bound-right"  style="position:absolute;width:0;border-left:2px solid var(--text-warn);transition:all .25s"></div>
+      </div>
+
+      <!-- Boundary values + direction -->
+      <div style="font-family:var(--mono);font-size:12px;color:var(--text2);line-height:1.9;min-width:180px">
+        <div>top    = <b id="si-bv-top" style="color:var(--text-warn)">—</b></div>
+        <div>bottom = <b id="si-bv-bottom" style="color:var(--text-warn)">—</b></div>
+        <div>left   = <b id="si-bv-left" style="color:var(--text-warn)">—</b></div>
+        <div>right  = <b id="si-bv-right" style="color:var(--text-warn)">—</b></div>
+        <div style="margin-top:.5rem">direction: <b id="si-direction" style="color:var(--text-info)">—</b></div>
+        <div style="margin-top:.5rem">result so far:</div>
+        <div id="si-result" style="font-size:11px;color:var(--text);font-weight:600">[]</div>
+      </div>
+    </div>
+
+    <!-- Caption -->
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <!-- Controls -->
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d" style="font-family:var(--mono);font-size:13px;line-height:2">
+      maintain top, bottom, left, right<br>
+      → walk top row L→R; top++ &nbsp;·&nbsp; ↓ walk right col T→B; right−−<br>
+      ← walk bottom row R→L (if top ≤ bottom); bottom−− &nbsp;·&nbsp; ↑ walk left col B→T (if left ≤ right); left++<br>
+      <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:var(--text3)">Stop when top &gt; bottom or left &gt; right.</span>
+    </p>
+  </div>
+</div>
+
+<script>
+  // §1 animation — boundary-shrinking spiral on 3×3 matrix
+  const SI_MATRIX = [[1,2,3],[4,5,6],[7,8,9]];
+  let siSteps = siGenSteps(SI_MATRIX);
+  let siCur = 0;
+  let siTimer = null;
+
+  function siGenSteps(matrix) {
+    const m = matrix.length, n = matrix[0].length;
+    const steps = [];
+    const visited = new Set();
+    const result = [];
+    let top = 0, bottom = m - 1, left = 0, right = n - 1;
+
+    function key(r, c) { return r + ',' + c; }
+    function snapshot(extra) {
+      return Object.assign({
+        matrix, m, n,
+        visited: new Set(visited),
+        result: [...result],
+        top, bottom, left, right,
+      }, extra);
+    }
+
+    // Step 0: init
+    steps.push(snapshot({
+      newPass: new Set(), direction: null,
+      caption: `Initialise: 4 boundaries enclose the full ${m}×${n} matrix. Result list is empty.`,
+    }));
+
+    while (top <= bottom && left <= right) {
+      // Pass 1: top row L → R
+      const newPass1 = new Set();
+      for (let c = left; c <= right; c++) {
+        result.push(matrix[top][c]);
+        visited.add(key(top, c));
+        newPass1.add(key(top, c));
+      }
+      const topBefore = top;
+      top++;
+      steps.push(snapshot({
+        newPass: newPass1, direction: '→',
+        caption: `Walk top row L→R (row ${topBefore}, cols ${left}…${right}). Then shrink top: ${topBefore} → ${top}.`,
+      }));
+      if (top > bottom) break;
+
+      // Pass 2: right col T → B
+      const newPass2 = new Set();
+      for (let r = top; r <= bottom; r++) {
+        result.push(matrix[r][right]);
+        visited.add(key(r, right));
+        newPass2.add(key(r, right));
+      }
+      const rightBefore = right;
+      right--;
+      steps.push(snapshot({
+        newPass: newPass2, direction: '↓',
+        caption: `Walk right col T→B (col ${rightBefore}, rows ${top}…${bottom}). Then shrink right: ${rightBefore} → ${right}.`,
+      }));
+      if (left > right) break;
+
+      // Pass 3: bottom row R → L
+      const newPass3 = new Set();
+      for (let c = right; c >= left; c--) {
+        result.push(matrix[bottom][c]);
+        visited.add(key(bottom, c));
+        newPass3.add(key(bottom, c));
+      }
+      const bottomBefore = bottom;
+      bottom--;
+      steps.push(snapshot({
+        newPass: newPass3, direction: '←',
+        caption: `Walk bottom row R→L (row ${bottomBefore}, cols ${right}…${left}). Then shrink bottom: ${bottomBefore} → ${bottom}.`,
+      }));
+      if (top > bottom) break;
+
+      // Pass 4: left col B → T
+      const newPass4 = new Set();
+      for (let r = bottom; r >= top; r--) {
+        result.push(matrix[r][left]);
+        visited.add(key(r, left));
+        newPass4.add(key(r, left));
+      }
+      const leftBefore = left;
+      left++;
+      steps.push(snapshot({
+        newPass: newPass4, direction: '↑',
+        caption: `Walk left col B→T (col ${leftBefore}, rows ${bottom}…${top}). Then shrink left: ${leftBefore} → ${left}.`,
+      }));
+    }
+
+    steps.push(snapshot({
+      newPass: new Set(), direction: null,
+      caption: `Done — boundaries crossed. Result = [${result.join(', ')}].`,
+    }));
+
+    return steps;
+  }
+
+  function siRender(st) {
+    // Build matrix
+    const mEl = document.getElementById('si-matrix');
+    mEl.innerHTML = '';
+    for (let r = 0; r < st.m; r++) {
+      const row = document.createElement('div');
+      row.className = 'sm-row';
+      for (let c = 0; c < st.n; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'sm-cell';
+        const k = r + ',' + c;
+        if (st.newPass.has(k)) cell.classList.add('active');
+        else if (st.visited.has(k)) cell.classList.add('done');
+        cell.textContent = st.matrix[r][c];
+        row.appendChild(cell);
+      }
+      mEl.appendChild(row);
+    }
+
+    // Boundary box overlay — compute cell metrics from the first cell
+    // Cells are 48px + 4px gap between cells, with row gaps of 4px (CSS .sm-row gap, .sm-matrix gap)
+    const cellSize = 48, gap = 4;
+    // The matrix has padding 8px (the wrapper above)
+    // Calculate box position based on (top, bottom, left, right) — if active region empty, hide.
+    const active = (st.top <= st.bottom && st.left <= st.right);
+    const padL = 8, padT = 8;
+    function setBound(elId, css) { Object.assign(document.getElementById(elId).style, css); }
+    if (active) {
+      const x = padL + st.left * (cellSize + gap) - 2;
+      const y = padT + st.top * (cellSize + gap) - 2;
+      const w = (st.right - st.left + 1) * cellSize + (st.right - st.left) * gap + 4;
+      const h = (st.bottom - st.top + 1) * cellSize + (st.bottom - st.top) * gap + 4;
+      setBound('si-bound-top',    { left: x + 'px', top: y + 'px', width: w + 'px', display: 'block' });
+      setBound('si-bound-bottom', { left: x + 'px', top: (y + h) + 'px', width: w + 'px', display: 'block' });
+      setBound('si-bound-left',   { left: x + 'px', top: y + 'px', height: h + 'px', display: 'block' });
+      setBound('si-bound-right',  { left: (x + w) + 'px', top: y + 'px', height: h + 'px', display: 'block' });
+    } else {
+      ['si-bound-top','si-bound-bottom','si-bound-left','si-bound-right'].forEach(id => {
+        document.getElementById(id).style.display = 'none';
+      });
+    }
+
+    // Boundary values
+    document.getElementById('si-bv-top').textContent    = st.top;
+    document.getElementById('si-bv-bottom').textContent = st.bottom;
+    document.getElementById('si-bv-left').textContent   = st.left;
+    document.getElementById('si-bv-right').textContent  = st.right;
+    document.getElementById('si-direction').textContent = st.direction || '—';
+    document.getElementById('si-result').textContent    = '[' + st.result.join(', ') + ']';
+
+    // Caption
+    document.getElementById('si-caption').textContent = st.caption;
+
+    // Step counter
+    const ctr = document.getElementById('si-sctr');
+    if (ctr) ctr.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() {
+    clearInterval(siTimer); siTimer = null;
+    const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto';
+  }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur < siSteps.length - 1) siNext(); else siStopPlay();
+    }, 1400);
+  }
+
+  siRender(siSteps[0]);
+</script>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">Track which cells have been visited in a separate boolean matrix. Walk in the current direction; if the next cell is out of bounds or already visited, rotate 90°. Same output, but O(m×n) extra space just to remember where we've been. Step through to see why shrinking the active region (the optimal approach) eliminates the visited matrix entirely.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">Ex 1: 3×3</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">Ex 2: 4×5</button>
+    <button class="ex-btn" id="bf-ex2" onclick="bfLoadEx(2)">Ex 3: 2×2</button>
+  </div>
+  <div id="bf-matrix-con" style="margin:.75rem 0;padding:.625rem;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);"></div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    pos = (<span id="bf-i" style="font-weight:600;color:var(--text-info)">—</span>, <span id="bf-j" style="font-weight:600;color:var(--text-info)">—</span>)
+    &nbsp;·&nbsp; dir = <span id="bf-dir" style="font-weight:600;color:var(--text-warn)">—</span>
+    &nbsp;·&nbsp; visited cells: <span id="bf-cnt" style="font-weight:600;color:var(--text-danger)">0</span>
+  </div>
+  <div id="bf-output" style="font-family:var(--mono);font-size:13px;margin:.5rem 0;min-height:18px;color:var(--text-success)"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(m×n) time + O(m×n) extra space</p>
+    <p class="infobox-d">Each cell is visited exactly once (O(mn) time, same as optimal), but the visited matrix burns O(mn) extra memory. The boundary-shrinking approach below pays O(1) extra space — just four ints.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal Code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; spiralOrder(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;& matrix) {
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; result;
+    <span class="kw">if</span> (matrix.<span class="fn">empty</span>()) <span class="kw">return</span> result;
+    <span class="kw">int</span> m = matrix.<span class="fn">size</span>(), n = matrix[0].<span class="fn">size</span>();
+    <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">bool</span>&gt;&gt; visited(m, <span class="kw">vector</span>&lt;<span class="kw">bool</span>&gt;(n, <span class="kw">false</span>));
+    <span class="kw">int</span> dirs[4][2] = {{0,1}, {1,0}, {0,-1}, {-1,0}};
+    <span class="kw">int</span> d = 0, i = 0, j = 0;
+    <span class="kw">for</span> (<span class="kw">int</span> cnt = 0; cnt &lt; m * n; cnt++) {
+        result.<span class="fn">push_back</span>(matrix[i][j]);
+        visited[i][j] = <span class="kw">true</span>;
+        <span class="kw">int</span> ni = i + dirs[d][0], nj = j + dirs[d][1];
+        <span class="kw">if</span> (ni &lt; 0 || ni &gt;= m || nj &lt; 0 || nj &gt;= n || visited[ni][nj]) {
+            d = (d + 1) % 4;
+            ni = i + dirs[d][0]; nj = j + dirs[d][1];
+        }
+        i = ni; j = nj;
+    }
+    <span class="kw">return</span> result;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">The optimization from visited-array to boundary-shrinking eliminates the O(m×n) extra space. Instead of marking cells, we track the active boundaries and shrink them after each directional pass. This is the only optimization we need—the algorithm is already optimal.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Visited-array approach</div>
+        <div class="wt-desc">Track visited cells in a separate 2D boolean array. Rotate direction when hitting a boundary or visited cell.</div>
+        <div class="wt-gain" style="color: var(--text3);">O(m×n) time, O(m×n) space (visited array)</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">4-boundary pointers (taught)</div>
+        <div class="wt-desc">Maintain top, bottom, left, right boundaries. After each directional pass, shrink the boundary inward. No visited array needed.</div>
+        <div class="wt-gain" style="color: var(--success);">O(m×n) time, O(1) space</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Initialize</b> top=0, bottom=m−1, left=0, right=n−1, and an empty result list.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>While</b> top ≤ bottom and left ≤ right (boundaries have not crossed):</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Traverse top row</b> left-to-right (j: left → right). Append matrix[top][j]. Then top++.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Traverse right column</b> top-to-bottom (i: top → bottom). Append matrix[i][right]. Then right−−.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>If top ≤ bottom</b>, traverse bottom row right-to-left (j: right → left). Append matrix[bottom][j]. Then bottom−−.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">6</div>
+      <div class="algo-t"><b>If left ≤ right</b>, traverse left column bottom-to-top (i: bottom → top). Append matrix[i][left]. Then left++.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">7</div>
+      <div class="algo-t"><b>Return</b> the result list.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main')">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; spiralOrder(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;& matrix) {
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; result;
+    <span class="kw">if</span> (matrix.<span class="fn">empty</span>()) {
+        <span class="kw">return</span> result;
+    }
+    <span class="kw">int</span> m = matrix.<span class="fn">size</span>();
+    <span class="kw">int</span> n = matrix[0].<span class="fn">size</span>();
+    <span class="kw">int</span> top = 0, bottom = m - 1, left = 0, right = n - 1;
+    <span class="kw">while</span> (top &lt;= bottom && left &lt;= right) {
+        <span class="cm">// Top row</span>
+        <span class="kw">for</span> (<span class="kw">int</span> j = left; j &lt;= right; j++) {
+            result.<span class="fn">push_back</span>(matrix[top][j]);
+        }
+        top++;
+        <span class="cm">// Right column</span>
+        <span class="kw">for</span> (<span class="kw">int</span> i = top; i &lt;= bottom; i++) {
+            result.<span class="fn">push_back</span>(matrix[i][right]);
+        }
+        right--;
+        <span class="cm">// Bottom row (if exists)</span>
+        <span class="kw">if</span> (top &lt;= bottom) {
+            <span class="kw">for</span> (<span class="kw">int</span> j = right; j &gt;= left; j--) {
+                result.<span class="fn">push_back</span>(matrix[bottom][j]);
+            }
+            bottom--;
+        }
+        <span class="cm">// Left column (if exists)</span>
+        <span class="kw">if</span> (left &lt;= right) {
+            <span class="kw">for</span> (<span class="kw">int</span> i = bottom; i &gt;= top; i--) {
+                result.<span class="fn">push_back</span>(matrix[i][left]);
+            }
+            left++;
+        }
+    }
+    <span class="kw">return</span> result;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div style="font-size: 13px; color: var(--text3); font-weight: 600; margin-bottom: 0.5rem;">State</div>
+      <div class="sm-boundaries">
+        <div class="sm-bound-card">
+          <div class="label">top</div>
+          <div class="value" id="cvv-top">0</div>
+        </div>
+        <div class="sm-bound-card">
+          <div class="label">bottom</div>
+          <div class="value" id="cvv-bottom">0</div>
+        </div>
+        <div class="sm-bound-card">
+          <div class="label">left</div>
+          <div class="value" id="cvv-left">0</div>
+        </div>
+        <div class="sm-bound-card">
+          <div class="label">right</div>
+          <div class="value" id="cvv-right">0</div>
+        </div>
+      </div>
+      <div id="cv-narration" class="cv-narration" style="margin-top: 1rem;"></div>
+    </div>
+  </div>
+  <div style="margin-top: 1.5rem; margin-bottom: 1.5rem;" id="cv-matrix-con"></div>
+  <div class="ctrl-row">
+    <button class="ex-btn active" onclick="cvLoadEx(0)">3×3</button>
+    <button class="ex-btn" onclick="cvLoadEx(1)">4×5</button>
+    <div style="flex: 1;"></div>
+    <button class="ctrl-btn" onclick="cvStopPlay()">■ Stop</button>
+    <button class="ctrl-btn pri" onclick="cvTogglePlay()">▶ Play</button>
+    <button class="ctrl-btn" onclick="cvNextStep()">Next ▶</button>
+    <div class="step-ctr"><span id="cv-step-num">0</span>/<span id="cv-step-max">0</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+
+  <div style="margin-bottom: 1.5rem;" id="dr-matrix-con"></div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div class="fitem-label">top</div>
+          <div class="fitem-val" id="f-top">0</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div class="fitem-label">bottom</div>
+          <div class="fitem-val" id="f-bottom">0</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div class="fitem-label">left</div>
+          <div class="fitem-val" id="f-left">0</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div class="fitem-label">right</div>
+          <div class="fitem-val" id="f-right">0</div>
+        </div>
+      </div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1: 3×3</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">Ex 2: 4×5</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">Ex 3: 2×2</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">Single element [[1]]</div>
+    <div class="corner-body">top=0, bottom=0, left=0, right=0. Top row: append 1; top=1. Loop exits (top > bottom). Return [1].</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">Single row [[1,2,3]]</div>
+    <div class="corner-body">top=0, bottom=0. Top row: append 1,2,3; top=1. Loop exits (top > bottom). Return [1,2,3].</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Single column [[1],[2],[3]]</div>
+    <div class="corner-body">left=0, right=0. All three elements are encountered in the top row (i loop) and right column (j loop) phases. The bottom/left phases skip due to boundary checks.</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">2×2 [[1,2],[3,4]]</div>
+    <div class="corner-body">Top row: 1,2 (top=1). Right column: 4 (right=0). Bottom row check (top ≤ bottom): yes, append 3; bottom=0. Left column check (left ≤ right): no (0 > 0), skip. Return [1,2,4,3].</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">Empty matrix []</div>
+    <div class="corner-body">m=0, so the loop condition top ≤ bottom (0 ≤ -1) is false on first check. Return [].</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Empty matrix:</b> Early return if matrix is empty (m=0 or n=0).</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Single row/column:</b> Boundary shrinking naturally handles m=1 or n=1.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Boundary guards:</b> Check top ≤ bottom and left ≤ right before bottom and left passes to prevent double-appending.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Loop termination:</b> Loop exits when top > bottom OR left > right.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Shrinking order:</b> top++, right--, bottom--, left++. Increment/decrement after each directional pass.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Time complexity:</b> O(m×n); every cell is visited exactly once.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Space complexity:</b> O(1) auxiliary; result vector is output.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab(0)">4-boundary pointers</button>
+    <button class="tab-btn" onclick="switchTab(1)">Layer by layer</button>
+  </div>
+
+  <div id="tab0" class="tab-pane active">
+    <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+      <span class="tag tag-time">O(m×n)</span>
+      <span class="tag tag-space">O(1)</span>
+    </div>
+    <p class="body">Maintain four pointers (top, bottom, left, right) and traverse in four directions per layer. After each pass, shrink the boundary. Clear, easy to debug, and the most common interview approach.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-app0')">▶ Code</button>
+    <div id="code-app0" class="code-block">
+      <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; spiralOrder(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;& matrix) {
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; result;
+    <span class="kw">if</span> (matrix.<span class="fn">empty</span>()) <span class="kw">return</span> result;
+    <span class="kw">int</span> m = matrix.<span class="fn">size</span>(), n = matrix[0].<span class="fn">size</span>();
+    <span class="kw">int</span> top = 0, bottom = m - 1, left = 0, right = n - 1;
+    <span class="kw">while</span> (top &lt;= bottom && left &lt;= right) {
+        <span class="kw">for</span> (<span class="kw">int</span> j = left; j &lt;= right; j++)
+            result.<span class="fn">push_back</span>(matrix[top][j]);
+        top++;
+        <span class="kw">for</span> (<span class="kw">int</span> i = top; i &lt;= bottom; i++)
+            result.<span class="fn">push_back</span>(matrix[i][right]);
+        right--;
+        <span class="kw">if</span> (top &lt;= bottom) {
+            <span class="kw">for</span> (<span class="kw">int</span> j = right; j &gt;= left; j--)
+                result.<span class="fn">push_back</span>(matrix[bottom][j]);
+            bottom--;
+        }
+        <span class="kw">if</span> (left &lt;= right) {
+            <span class="kw">for</span> (<span class="kw">int</span> i = bottom; i &gt;= top; i--)
+                result.<span class="fn">push_back</span>(matrix[i][left]);
+            left++;
+        }
+    }
+    <span class="kw">return</span> result;
+}</pre>
+    </div>
+  </div>
+
+  <div id="tab1" class="tab-pane">
+    <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+      <span class="tag tag-time">O(m×n)</span>
+      <span class="tag tag-space">O(m×n)</span>
+    </div>
+    <p class="body">Recursively extract the outer layer (top row, right column, bottom row, left column), then call yourself on the inner (m−2)×(n−2) submatrix. Same time complexity but uses the call stack for state. Less intuitive and slightly slower due to function overhead.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-app1')">▶ Code</button>
+    <div id="code-app1" class="code-block">
+      <pre class="cb"><span class="kw">void</span> <span class="fn">spiralHelper</span>(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;& matrix, <span class="kw">int</span> t, <span class="kw">int</span> b, <span class="kw">int</span> l, <span class="kw">int</span> r, <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;& result) {
+    <span class="kw">if</span> (t > b || l > r) <span class="kw">return</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> j = l; j &lt;= r; j++) result.<span class="fn">push_back</span>(matrix[t][j]);
+    <span class="kw">for</span> (<span class="kw">int</span> i = t + 1; i &lt;= b; i++) result.<span class="fn">push_back</span>(matrix[i][r]);
+    <span class="kw">if</span> (t &lt; b) <span class="kw">for</span> (<span class="kw">int</span> j = r - 1; j &gt;= l; j--) result.<span class="fn">push_back</span>(matrix[b][j]);
+    <span class="kw">if</span> (l &lt; r) <span class="kw">for</span> (<span class="kw">int</span> i = b - 1; i &gt; t; i--) result.<span class="fn">push_back</span>(matrix[i][l]);
+    <span class="fn">spiralHelper</span>(matrix, t + 1, b - 1, l + 1, r - 1, result);
+}
+<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; spiralOrder(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;& matrix) {
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; result;
+    <span class="kw">if</span> (matrix.<span class="fn">empty</span>()) <span class="kw">return</span> result;
+    <span class="fn">spiralHelper</span>(matrix, 0, matrix.<span class="fn">size</span>() - 1, 0, matrix[0].<span class="fn">size</span>() - 1, result);
+    <span class="kw">return</span> result;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(m×n)</div>
+      <div class="ccard-n">Every cell is visited and appended exactly once.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(1) auxiliary</div>
+      <div class="ccard-n">The result vector is output, not auxiliary. No extra data structures.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><strong>LC 885 — Spiral Matrix II</strong> — write a matrix in spiral order instead of reading. Use the same four-direction boundary shrinking, but assign values (1 through m×n) instead of reading them.</p>
+    <p><strong>LC 2326 — Spiral Matrix IV</strong> — traverse a linked list in spiral order on an m×n grid. Same spiral path, but the input is a linked list instead of a pre-filled matrix.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  const EXAMPLES = [
+    {nums: [[1,2,3],[4,5,6],[7,8,9]], m:3, n:3},
+    {nums: [[1,2,3,4,5],[6,7,8,9,10],[11,12,13,14,15],[16,17,18,19,20]], m:4, n:5},
+    {nums: [[1,2],[3,4]], m:2, n:2},
+  ];
+
+  const CV_LINES = [
+    {n:1, c:'vector<int> spiralOrder(vector<vector<int>>& matrix) {'},
+    {n:2, c:'    vector<int> result;'},
+    {n:3, c:'    if (matrix.empty()) { return result; }'},
+    {n:4, c:'    int m = matrix.size(), n = matrix[0].size();'},
+    {n:5, c:'    int top = 0, bottom = m - 1, left = 0, right = n - 1;'},
+    {n:6, c:'    while (top <= bottom && left <= right) {'},
+    {n:7, c:'        for (int j = left; j <= right; j++)'},
+    {n:8, c:'            result.push_back(matrix[top][j]);'},
+    {n:9, c:'        top++;'},
+    {n:10, c:'        for (int i = top; i <= bottom; i++)'},
+    {n:11, c:'            result.push_back(matrix[i][right]);'},
+    {n:12, c:'        right--;'},
+    {n:13, c:'        if (top <= bottom) { /* bottom row */ }'},
+    {n:14, c:'        if (left <= right) { /* left column */ }'},
+  ];
+
+  let cvCur = 0, cvTimer = null, cvSteps = [];
+  let drCur = 0, drTimer = null, drSteps = [];
+
+  function buildMatrix(matrix, containerId, prefix) {
+    const con = document.getElementById(containerId);
+    con.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'sm-matrix';
+    for (let i = 0; i < matrix.length; i++) {
+      const row = document.createElement('div');
+      row.className = 'sm-row';
+      for (let j = 0; j < matrix[i].length; j++) {
+        const cell = document.createElement('div');
+        cell.className = 'sm-cell';
+        cell.id = prefix + '_' + i + '_' + j;
+        cell.textContent = matrix[i][j];
+        row.appendChild(cell);
+      }
+      wrapper.appendChild(row);
+    }
+    con.appendChild(wrapper);
+  }
+
+  function cvGenSteps(matrix) {
+    const steps = [];
+    const m = matrix.length, n = matrix[0].length;
+    let result = [];
+    let top = 0, bottom = m - 1, left = 0, right = n - 1;
+
+    steps.push({line: 1, narr: 'Function call', top, bottom, left, right, result: []});
+    steps.push({line: 2, narr: 'Initialize result', top, bottom, left, right, result: []});
+    steps.push({line: 3, narr: 'Check if empty', top, bottom, left, right, result: []});
+    steps.push({line: 4, narr: 'Get dimensions m=' + m + ', n=' + n, top, bottom, left, right, result: []});
+    steps.push({line: 5, narr: 'Initialize boundaries', top, bottom, left, right, result: []});
+
+    let iter = 0;
+    while (top <= bottom && left <= right && iter < 100) {
+      iter++;
+      for (let j = left; j <= right; j++) {
+        result.push(matrix[top][j]);
+        steps.push({line: 7, narr: `Append matrix[${top}][${j}]=${matrix[top][j]}`, top, bottom, left, right, result: [...result], cellRow: top, cellCol: j});
+      }
+      top++;
+      steps.push({line: 9, narr: `top++`, top, bottom, left, right, result: [...result]});
+
+      for (let i = top; i <= bottom; i++) {
+        result.push(matrix[i][right]);
+        steps.push({line: 10, narr: `Append matrix[${i}][${right}]=${matrix[i][right]}`, top, bottom, left, right, result: [...result], cellRow: i, cellCol: right});
+      }
+      right--;
+      steps.push({line: 12, narr: `right--`, top, bottom, left, right, result: [...result]});
+
+      if (top <= bottom) {
+        for (let j = right; j >= left; j--) {
+          result.push(matrix[bottom][j]);
+          steps.push({line: 13, narr: `Append matrix[${bottom}][${j}]=${matrix[bottom][j]}`, top, bottom, left, right, result: [...result], cellRow: bottom, cellCol: j});
+        }
+        bottom--;
+        steps.push({line: 13, narr: `bottom--`, top, bottom, left, right, result: [...result]});
+      }
+
+      if (left <= right) {
+        for (let i = bottom; i >= top; i--) {
+          result.push(matrix[i][left]);
+          steps.push({line: 14, narr: `Append matrix[${i}][${left}]=${matrix[i][left]}`, top, bottom, left, right, result: [...result], cellRow: i, cellCol: left});
+        }
+        left++;
+        steps.push({line: 14, narr: `left++`, top, bottom, left, right, result: [...result]});
+      }
+    }
+
+    steps.push({line: 14, narr: 'Done. Return result', top, bottom, left, right, result: [...result]});
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.getElementById('cvv-top').textContent = st.top;
+    document.getElementById('cvv-bottom').textContent = st.bottom;
+    document.getElementById('cvv-left').textContent = st.left;
+    document.getElementById('cvv-right').textContent = st.right;
+    document.getElementById('cv-narration').textContent = st.narr;
+
+    if (cvCurrentEx) {
+      const m = cvCurrentEx.m, n = cvCurrentEx.n;
+      for (let i = 0; i < m; i++) {
+        for (let j = 0; j < n; j++) {
+          const cell = document.getElementById('cv_' + i + '_' + j);
+          if (!cell) continue;
+          cell.classList.remove('active', 'done');
+          if (st.cellRow === i && st.cellCol === j) {
+            cell.classList.add('active');
+          }
+        }
+      }
+    }
+  }
+
+  function cvLoadEx(idx) {
+    cvCurrentEx = EXAMPLES[idx];
+    buildMatrix(cvCurrentEx.nums, 'cv-matrix-con', 'cv');
+    cvSteps = cvGenSteps(cvCurrentEx.nums);
+    cvCur = 0;
+    cvStopPlay();
+    cvRender(cvSteps[0]);
+    document.querySelectorAll('.cv-section .ex-btn').forEach((btn, i) => {
+      btn.classList.toggle('active', i === idx);
+    });
+    document.getElementById('cv-step-num').textContent = '0';
+    document.getElementById('cv-step-max').textContent = Math.max(0, cvSteps.length - 1);
+  }
+
+  function cvNextStep() {
+    if (cvCur < cvSteps.length - 1) {
+      cvCur++;
+      cvRender(cvSteps[cvCur]);
+      document.getElementById('cv-step-num').textContent = cvCur;
+    }
+  }
+
+  function cvTogglePlay() {
+    if (cvTimer) {
+      cvStopPlay();
+    } else {
+      const btn = document.querySelectorAll('.cv-section .ctrl-row .ctrl-btn.pri')[0];
+      if (btn) btn.textContent = '⏸ Pause';
+      cvTimer = setInterval(() => {
+        cvNextStep();
+        if (cvCur === cvSteps.length - 1) cvStopPlay();
+      }, 400);
+    }
+  }
+
+  function cvStopPlay() {
+    if (cvTimer) {
+      clearInterval(cvTimer);
+      cvTimer = null;
+    }
+    const btn = document.querySelectorAll('.cv-section .ctrl-row .ctrl-btn.pri')[0];
+    if (btn) btn.textContent = '▶ Play';
+  }
+
+  let cvCurrentEx = EXAMPLES[0];
+
+  function drGenSteps(matrix) {
+    const steps = [];
+    const m = matrix.length, n = matrix[0].length;
+    let result = [];
+    let top = 0, bottom = m - 1, left = 0, right = n - 1;
+
+    steps.push({narr: 'Initialize', top, bottom, left, right, result});
+
+    let iter = 0;
+    while (top <= bottom && left <= right && iter < 100) {
+      iter++;
+      for (let j = left; j <= right; j++) {
+        result.push(matrix[top][j]);
+        steps.push({narr: `Read matrix[${top}][${j}]=${matrix[top][j]}`, top, bottom, left, right, result: [...result], cellRow: top, cellCol: j});
+      }
+      top++;
+      steps.push({narr: `top++`, top, bottom, left, right, result: [...result]});
+
+      for (let i = top; i <= bottom; i++) {
+        result.push(matrix[i][right]);
+        steps.push({narr: `Read matrix[${i}][${right}]=${matrix[i][right]}`, top, bottom, left, right, result: [...result], cellRow: i, cellCol: right});
+      }
+      right--;
+      steps.push({narr: `right--`, top, bottom, left, right, result: [...result]});
+
+      if (top <= bottom) {
+        for (let j = right; j >= left; j--) {
+          result.push(matrix[bottom][j]);
+          steps.push({narr: `Read matrix[${bottom}][${j}]=${matrix[bottom][j]}`, top, bottom, left, right, result: [...result], cellRow: bottom, cellCol: j});
+        }
+        bottom--;
+        steps.push({narr: `bottom--`, top, bottom, left, right, result: [...result]});
+      }
+
+      if (left <= right) {
+        for (let i = bottom; i >= top; i--) {
+          result.push(matrix[i][left]);
+          steps.push({narr: `Read matrix[${i}][${left}]=${matrix[i][left]}`, top, bottom, left, right, result: [...result], cellRow: i, cellCol: left});
+        }
+        left++;
+        steps.push({narr: `left++`, top, bottom, left, right, result: [...result]});
+      }
+    }
+
+    steps.push({narr: `Done. Result=[${result.join(',')}]`, top, bottom, left, right, result: [...result]});
+    return steps;
+  }
+
+  function drRender(st) {
+    document.getElementById('f-top').textContent = st.top;
+    document.getElementById('f-bottom').textContent = st.bottom;
+    document.getElementById('f-left').textContent = st.left;
+    document.getElementById('f-right').textContent = st.right;
+
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.narr;
+    if (whyEl) whyEl.textContent = '';
+
+    if (drCurrentEx) {
+      const m = drCurrentEx.m, n = drCurrentEx.n;
+      for (let i = 0; i < m; i++) {
+        for (let j = 0; j < n; j++) {
+          const cell = document.getElementById('dr_' + i + '_' + j);
+          if (!cell) continue;
+          cell.classList.remove('active', 'done');
+          if (st.cellRow === i && st.cellCol === j) {
+            cell.classList.add('active');
+          }
+        }
+      }
+    }
+
+    // Step counter + button enable (canonical)
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+
+  function drLoadEx(idx) {
+    drStopPlay();
+    drCurrentEx = EXAMPLES[idx];
+    buildMatrix(drCurrentEx.nums, 'dr-matrix-con', 'dr');
+    drSteps = drGenSteps(drCurrentEx.nums);
+    drCur = 0;
+    [0, 1, 2].forEach(i => {
+      const b = document.getElementById('dr-ex' + i);
+      if (b) b.classList.toggle('active', i === idx);
+    });
+    drRender(drSteps[0]);
+  }
+
+  function drNext() { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev() { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+  // drTogglePlay / drStopPlay are provided by static/lesson.js — they look for #dr-bplay and call drNext().
+
+  let drCurrentEx = EXAMPLES[0];
+
+  /* ══════════════════════════════
+     BRUTE FORCE (visited matrix)
+  ══════════════════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null, bfCurrentEx = EXAMPLES[0];
+  const BF_DIRS = ['→', '↓', '←', '↑'];
+
+  function bfGenSteps(matrix) {
+    const steps = [];
+    if (!matrix.length) return steps;
+    const m = matrix.length, n = matrix[0].length;
+    const visited = Array.from({length: m}, () => new Array(n).fill(false));
+    const dirs = [[0,1],[1,0],[0,-1],[-1,0]];
+    let d = 0, i = 0, j = 0, out = [];
+    const total = m * n;
+    steps.push({m, n, visited: visited.map(r => [...r]), i: -1, j: -1, d, out: [],
+                narr: `Allocate an ${m}×${n} visited matrix. Start at (0,0), direction = →.`});
+    for (let cnt = 0; cnt < total; cnt++) {
+      out.push(matrix[i][j]);
+      visited[i][j] = true;
+      steps.push({m, n, visited: visited.map(r => [...r]), i, j, d, out: [...out],
+                  narr: `Visit (${i},${j}) = ${matrix[i][j]}; output now has ${out.length} of ${total} cells.`});
+      let ni = i + dirs[d][0], nj = j + dirs[d][1];
+      if (ni < 0 || ni >= m || nj < 0 || nj >= n || visited[ni][nj]) {
+        const newD = (d + 1) % 4;
+        steps.push({m, n, visited: visited.map(r => [...r]), i, j, d: newD, out: [...out], turn: true,
+                    narr: `Next (${ni},${nj}) is out of bounds or visited — rotate direction to ${BF_DIRS[newD]}.`});
+        d = newD;
+        ni = i + dirs[d][0]; nj = j + dirs[d][1];
+      }
+      i = ni; j = nj;
+    }
+    steps.push({m, n, visited: visited.map(r => [...r]), i: -1, j: -1, d, out: [...out], done: true,
+                narr: `Output complete: [${out.join(', ')}]. Visited matrix used ${m*n} extra booleans.`});
+    return steps;
+  }
+
+  function bfRender(st) {
+    document.getElementById('bf-i').textContent = st.i >= 0 ? st.i : '—';
+    document.getElementById('bf-j').textContent = st.j >= 0 ? st.j : '—';
+    document.getElementById('bf-dir').textContent = BF_DIRS[st.d] ?? '—';
+    document.getElementById('bf-cnt').textContent = st.out.length;
+    document.getElementById('bf-output').textContent = st.done ? `output = [${st.out.join(', ')}]` : '';
+    // Build the matrix preview
+    const con = document.getElementById('bf-matrix-con');
+    con.innerHTML = '';
+    const tbl = document.createElement('div');
+    tbl.style.cssText = 'display:grid;grid-template-columns:repeat(' + st.n + ',32px);gap:3px;font-family:var(--mono);font-size:12px';
+    for (let r = 0; r < st.m; r++) {
+      for (let c = 0; c < st.n; c++) {
+        const cell = document.createElement('div');
+        const isCur = r === st.i && c === st.j;
+        const isVis = st.visited[r][c];
+        cell.style.cssText = 'width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:4px;'
+          + (isCur ? 'background:var(--bg-info);border:1.5px solid var(--border-info);color:var(--text-info);font-weight:700'
+            : isVis ? 'background:var(--bg-success);border:0.5px solid var(--border-success);color:var(--text-success)'
+            : 'background:var(--bg2);border:0.5px solid var(--border);color:var(--text2)');
+        cell.textContent = bfCurrentEx.nums[r][c];
+        tbl.appendChild(cell);
+      }
+    }
+    con.appendChild(tbl);
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+
+  function bfLoadEx(idx) {
+    bfStopPlay();
+    bfCur = 0;
+    bfCurrentEx = EXAMPLES[idx];
+    bfSteps = bfGenSteps(bfCurrentEx.nums);
+    [0, 1, 2].forEach(i => {
+      const b = document.getElementById('bf-ex' + i);
+      if (b) b.classList.toggle('active', i === idx);
+    });
+    bfRender(bfSteps[0]);
+  }
+
+  function bfNext() { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev() { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+  // bfTogglePlay / bfStopPlay are provided by static/lesson.js — they look for #bf-play and call bfNext().
+
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>

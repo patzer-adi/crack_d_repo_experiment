@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Two Sum — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC CSS ONLY — hash-map "seen" panel + light Easy badge */
+  /* Do not redefine any class already in static/lesson.css */
+
+  .badge-easy{background:var(--bg-success);color:var(--text-success);border:0.5px solid var(--border-success);}
+
+  /* Hash-map "seen" panel — used in §1, §2, §6, §7 */
+  .ts-map{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center;font-family:var(--mono);font-size:12px;padding:6px 10px;background:var(--bg2);border:0.5px solid var(--border);border-radius:6px;min-height:34px;vertical-align:middle;}
+  .ts-map-label{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-right:6px;}
+  .ts-map-empty{color:var(--text3);font-style:italic;font-size:11px;}
+  .ts-entry{display:inline-flex;gap:3px;align-items:center;padding:2px 6px;background:var(--bg);border:0.5px solid var(--border);border-radius:4px;color:var(--text2);}
+  .ts-entry .k{font-weight:600;color:var(--text);}
+  .ts-entry .arr{color:var(--text3);}
+  .ts-entry.hl{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);}
+  .ts-entry.hl .k,.ts-entry.hl .arr{color:var(--text-success);}
+
+  /* 2-column hash-map table for §6 code-viz (adapted from sec6 freq[26] principle) */
+  .ts-htable{display:grid;grid-template-columns:auto auto;column-gap:14px;row-gap:3px;font-family:var(--mono);font-size:12px;background:var(--bg2);border:0.5px solid var(--border);border-radius:6px;padding:8px 12px;align-content:start;min-height:60px;}
+  .ts-htable-head{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;border-bottom:0.5px solid var(--border);padding-bottom:2px;margin-bottom:2px;}
+  .ts-htable-k{color:var(--text);font-weight:600;}
+  .ts-htable-v{color:var(--text2);}
+  .ts-htable-row.recent .ts-htable-k,
+  .ts-htable-row.recent .ts-htable-v{color:var(--text-info);}
+  .ts-htable-row.match .ts-htable-k,
+  .ts-htable-row.match .ts-htable-v{color:var(--text-success);background:var(--bg-success);}
+  .ts-htable-empty{grid-column:1/-1;color:var(--text3);font-style:italic;font-size:11px;}
+
+  /* Frame label + formula line used in §1 mini-animation */
+  .ts-frame{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:.45rem 0;}
+  .ts-frame-tag{font-family:var(--mono);font-size:11px;color:var(--text3);min-width:28px;}
+  .ts-formula{font-family:var(--mono);font-size:12px;color:var(--text2);margin:.4rem 0;}
+  .ts-formula.hit{color:var(--text-success);font-weight:600;}
+  .ts-formula.miss{color:var(--text3);}
+
+  /* Array cell colouring for "current i" and "matched earlier index" */
+  .nl-num.ts-i{background:var(--bg-warn);border-color:var(--border-warn);color:var(--text-warn);}
+  .nl-num.ts-match{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Two Sum</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/two-sum/" target="_blank">LC #1</a>
+    <span class="badge badge-easy">Easy</span>
+    <span class="badge badge-arr">Arrays · Hash Map</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <p class="acard-q">Is exactly one solution guaranteed?</p>
+      <p class="acard-a">Yes — the problem promises exactly one valid pair.</p>
+      <span class="acard-u">→ return on first hit; no need to enumerate</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can the same element be used twice?</p>
+      <p class="acard-a">No — indices i and j must be distinct.</p>
+      <span class="acard-u">→ probe map for complement <b>before</b> inserting nums[i]</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can the input contain duplicate values?</p>
+      <p class="acard-a">Yes — e.g. [3,3] with target 6 is valid.</p>
+      <span class="acard-u">→ a later duplicate finds the earlier one; overwrite is safe</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Do indices need to be sorted in the output?</p>
+      <p class="acard-a">No — any order is accepted.</p>
+      <span class="acard-u">→ return [seen[c], i] directly; no extra sort</span>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Input is an unsorted array of integers (negatives allowed). Target is an integer (negative allowed). Exactly one pair exists. Output is the two original indices — sortedness of the input is <b>not</b> a resource we have, and we cannot afford to lose original positions by sorting.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Trade a backward scan for a hash lookup.</p>
+
+  <p class="body">At index <code>i</code>, the question is not "do any two elements sum to target?" — it is "has the value <code>target − nums[i]</code> appeared <i>before</i> now?" The two phrasings have the same answer, but the second one is asked once per element, not once per pair. The savings come entirely from how fast we can answer <i>"have I seen value c, and at what index?"</i> — O(n) with a linear backscan, O(1) with a hash map.</p>
+
+  <!-- Foundational visual: animated walkthrough on nums = [3, 2, 4, 7], target = 11.
+       Pattern (PLAN-017 adapted): current i (info-blue), already-seen indices in the map (light blue),
+       complement match (success-green when found). -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <!-- Legend -->
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);border:1.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>current i</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-warn);border:1.5px solid var(--border-warn);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>seen (idx &lt; i)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-success);border:1.5px solid var(--border-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>complement match (answer)</span>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.5rem">nums = [3, 2, 4, 7] &nbsp;·&nbsp; target = 11</div>
+
+    <!-- Array row -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:.625rem">
+      <div style="width:80px;font-family:var(--mono);font-size:10px;color:var(--text3);text-align:right">nums</div>
+      <div id="si-strip" class="number-line" style="gap:4px"></div>
+    </div>
+
+    <!-- Probe state -->
+    <div style="display:flex;gap:1rem;align-items:center;margin:.625rem 0;font-family:var(--mono);font-size:13px;flex-wrap:wrap">
+      <span>complement = target − nums[i] = <b id="si-comp" style="color:var(--text-info)">—</b></span>
+      <span id="si-result-pill" style="display:none;padding:3px 10px;border-radius:6px;background:var(--bg-success);border:0.5px solid var(--border-success);color:var(--text-success);font-weight:700">return <span id="si-result-val">—</span></span>
+    </div>
+
+    <!-- Seen map display -->
+    <div style="display:flex;gap:8px;align-items:center;margin:.625rem 0;font-family:var(--mono);font-size:12px;flex-wrap:wrap">
+      <span style="color:var(--text3)">seen =</span>
+      <span id="si-map">{}</span>
+    </div>
+
+    <!-- Caption -->
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <!-- Controls -->
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Walk <code>i</code> from <code>0</code> to <code>n−1</code>. Keep a hash map <code>seen</code> from value to index, holding everything visited so far. At each <code>i</code>, <b>probe first</b> for <code>target − nums[i]</code>; on hit, return <code>[seen[complement], i]</code>. On miss, <b>insert</b> <code>nums[i] → i</code>. Probe-before-insert keeps <code>seen</code> aligned with indices <code>&lt; i</code>, so an element can never match itself.</p>
+  </div>
+
+  <!-- Equivalence chain -->
+  <p class="body" style="margin-top:1rem">Why a hash map is the right structure:</p>
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">find i, j with nums[i] + nums[j] = target  (i ≠ j)</div>
+        <div class="chain-note">the problem</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">for each i: is there an earlier j with nums[j] = target − nums[i]?</div>
+        <div class="chain-note">reframe "pair search" as "complement search" — one question per element</div>
+        <div class="chain-example">
+          <span class="pill n">nums[i]=7, target=9</span><span class="arrow">→</span>
+          <span class="pill n">look for value 2 before index i</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">"has value c appeared before, and at what index?" → hash map answers in O(1)</div>
+        <div class="chain-note">replace per-step backscan with a value → index dictionary</div>
+        <div class="chain-example">
+          <span class="pill n">backscan: O(i)</span><span class="arrow">→</span>
+          <span class="pill ok">hash probe: O(1)</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">total: O(n²)</span><span class="arrow">→</span>
+          <span class="pill ok">O(n)</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">probe before insert</span> in one pass — guarantees the map equals indices &lt; i</div>
+        <div class="chain-note">no explicit "skip same index" guard needed; correctness falls out of the order of operations</div>
+        <div class="chain-example">
+          <span class="pill n">probe seen[c]</span><span class="arrow">→</span>
+          <span class="pill n">hit? return : insert nums[i]</span><span class="arrow">→</span>
+          <span class="pill ok">map = {indices &lt; i}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force: every pair</p>
+  <p class="body">For each index <code>i</code>, try every later index <code>j &gt; i</code>; check if <code>nums[i] + nums[j] == target</code>. Two nested loops over <code>n</code> elements. The work grows with the number of pairs — about <code>n²/2</code> in the worst case.</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">[2,7,11,15], t=9</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">[3,2,4], t=6</button>
+    <button class="ex-btn" id="bf-ex2" onclick="bfLoadEx(2)">[3,3], t=6</button>
+  </div>
+  <div class="bf-nums" id="bf-nums"></div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    i=<span id="bf-i" style="font-weight:600;color:var(--text)">—</span>
+    &nbsp;j=<span id="bf-j" style="font-weight:600;color:var(--text-info)">—</span>
+    &nbsp;·&nbsp; sum: <span id="bf-sum" style="font-weight:600;color:var(--text2)">—</span>
+    &nbsp;·&nbsp; checks: <span id="bf-ops" style="font-weight:600;color:var(--text-danger)">0</span>
+  </div>
+  <div id="bf-verdict" style="display:none"></div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:.625rem">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n²) time, O(1) space</p>
+    <p class="infobox-d">Two nested loops over <code>n</code> elements. Worst case (answer at the end, or no early-return) is C(n,2) ≈ n²/2 checks. For LC's 10⁴ limit that is up to 5×10⁷ comparisons — borderline TLE on a stricter judge.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal Code</button>
+  <div id="code-bf" class="code-block">
+<pre class="cb"><span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; <span class="fn">twoSum_BF</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums, <span class="kw">int</span> target) {
+    <span class="kw">int</span> n = nums.size();
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n - <span class="nu">1</span>; i++) {
+        <span class="kw">for</span> (<span class="kw">int</span> j = i + <span class="nu">1</span>; j &lt; n; j++) {
+            <span class="kw">if</span> (nums[i] + nums[j] == target) {
+                <span class="kw">return</span> {i, j};
+            }
+        }
+    }
+    <span class="kw">return</span> {};  <span class="cm">// problem guarantees a solution, never reached</span>
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Two translations from O(n²) to O(n)</p>
+  <p class="body">The brute force asks "do <i>these two</i> add to target?" once per pair. Two translations turn that into one lookup per element.</p>
+
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 1 — Pair search → complement search</p>
+        <p class="wt-desc">For each <code>i</code>, instead of testing every <code>j</code>, ask one question: "has the value <code>target − nums[i]</code> appeared at any earlier index?" Same answer set; very different work. The outer loop is still O(n), but the inner question is now a <i>single</i> lookup against the prefix <code>nums[0..i−1]</code> — not a full scan of it. <span style="color:var(--text3)">e.g. at <code>nums[i]=7</code>, <code>target=9</code>, we look for <i>value 2</i> in everything seen so far.</span></p>
+        <p class="wt-gain">→ work per element: "is there a partner?" instead of "test every partner"</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 2 — Linear lookup → hash lookup, in one pass</p>
+        <p class="wt-desc">"Has value <code>c</code> appeared, and at what index?" is exactly what a hash map answers. Maintain <code>seen</code> = (value → index) of everything visited; at index <code>i</code>, <b>probe first</b>, then <b>insert</b>. Probe-before-insert keeps <code>seen</code> equal to indices <code>&lt; i</code>, so an element can never match itself — no <code>i ≠ j</code> guard, no second pass. Each step is O(1) average; total is O(n).</p>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:12px;line-height:2;color:var(--text2)">
+          <div>c = target − nums[i]</div>
+          <div>seen[c] exists  →  return [seen[c], i]</div>
+          <div>else            →  seen[nums[i]] = i  &nbsp;<span style="color:var(--text3)">// insert AFTER the probe</span></div>
+        </div>
+        <p class="wt-gain">→ per-step lookup O(n) → O(1) average  ·  total O(n²) → O(n)</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox info" style="margin-top:.875rem">
+    <p class="infobox-t">Why "probe before insert" — and not the other way around</p>
+    <p class="infobox-d">If you inserted <code>nums[i]</code> first and then probed, an element could find itself: e.g. <code>nums=[3,…], target=6</code> would probe for value 3 and find the <code>3</code> you just stored at index <code>i</code> — falsely returning <code>[i, i]</code>. Probe-before-insert sidesteps the bug entirely: at the moment of probing, the map contains <i>only</i> indices <code>&lt; i</code>. (Duplicate values still work: in <code>[3,3]</code>, the <i>second</i> 3 probes and finds the <i>first</i> 3, which was stored on the previous iteration.)</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t"><b>Create</b> an empty hash map <code>seen</code> from value to index.</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t"><b>Walk</b> <code>i</code> from <code>0</code> to <code>n−1</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t"><b>Compute</b> <code>complement = target − nums[i]</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t"><b>If</b> <code>seen</code> contains <code>complement</code>, <b>return</b> <code>[seen[complement], i]</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t"><b>Otherwise store</b> <code>seen[nums[i]] = i</code> and continue.</span></div>
+    <div class="algo-step"><span class="algo-n">6.</span><span class="algo-t">The problem guarantees a solution, so the loop always <b>returns</b> before exhausting <code>nums</code>.</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+<pre class="cb"><span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; <span class="fn">twoSum</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums, <span class="kw">int</span> target) {
+    <span class="tp">unordered_map</span>&lt;<span class="kw">int</span>, <span class="kw">int</span>&gt; seen;          <span class="cm">// value → index</span>
+    <span class="kw">int</span> n = nums.size();
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        <span class="kw">int</span> complement = target - nums[i];
+        <span class="kw">if</span> (seen.count(complement)) {
+            <span class="kw">return</span> {seen[complement], i};
+        }
+        seen[nums[i]] = i;                  <span class="cm">// insert AFTER probe</span>
+    }
+    <span class="kw">return</span> {};                              <span class="cm">// unreachable: problem guarantees a solution</span>
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Walk through the optimal code one statement at a time. Variable cards dim until their initialising line fires. The <code>seen</code> table on the right shows the map's contents after each insert — exactly the state that the next probe will query.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-n"><span class="cv-var-name">n</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-target"><span class="cv-var-name">target</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-i"><span class="cv-var-name">i</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-x"><span class="cv-var-name">nums[i]</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-comp"><span class="cv-var-name">complement</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-hit"><span class="cv-var-name">in seen?</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div style="margin-top:.5rem">
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">seen (value → index)</div>
+        <div class="ts-htable" id="cv-htable">
+          <span class="ts-htable-empty">empty</span>
+        </div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the keys to walk through.</div>
+    </div>
+  </div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">fast: [2,7,11,15], t=9</button>
+    <button class="ex-btn" id="cv-ex1" onclick="cvLoadEx(1)">slow: [1,5,9,3,8,11,4,7,2,6,10], t=20</button>
+    <button class="ex-btn" id="cv-ex2" onclick="cvLoadEx(2)">edge: [3,3], t=6</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn" id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn" onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Interactive dry run</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">fast: [2,7,11,15], t=9</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">slow: [1,5,9,3,8,11,4,7,2,6,10], t=20</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">edge: [3,3], t=6</button>
+  </div>
+  <div class="num-strip" id="dr-strip"></div>
+  <div style="margin:.5rem 0">
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">seen (value → index)</div>
+    <div class="ts-map" id="dr-map"><span class="ts-map-empty">empty</span></div>
+  </div>
+  <div class="panels-fixed">
+    <div class="formula-panel" id="dr-formula">
+      <div class="formula-grid">
+        <div><p class="fitem-label">i</p><p class="fitem-val" id="f-i">—</p><p class="fitem-sub">current idx</p></div>
+        <div><p class="fitem-label">nums[i]</p><p class="fitem-val" id="f-x">—</p><p class="fitem-sub">current value</p></div>
+        <div><p class="fitem-label">target</p><p class="fitem-val" id="f-t">—</p><p class="fitem-sub">goal sum</p></div>
+        <div><p class="fitem-label" style="color:var(--text-info)">complement</p><p class="fitem-val" id="f-c">—</p><p class="fitem-sub">target − nums[i]</p></div>
+        <div><p class="fitem-label" style="color:var(--text-success)">seen[c]</p><p class="fitem-val" id="f-hit">—</p><p class="fitem-sub">index if hit</p></div>
+      </div>
+      <div class="formula-eq" id="dr-feq">Select an example to begin.</div>
+    </div>
+    <div class="step-panel" id="dr-step">
+      <p class="step-what" id="dr-what">—</p>
+      <p class="step-why" id="dr-why">Use the controls below to step through.</p>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+  <div style="margin-top:.875rem">
+    <p style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-bottom:4px">Answer</p>
+    <p id="dr-result" style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--text)">—</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner"><div class="cnum">1</div><div>
+    <p class="corner-title">Duplicate value forms the answer — [3, 3], target = 6</p>
+    <p class="corner-body">i=0: complement = 3, <code>seen</code> empty, miss → store <code>seen[3] = 0</code>. i=1: complement = 3, <code>seen[3] = 0</code>, hit → return <code>[0, 1]</code>. The second copy finds the first because we probe <i>before</i> we'd overwrite. If we'd inserted before probing, the second copy would have overwritten index 0 and self-matched.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">2</div><div>
+    <p class="corner-title">Same element can't be reused — guaranteed by ordering, not by a guard</p>
+    <p class="corner-body">No explicit <code>i ≠ j</code> check appears in the code. It is implicit in the order of operations: at index <code>i</code>, <code>seen</code> contains only indices <code>&lt; i</code>, so the answer it returns is always paired with an earlier index. <code>[2, 4, 4]</code> with target = 8 returns <code>[1, 2]</code>, not <code>[1, 1]</code>, because the first 4 is in <code>seen</code> when the second 4 probes.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">3</div><div>
+    <p class="corner-title">Negative numbers and negative target — [-1, -2, -3, -4, -5], target = -8</p>
+    <p class="corner-body">Hashing is value-agnostic — integer hashes don't care about sign. i=2: complement = -8 − (-3) = -5, miss. … i=4: complement = -8 − (-5) = -3, <code>seen[-3] = 2</code>, hit → return <code>[2, 4]</code>. No casting, no offset, no special case.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">4</div><div>
+    <p class="corner-title">Answer at the very end — [3, 2, 4], target = 6</p>
+    <p class="corner-body">i=0..1 are misses that just populate <code>seen</code>. i=2: complement = 2, hit → <code>[1, 2]</code>. The loop must visit every earlier index before the final partner triggers a hit; do not write code that "looks ahead" or terminates early. Early termination would lose the answer.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">5</div><div>
+    <p class="corner-title">Why a two-pass "fill then scan" version is wrong</p>
+    <p class="corner-body">A two-pass version inserts every <code>nums[i] → i</code> first, then re-scans probing for complements. On <code>[3, 3]</code> with target 6 that probes for value 3 at i=0 and finds <code>seen[3] = 1</code> — returning <code>[0, 1]</code> by luck; but on <code>[3, 4]</code> with target 6 it probes for 3 at i=0 and finds <code>seen[3] = 0</code>, returning the bogus <code>[0, 0]</code>. The single-pass probe-before-insert order is what avoids this entire class of bug.</p>
+  </div></div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Probe before insert:</b> the order of operations <i>is</i> the no-self-pair guard. Never swap them.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Use <code>count()</code> or <code>find()</code>, not <code>operator[]</code>, for the probe:</b> <code>seen[c]</code> would <i>insert</i> a default-zero entry on a miss, silently corrupting the map.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Reserve capacity for large inputs:</b> <code>seen.reserve(nums.size())</code> on <code>unordered_map</code> trades a touch of memory for fewer rehashes — measurable on 10⁴+ inputs.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Integer overflow:</b> <code>target − nums[i]</code> with <code>INT_MIN ≤ nums[i] ≤ INT_MAX</code> and a large positive target can overflow <code>int</code>. LC's stated bounds (|nums[i]| ≤ 10⁹, |target| ≤ 10⁹) keep the subtraction inside <code>int</code> — but on stricter input bounds, widen to <code>long long</code>.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Unreachable return:</b> <code>return {};</code> after the loop documents that the problem guarantees a solution. Do not raise — the judge expects a vector.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Don't pre-fill the map:</b> a two-pass version (fill then scan) can self-match. The one-pass probe-before-insert is the correctness-critical structure, not an optimisation.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Hash map, one pass (optimal)</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Sort + two pointers (with bookkeeping)</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Brute force</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body" style="margin-top:.5rem">The solution taught in §4–§5. Walk once, probe-then-insert. Optimal time complexity — you must read every element at least once when the answer is at the end. The space cost buys the O(1) average lookup that makes the linear time possible.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">Time O(n log n)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body" style="margin-top:.5rem"><b>Sorting destroys index information</b> — and "return the original indices" is exactly what the problem asks for. To recover, sort pairs <code>(value, original_index)</code> instead of bare values, then squeeze L and R inward. (Another way to put it: this is what you'd do if the problem returned <i>values</i>; the hash map is what you do because it returns <i>indices</i>.) Strictly worse than the hash map on this exact problem, but it generalises cleanly to <a href="https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/" target="_blank">Two Sum II</a> (sorted input, O(1) extra space) and to 3Sum / 4Sum.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-sort',this)">▶ Reveal Code</button>
+    <div id="code-sort" class="code-block">
+<pre class="cb"><span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; <span class="fn">twoSum_sort</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums, <span class="kw">int</span> target) {
+    <span class="kw">int</span> n = nums.size();
+    <span class="tp">vector</span>&lt;<span class="tp">pair</span>&lt;<span class="kw">int</span>, <span class="kw">int</span>&gt;&gt; vi(n);
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        vi[i] = {nums[i], i};                  <span class="cm">// keep original index</span>
+    }
+    sort(vi.begin(), vi.end());                <span class="cm">// O(n log n)</span>
+    <span class="kw">int</span> L = <span class="nu">0</span>, R = n - <span class="nu">1</span>;
+    <span class="kw">while</span> (L &lt; R) {
+        <span class="kw">int</span> s = vi[L].first + vi[R].first;
+        <span class="kw">if</span> (s == target) {
+            <span class="kw">return</span> {vi[L].second, vi[R].second};
+        } <span class="kw">else if</span> (s &lt; target) {
+            L++;
+        } <span class="kw">else</span> {
+            R--;
+        }
+    }
+    <span class="kw">return</span> {};
+}</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">Time O(n²)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body" style="margin-top:.5rem">Two nested loops, return on first hit. Correct and tiny. Fast enough at LC's 10⁴ limit, but a clear signal in an interview that you didn't reach for the obvious O(n) improvement. The starting point that motivates the two translations in §3.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard"><p class="ccard-l">Time</p><p class="ccard-v">O(n)</p><p class="ccard-n">One pass; each step does an O(1) average hash probe and an O(1) average insert. Worst case is O(n) per step under adversarial hashing, but <code>unordered_map</code>'s amortised guarantees give O(n) total in practice.</p></div>
+    <div class="ccard"><p class="ccard-l">Space</p><p class="ccard-v">O(n)</p><p class="ccard-n">The map stores at most <code>n</code> entries before the answer is found. The answer vector is two ints. No recursion, no stack depth concerns.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">What to remember for similar problems</p>
+  <div class="takehome">
+    <p class="body">The pattern: <strong>scan once, ask "have I seen the complement?" against a value→index map, probe before insert</strong>. The order of operations is what guarantees correctness without an explicit <code>i ≠ j</code> guard.</p>
+    <p class="body">A hash map is the right answer when the inner question is "has value <i>X</i> appeared, and where?" — i.e. an <i>exact-key</i> lookup. The moment the question becomes "is there an <i>X</i> in some <i>range</i>?", the hash map stops being enough and you need sorting + two-pointer (or a BIT / segment tree).</p>
+    <p class="body">Related problems:</p>
+    <p class="body"><b>LC 167 — Two Sum II (Sorted)</b> — same question with sorted input and indices not required. Hash map still works, but the canonical answer is O(1)-space two-pointer. Teaches that <i>sortedness</i> is a real algorithmic resource.</p>
+    <p class="body"><b>LC 15 — 3Sum</b> — triples summing to 0. Hash map struggles with duplicate-triple dedup; the optimal is sort + two-pointer per fixed outer index. Different translation for a different constraint.</p>
+    <p class="body"><b>LC 653 — Two Sum IV (BST)</b> — same complement question over a tree. The hash-map approach ports verbatim (any traversal). Shows the technique is data-structure-portable.</p>
+    <p class="body"><b>LC 1099 — Two Sum Less Than K</b> — maximum sum <i>strictly less than</i> K. Hash map breaks because we'd need a <i>range</i> query, not an exact-key probe. Optimal is sort + two-pointer.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+
+<script>
+  // §1 animation — hash-map walk on nums = [3, 2, 4, 7], target = 11
+  const SI_NUMS = [3, 2, 4, 7];
+  const SI_TARGET = 11;
+  let siSteps = siGenSteps(SI_NUMS, SI_TARGET);
+  let siCur = 0;
+  let siTimer = null;
+
+  function siGenSteps(nums, target) {
+    const steps = [];
+    const seen = new Map();
+    steps.push({
+      i: -1, seen: new Map(), complement: null, hitAt: null, result: null,
+      caption: `Init: seen map is empty. Walk i from 0 to n−1; probe before insert.`,
+    });
+    for (let i = 0; i < nums.length; i++) {
+      const c = target - nums[i];
+      const hitAt = seen.has(c) ? seen.get(c) : null;
+      if (hitAt !== null) {
+        steps.push({
+          i, seen: new Map(seen), complement: c, hitAt, result: [hitAt, i],
+          caption: `i=${i}: nums[${i}]=${nums[i]}; complement = ${target} − ${nums[i]} = ${c}. Found at index ${hitAt} → return [${hitAt}, ${i}].`,
+        });
+        break;
+      } else {
+        seen.set(nums[i], i);
+        steps.push({
+          i, seen: new Map(seen), complement: c, hitAt: null, result: null,
+          caption: `i=${i}: nums[${i}]=${nums[i]}; complement = ${target} − ${nums[i]} = ${c}. Not in seen → insert nums[${i}]=${nums[i]} → ${i}.`,
+        });
+      }
+    }
+    return steps;
+  }
+
+  function siRender(st) {
+    const strip = document.getElementById('si-strip');
+    strip.innerHTML = '';
+    SI_NUMS.forEach((v, idx) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'nl-wrap';
+      const cell = document.createElement('div');
+      cell.className = 'nl-num';
+      if (st.hitAt !== null && idx === st.hitAt) cell.classList.add('match');
+      else if (idx === st.i) cell.classList.add('ptr-l');
+      else if (st.seen.has(SI_NUMS[idx]) && st.seen.get(SI_NUMS[idx]) === idx && idx !== st.i) cell.classList.add('fixed');
+      cell.textContent = v;
+      const lbl = document.createElement('div');
+      lbl.className = 'nl-label';
+      lbl.textContent = idx === st.i ? `${idx} ← i` : idx;
+      if (idx === st.i) lbl.style.color = 'var(--text-info)';
+      else if (st.hitAt !== null && idx === st.hitAt) lbl.style.color = 'var(--text-success)';
+      wrap.appendChild(cell);
+      wrap.appendChild(lbl);
+      strip.appendChild(wrap);
+    });
+
+    document.getElementById('si-comp').textContent = st.complement !== null ? st.complement : '—';
+    const mapEl = document.getElementById('si-map');
+    if (st.seen.size === 0) {
+      mapEl.textContent = '{}';
+    } else {
+      const entries = [...st.seen.entries()].map(([k, v]) => `<span style="padding:2px 7px;border-radius:5px;background:var(--bg3);border:0.5px solid var(--border)"><b>${k}</b> → idx ${v}</span>`).join(' ');
+      mapEl.innerHTML = entries;
+    }
+    const resultPill = document.getElementById('si-result-pill');
+    if (st.result !== null) {
+      resultPill.style.display = 'inline-block';
+      document.getElementById('si-result-val').textContent = `[${st.result.join(', ')}]`;
+    } else {
+      resultPill.style.display = 'none';
+    }
+
+    document.getElementById('si-caption').textContent = st.caption;
+    const ctr = document.getElementById('si-sctr');
+    if (ctr) ctr.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() {
+    clearInterval(siTimer); siTimer = null;
+    const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto';
+  }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur < siSteps.length - 1) siNext(); else siStopPlay();
+    }, 1400);
+  }
+
+  siRender(siSteps[0]);
+</script>
+
+<script>
+/* ══════════════════════════════
+   DATA — shared examples (cv + dr); bf has a smaller set
+══════════════════════════════ */
+const EXAMPLES=[
+  {nums:[2,7,11,15],                       target:9,  label:'fast'},
+  {nums:[1,5,9,3,8,11,4,7,2,6,10],         target:20, label:'slow'},
+  {nums:[3,3],                             target:6,  label:'edge'},
+];
+const BF_EXAMPLES=[
+  {nums:[2,7,11,15], target:9},
+  {nums:[3,2,4],     target:6},
+  {nums:[3,3],       target:6},
+];
+
+/* Helper: render an entry list into a .ts-map container (dry run) */
+function renderSeenMap(elId, seen, highlightKey){
+  const el=document.getElementById(elId); el.innerHTML='';
+  const lbl=document.createElement('span'); lbl.className='ts-map-label'; lbl.textContent='seen';
+  el.appendChild(lbl);
+  const keys=Object.keys(seen);
+  if(keys.length===0){
+    const empty=document.createElement('span'); empty.className='ts-map-empty'; empty.textContent='empty';
+    el.appendChild(empty); return;
+  }
+  keys.forEach(k=>{
+    const ent=document.createElement('span'); ent.className='ts-entry';
+    if(String(k)===String(highlightKey)) ent.classList.add('hl');
+    ent.innerHTML='<span class="k">'+k+'</span><span class="arr">→</span><span>idx '+seen[k]+'</span>';
+    el.appendChild(ent);
+  });
+}
+
+/* Helper: render the cv hash-table (right panel) */
+function renderHTable(elId, seen, recentKey, matchKey){
+  const el=document.getElementById(elId); el.innerHTML='';
+  const keys=Object.keys(seen);
+  if(keys.length===0 && matchKey==null){
+    const e=document.createElement('span'); e.className='ts-htable-empty'; e.textContent='empty';
+    el.appendChild(e); return;
+  }
+  // header row
+  const hk=document.createElement('div'); hk.className='ts-htable-head'; hk.textContent='value';
+  const hv=document.createElement('div'); hv.className='ts-htable-head'; hv.textContent='index';
+  el.appendChild(hk); el.appendChild(hv);
+  keys.forEach(k=>{
+    const row=document.createElement('div'); row.className='ts-htable-row';
+    if(String(k)===String(matchKey)) row.classList.add('match');
+    else if(String(k)===String(recentKey)) row.classList.add('recent');
+    const kel=document.createElement('div'); kel.className='ts-htable-k '+row.className.split(' ').slice(1).join(' '); kel.textContent=k;
+    const vel=document.createElement('div'); vel.className='ts-htable-v '+row.className.split(' ').slice(1).join(' '); vel.textContent=seen[k];
+    // simpler: wrap each row as two grid cells with shared class via parent — fallback:
+    el.appendChild(kel); el.appendChild(vel);
+    if(String(k)===String(matchKey)){
+      kel.classList.add('ts-htable-k'); kel.style.background='var(--bg-success)'; kel.style.color='var(--text-success)'; kel.style.fontWeight='600';
+      vel.style.background='var(--bg-success)'; vel.style.color='var(--text-success)';
+    } else if(String(k)===String(recentKey)){
+      kel.style.color='var(--text-info)';
+      vel.style.color='var(--text-info)';
+    }
+  });
+}
+
+/* ══════════════════════════════
+   BRUTE FORCE
+══════════════════════════════ */
+let bfSteps=[],bfCur=0,bfTimer=null;
+
+function bfGen(ex){
+  const nums=ex.nums.slice(), target=ex.target, n=nums.length;
+  const out=[]; let ops=0; let result=null;
+  out.push({nums,target,n,i:-1,j:-1,sum:null,ops:0,phase:'init',result:null,
+    msg:`Try every pair (i, j) with j > i. Check nums[i] + nums[j] == ${target}.`});
+  outer:
+  for(let i=0;i<n-1 && result==null;i++){
+    for(let j=i+1;j<n && result==null;j++){
+      ops++;
+      const s=nums[i]+nums[j];
+      const isMatch=(s===target);
+      if(isMatch) result=[i,j];
+      out.push({nums,target,n,i,j,sum:s,ops,
+        phase:isMatch?'match':'check',
+        result:isMatch?[i,j]:null,
+        msg:isMatch
+          ? `i=${i} (${nums[i]}) + j=${j} (${nums[j]}) = ${s} = target ✓ → return [${i}, ${j}]`
+          : `i=${i} (${nums[i]}) + j=${j} (${nums[j]}) = ${s} ≠ ${target}`});
+    }
+  }
+  if(result==null){
+    out.push({nums,target,n,i:-1,j:-1,sum:null,ops,phase:'done',result:null,
+      msg:`No pair found. ${ops} checks.`});
+  } else {
+    out.push({nums,target,n,i:-1,j:-1,sum:null,ops,phase:'done',result,
+      msg:`Done. Answer = [${result[0]}, ${result[1]}]. ${ops} checks.`});
+  }
+  return out;
+}
+
+function bfRender(st){
+  const con=document.getElementById('bf-nums'); con.innerHTML='';
+  st.nums.forEach((v,idx)=>{
+    const w=document.createElement('div'); w.style.cssText='display:flex;flex-direction:column;align-items:center;';
+    const cell=document.createElement('div'); cell.className='bf-num'; cell.textContent=v;
+    if(idx===st.i) cell.classList.add('bi');
+    if(idx===st.j) cell.classList.add('bj');
+    if(st.phase==='match'&&(idx===st.i||idx===st.j)) cell.classList.add('bmatch');
+    const idxEl=document.createElement('div'); idxEl.className='bf-idx'; idxEl.textContent=idx;
+    w.appendChild(cell); w.appendChild(idxEl); con.appendChild(w);
+  });
+  document.getElementById('bf-i').textContent=st.i>=0?st.i:'—';
+  document.getElementById('bf-j').textContent=st.j>=0?st.j:'—';
+  document.getElementById('bf-sum').textContent=st.sum!=null?st.sum:'—';
+  document.getElementById('bf-ops').textContent=st.ops;
+  const vd=document.getElementById('bf-verdict');
+  if(st.phase==='done'){
+    vd.style.display='inline-block';
+    vd.style.cssText='font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;padding:4px 10px;border-radius:6px;background:var(--bg-success);color:var(--text-success);margin-top:.5rem;display:inline-block;';
+    vd.textContent='✓ '+st.msg;
+  } else if(st.phase==='match'){
+    vd.style.display='inline-block';
+    vd.style.cssText='font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;padding:4px 10px;border-radius:6px;background:var(--bg-success);color:var(--text-success);margin-top:.5rem;display:inline-block;';
+    vd.textContent='✓ '+st.msg;
+  } else vd.style.display='none';
+  document.getElementById('bf-sctr').textContent=`Step ${bfCur+1}/${bfSteps.length}`;
+  document.getElementById('bf-prev').disabled=bfCur===0;
+  document.getElementById('bf-next').disabled=bfCur===bfSteps.length-1;
+}
+function bfNext(){if(bfCur<bfSteps.length-1){bfCur++;bfRender(bfSteps[bfCur]);}else bfStopPlay();}
+function bfPrev(){if(bfCur>0){bfCur--;bfRender(bfSteps[bfCur]);}}
+function bfReset(){bfStopPlay();bfCur=0;bfRender(bfSteps[0]);}
+function bfLoadEx(idx){
+  bfStopPlay();bfCur=0;
+  [0,1,2].forEach(i=>document.getElementById('bf-ex'+i).classList.toggle('active',i===idx));
+  bfSteps=bfGen(BF_EXAMPLES[idx]); bfRender(bfSteps[0]);
+}
+
+/* ══════════════════════════════
+   CODE VISUALIZATION
+══════════════════════════════ */
+const CV_LINES=[
+  {n:1,  c:'vector<int> twoSum(vector<int>& nums, int target) {'},
+  {n:2,  c:'    unordered_map<int, int> seen;'},
+  {n:3,  c:'    int n = nums.size();'},
+  {n:4,  c:'    for (int i = 0; i < n; i++) {'},
+  {n:5,  c:'        int complement = target - nums[i];'},
+  {n:6,  c:'        if (seen.count(complement)) {'},
+  {n:7,  c:'            return {seen[complement], i};'},
+  {n:8,  c:'        }'},
+  {n:9,  c:'        seen[nums[i]] = i;'},
+  {n:10, c:'    }'},
+  {n:11, c:'    return {};'},
+  {n:12, c:'}'},
+];
+
+let cvSteps=[],cvCur=0,cvTimer=null;
+
+function cvGen(ex){
+  const nums=ex.nums.slice(), target=ex.target, n=nums.length;
+  const out=[];
+  const seen={};
+  let curI=-1, curX=null, curC=null, curHit=null, recentKey=null, matchKey=null, ans=null;
+
+  const snap=(line,narr,phase,changed)=>{
+    out.push({line,narr,phase,changed:changed||[],
+      nums,target,n,
+      i:curI, x:curX, complement:curC, hit:curHit,
+      seen:Object.assign({},seen), recentKey, matchKey, ans});
+  };
+
+  snap(1,`Enter twoSum with nums = [${nums.join(', ')}], target = ${target}.`,'init',['target']);
+  snap(2,'Create empty hash map seen.','init',[]);
+  snap(3,`n = ${n}.`,'init',['n']);
+
+  for(let i=0;i<n;i++){
+    curI=i; curX=nums[i]; curC=null; curHit=null;
+    snap(4,`Loop iteration: i = ${i}.`,'active',['i']);
+    curC=target-nums[i];
+    snap(5,`complement = ${target} − nums[${i}] = ${target} − ${curX} = ${curC}.`,'active',['x','complement']);
+    const has=Object.prototype.hasOwnProperty.call(seen,curC);
+    curHit=has;
+    if(has){
+      matchKey=curC;
+      snap(6,`seen.count(${curC}) = 1 → branch into the return.`,'match',['hit']);
+      ans=[seen[curC], i];
+      snap(7,`return {seen[${curC}], ${i}} = [${ans[0]}, ${ans[1]}] ✓`,'match',['hit']);
+      curI=-1; curX=null; curC=null; curHit=null;
+      snap(12,`Function returns. Answer = [${ans[0]}, ${ans[1]}].`,'done',[]);
+      return out;
+    } else {
+      snap(6,`seen.count(${curC}) = 0 → skip the return body.`,'active',['hit']);
+      seen[nums[i]]=i; recentKey=nums[i]; matchKey=null;
+      snap(9,`seen[${nums[i]}] = ${i}. Map now has ${Object.keys(seen).length} entr${Object.keys(seen).length===1?'y':'ies'}.`,'active',['hit']);
+    }
+  }
+  curI=-1; curX=null; curC=null; curHit=null;
+  snap(11,`Loop exhausted (unreachable per problem statement). return {}.`,'done',[]);
+  return out;
+}
+
+function cvRender(st){
+  document.querySelectorAll('.cv-line').forEach(el=>el.classList.remove('active','active-match'));
+  const al=document.getElementById('cvL'+st.line);
+  if(al){
+    al.classList.add(st.phase==='match'?'active-match':'active');
+    if(visPx(document.querySelector('.cv-section'))>0) al.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+  const setCard=(id,val,active,matchCard)=>{
+    const card=document.getElementById(id); if(!card) return;
+    card.querySelector('.cv-var-val').textContent=val;
+    card.classList.remove('hl','hl-match','dim');
+    if(matchCard) card.classList.add('hl-match');
+    else if(active) card.classList.add('hl');
+    else if(val==='—') card.classList.add('dim');
+  };
+  const wantMatch=st.phase==='match';
+  setCard('cv-v-n', st.n!=null && st.line>=3 ? st.n : '—', st.changed.includes('n'), false);
+  setCard('cv-v-target', st.target!=null && st.line>=1 ? st.target : '—', st.changed.includes('target'), false);
+  setCard('cv-v-i', st.i>=0 ? st.i : '—', st.changed.includes('i'), false);
+  setCard('cv-v-x', st.x!=null ? st.x : '—', st.changed.includes('x'), false);
+  setCard('cv-v-comp', st.complement!=null ? st.complement : '—', st.changed.includes('complement'), false);
+  const hitVal = st.hit===true ? 'yes ✓' : st.hit===false ? 'no' : '—';
+  setCard('cv-v-hit', hitVal, st.changed.includes('hit'), wantMatch && st.hit===true);
+  renderHTable('cv-htable', st.seen, st.recentKey, st.matchKey);
+
+  const narr=document.getElementById('cv-narration');
+  narr.textContent=st.narr;
+  narr.className='cv-narration'+(st.phase==='match'?' is-match':st.phase==='active'?' is-active':'');
+  document.getElementById('cv-sctr').textContent=`Step ${cvCur+1} / ${cvSteps.length}`;
+  document.getElementById('cv-bprev').disabled=cvCur===0;
+  document.getElementById('cv-bnext').disabled=cvCur===cvSteps.length-1;
+}
+function cvNext(){if(cvCur<cvSteps.length-1){cvCur++;cvRender(cvSteps[cvCur]);}else cvStopPlay();}
+function cvPrev(){if(cvCur>0){cvCur--;cvRender(cvSteps[cvCur]);}}
+function cvReset(){cvStopPlay();cvCur=0;cvRender(cvSteps[0]);}
+function cvLoadEx(idx){
+  cvStopPlay();cvCur=0;
+  [0,1,2].forEach(i=>document.getElementById('cv-ex'+i).classList.toggle('active',i===idx));
+  cvSteps=cvGen(EXAMPLES[idx]); cvRender(cvSteps[0]);
+}
+
+/* ══════════════════════════════
+   DRY RUN
+══════════════════════════════ */
+let drSteps=[],drCur=0,drTimer=null;
+
+function drGen(ex){
+  const nums=ex.nums.slice(), target=ex.target, n=nums.length;
+  const out=[]; const seen={}; let ans=null;
+
+  const snap=(curI,curC,hit,what,why,phase,matchKey)=>
+    out.push({nums,n,target,i:curI,complement:curC,hit,
+      seen:Object.assign({},seen),
+      matchKey:matchKey||null,
+      what,why,phase, ans});
+
+  snap(-1,null,null,
+    `nums = [${nums.join(', ')}], target = ${target}`,
+    'Walk i from 0 to n−1. At each i: probe seen for (target − nums[i]); on hit, return; on miss, insert nums[i] → i.',
+    'init', null);
+
+  for(let i=0;i<n;i++){
+    const x=nums[i]; const c=target-x;
+    const has=Object.prototype.hasOwnProperty.call(seen,c);
+    // step A: compute complement
+    snap(i,c,null,
+      `i = ${i}: nums[${i}] = ${x}, complement = ${target} − ${x} = ${c}`,
+      'Compute the partner this element would need.',
+      'check', null);
+    // step B: probe and branch
+    if(has){
+      ans=[seen[c], i];
+      snap(i,c,true,
+        `seen[${c}] = ${seen[c]} → match. Return [${seen[c]}, ${i}].`,
+        `The value ${c} was stored on iteration i=${seen[c]}; together with the current ${x} they sum to ${target}.`,
+        'match', c);
+    } else {
+      snap(i,c,false,
+        `seen has no key ${c} → miss. Insert seen[${x}] = ${i}.`,
+        `${x} might be the partner of a later element. Store it so a future iteration can find it in O(1).`,
+        'check', null);
+      seen[x]=i;
+    }
+    if(ans){ break; }
+  }
+  if(ans){
+    snap(-1,null,null,
+      `Done. Answer = [${ans[0]}, ${ans[1]}].`,
+      `Single pass, ${out.length} step(s) emitted; the map held ${Object.keys(seen).length} entr${Object.keys(seen).length===1?'y':'ies'} at the moment of the hit.`,
+      'done', null);
+  } else {
+    snap(-1,null,null,'Loop exhausted (unreachable per problem statement).','No pair summed to target.','done', null);
+  }
+  return out;
+}
+
+function drRenderStrip(st){
+  const con=document.getElementById('dr-strip'); con.innerHTML='';
+  st.nums.forEach((v,idx)=>{
+    const w=document.createElement('div'); w.className='ns-wrap';
+    const idxEl=document.createElement('div'); idxEl.className='ns-idx'; idxEl.textContent=idx;
+    const cell=document.createElement('div'); cell.className='ns-cell'; cell.textContent=v;
+    // current i highlighted in warn-colour (re-using .fix class as a "focus" cue);
+    // earlier matched partner index highlighted with .done (success-coloured).
+    const hitIdx = (st.hit===true && st.matchKey!=null) ? st.seen[st.matchKey] : -1;
+    if(idx===st.i) cell.classList.add('fix');
+    if(idx===hitIdx) cell.classList.add('done');
+    if(st.phase==='match' && idx===st.i) cell.classList.add('done');
+    const lbl=document.createElement('div'); lbl.className='ns-lbl';
+    if(idx===st.i){ lbl.classList.add('f'); lbl.textContent='i'; }
+    else if(idx===hitIdx){ lbl.classList.add('L'); lbl.textContent='j'; }
+    w.appendChild(idxEl); w.appendChild(cell); w.appendChild(lbl); con.appendChild(w);
+  });
+}
+
+function drRender(st){
+  drRenderStrip(st);
+  renderSeenMap('dr-map', st.seen, st.hit===true ? st.matchKey : null);
+
+  document.getElementById('f-i').textContent=st.i>=0?st.i:'—';
+  document.getElementById('f-x').textContent=st.i>=0?st.nums[st.i]:'—';
+  document.getElementById('f-t').textContent=st.target;
+  document.getElementById('f-c').textContent=st.complement!=null?st.complement:'—';
+  document.getElementById('f-hit').textContent=
+    st.hit===true ? st.seen[st.matchKey] :
+    st.hit===false ? 'miss' : '—';
+
+  const fp=document.getElementById('dr-formula');
+  let feq;
+  if(st.phase==='done' && st.ans) feq=`<span class="eq-hl">Answer: [${st.ans[0]}, ${st.ans[1]}]</span>`;
+  else if(st.phase==='match') feq=`<span class="eq-hl">${st.nums[st.seen[st.matchKey]]} + ${st.nums[st.i]} = ${st.target} ✓  →  [${st.seen[st.matchKey]}, ${st.i}]</span>`;
+  else if(st.complement!=null && st.hit===false) feq=`${st.target} − ${st.nums[st.i]} = ${st.complement}  ·  not in seen → insert seen[${st.nums[st.i]}] = ${st.i}`;
+  else if(st.complement!=null) feq=`${st.target} − ${st.nums[st.i]} = ${st.complement}  ·  probe seen`;
+  else feq=st.phase==='init'?'Press ▶ Auto or ► Next to begin.':'—';
+  document.getElementById('dr-feq').innerHTML=feq;
+  fp.className='formula-panel'+(st.phase==='match'?' is-match':'');
+
+  document.getElementById('dr-what').textContent=st.what;
+  document.getElementById('dr-why').textContent=st.why;
+  const sp=document.getElementById('dr-step');
+  sp.className='step-panel'+(st.phase==='match'?' match':'');
+
+  document.getElementById('dr-result').textContent=
+    st.ans ? `[${st.ans[0]}, ${st.ans[1]}]` : '—';
+  document.getElementById('dr-sctr').textContent=`Step ${drCur+1} / ${drSteps.length}`;
+  document.getElementById('dr-bp').disabled=drCur===0;
+  document.getElementById('dr-bn').disabled=drCur===drSteps.length-1;
+}
+function drNext(){if(drCur<drSteps.length-1){drCur++;drRender(drSteps[drCur]);}else drStopPlay();}
+function drPrev(){if(drCur>0){drCur--;drRender(drSteps[drCur]);}}
+function drReset(){drStopPlay();drCur=0;drRender(drSteps[0]);}
+function drLoadEx(idx){
+  drStopPlay();drCur=0;
+  [0,1,2].forEach(i=>document.getElementById('dr-ex'+i).classList.toggle('active',i===idx));
+  drSteps=drGen(EXAMPLES[idx]); drRender(drSteps[0]);
+}
+
+/* ══════════════════════════════
+   INIT
+══════════════════════════════ */
+cvBuildCode(CV_LINES);
+bfLoadEx(0);
+cvLoadEx(0);
+drLoadEx(0);
+</script>
+
+</body>
+</html>

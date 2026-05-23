@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Majority Element — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  .me-strip{display:flex;gap:4px;flex-wrap:wrap;align-items:flex-end;margin:.75rem 0}
+  .me-cellwrap{display:flex;flex-direction:column;align-items:center}
+  .me-idx{font-size:10px;color:var(--text3);margin-bottom:2px}
+  .me-cell{width:34px;height:38px;border:2px solid var(--border);border-radius:5px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px;font-weight:600;background:var(--bg-card);color:var(--text);
+    transition:background .2s,border-color .2s}
+  .me-cell.same{background:var(--bg-success);border-color:#22c55e;color:#14532d}
+  .me-cell.diff{background:#fff7ed;border-color:#f97316;color:#7c2d12}
+  .me-cell.wipe{background:#fef9c3;border-color:#eab308;color:#713f12}
+  .me-cell.done{opacity:.35}
+  .me-cell.active{border-color:#3b82f6;background:#eff6ff}
+  .me-trace{border-collapse:collapse;max-width:580px;font-family:var(--mono);font-size:13px;margin:.75rem 0}
+  .me-trace th{background:var(--bg3);color:var(--text2);font-weight:600;padding:.35rem .625rem;border:1px solid var(--border);text-align:left}
+  .me-trace td{padding:.35rem .625rem;border:1px solid var(--border);color:var(--text)}
+  .me-trace tr.t-wipe td{background:#fef9c3}
+  .me-trace tr.t-same td{background:var(--bg-success)}
+  .me-trace tr.t-diff td{background:#fff7ed}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Majority Element</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/majority-element/" target="_blank">LC #169</a>
+    <span class="badge badge-med">Easy</span>
+    <span class="badge badge-arr">Array</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <p class="acard-q">Is the majority element guaranteed to exist?</p>
+      <p class="acard-a">Yes — the problem guarantees exactly one element appears more than ⌊n/2⌋ times.</p>
+      <p class="acard-u">→ Boyer-Moore's surviving candidate is always correct; no second-pass verification needed.</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can we modify the input array?</p>
+      <p class="acard-a">Not required. Boyer-Moore scans in one pass with no writes to the array.</p>
+      <p class="acard-u">→ O(1) extra space is achievable — no auxiliary storage needed.</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">What are the input constraints?</p>
+      <p class="acard-a">1 ≤ n ≤ 5×10⁴; elements are 32-bit integers.</p>
+      <p class="acard-u">→ Even O(n log n) sort fits; the interesting goal is O(n) time, O(1) space.</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Why not just use a hash map?</p>
+      <p class="acard-a">A hash map gives O(n) time and O(n) space — it works.</p>
+      <p class="acard-u">→ Boyer-Moore achieves O(1) space via vote cancellation; this is the insight worth learning.</p>
+    </div>
+  </div>
+  <div class="infobox">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Majority always exists; no modification of input needed; target is O(n) time, O(1) auxiliary space.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Pair each majority vote with a non-majority vote — the majority always has one left.</p>
+
+  <p class="body">If one element appears more than ⌊n/2⌋ times, no coalition of the others can outvote it. Walk once with one tentative candidate and a count: matches add a vote, mismatches cancel one, count=0 swaps in a new candidate. Cancellations discard equal counts from both camps, so the majority is mathematically the last one standing.</p>
+
+  <!-- §1 animation — Boyer-Moore on nums = [2,2,1,1,1,2,2]. Majority = 2.
+       Layers (PLAN-017): current element under inspection (info-blue), surviving candidate (success-green),
+       candidate swap when count drops to 0 (warn-orange ⤴). -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);border:0.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>current element nums[i]</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-success);border:0.5px solid var(--border-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>surviving candidate</span>
+      <span><span style="color:var(--text-warn);font-weight:700;font-size:14px;vertical-align:middle">⤴</span> candidate reset (count = 0)</span>
+    </div>
+
+    <!-- Row 1: array with current element + which past cells matched candidate -->
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:.75rem;padding:.5rem;background:var(--bg);border-radius:var(--r);min-height:54px" id="si-strip"></div>
+
+    <!-- Row 2: candidate / count update -->
+    <div style="background:var(--bg);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:13px;line-height:1.9;color:var(--text2);min-height:60px">
+      <div id="si-calc">
+        <div>i = <span id="si-i" style="color:var(--text-info);font-weight:600">—</span> · num = <span id="si-num" style="color:var(--text-info);font-weight:600">—</span> · prev candidate = <span id="si-prev-cand" style="font-weight:600">—</span></div>
+        <div>step: <span id="si-action" style="color:var(--text);font-weight:700">—</span> &nbsp;<span id="si-decision-badge" class="decision-badge">—</span></div>
+      </div>
+    </div>
+
+    <!-- Row 3: candidate + count -->
+    <div style="display:flex;gap:1.5rem;align-items:center;padding:.625rem .875rem;background:var(--bg);border-radius:var(--r);font-family:var(--mono);font-size:14px;margin:.5rem 0">
+      <div>candidate = <span id="si-cand-big" style="font-weight:700;color:var(--text-success);font-size:18px">—</span></div>
+      <div>count = <span id="si-count-big" style="font-weight:700;color:var(--text);font-size:18px">—</span></div>
+    </div>
+
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d" style="font-family:var(--mono);font-size:13px;line-height:2">
+      candidate, count = nums[0], 0; for each x: if count == 0 → candidate = x; count += (x == candidate ? 1 : −1)<br>
+      <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:var(--text3)">Every cancellation discards equal counts of majority and non-majority; the survivor must be the majority.</span>
+    </p>
+  </div>
+</div>
+
+<script>
+  // §1 animation — Boyer-Moore Majority Vote on nums = [2,2,1,1,1,2,2]. Majority = 2.
+  const SI_NUMS = [2, 2, 1, 1, 1, 2, 2];
+  let siSteps = siGenSteps(SI_NUMS);
+  let siCur = 0;
+  let siTimer = null;
+
+  function siGenSteps(nums) {
+    const steps = [];
+    let cand = null, count = 0;
+    steps.push({i: -1, isInit: true, cand: null, count: 0, prevCand: null, action: 'init',
+      caption: `Start: candidate = none, count = 0.`});
+    for (let i = 0; i < nums.length; i++) {
+      const prevCand = cand;
+      let action, reset = false;
+      if (count === 0) {
+        cand = nums[i];
+        count = 1;
+        action = `count was 0 → adopt ${nums[i]} as new candidate, count = 1`;
+        reset = true;
+      } else if (nums[i] === cand) {
+        count++;
+        action = `nums[i] = ${nums[i]} matches candidate ${cand} → count++ = ${count}`;
+      } else {
+        count--;
+        action = `nums[i] = ${nums[i]} ≠ candidate ${cand} → count−− = ${count}`;
+      }
+      steps.push({i, num: nums[i], cand, count, prevCand, action, reset,
+        caption: action.charAt(0).toUpperCase() + action.slice(1) + '.'});
+    }
+    steps.push({terminal: true, cand, count, answer: cand,
+      caption: `Sweep complete. Surviving candidate = ${cand}. (For LC 169, problem guarantees a majority exists, so no verification pass is needed.)`});
+    return steps;
+  }
+
+  function siRender() {
+    const s = siSteps[siCur];
+    const strip = document.getElementById('si-strip');
+    strip.innerHTML = '';
+    for (let k = 0; k < SI_NUMS.length; k++) {
+      const isCur = !s.terminal && k === s.i;
+      const seen = !s.terminal && k < s.i;
+      let bg, border, color, marker = '';
+      if (isCur) {
+        bg = 'var(--bg-info)'; border = 'var(--border-info)'; color = 'var(--text-info)';
+        marker = s.reset ? '⤴' : (SI_NUMS[k] === s.prevCand ? '+1' : '−1');
+      } else if (seen && SI_NUMS[k] === s.cand) {
+        bg = 'var(--bg-success)'; border = 'var(--border-success)'; color = 'var(--text-success)';
+      } else if (seen) {
+        bg = 'var(--bg2)'; border = 'var(--border)'; color = 'var(--text3)';
+      } else {
+        bg = 'var(--bg2)'; border = 'var(--border)'; color = 'var(--text2)';
+      }
+      const markerColor = s.reset ? 'var(--text-warn)' : 'var(--text-info)';
+      strip.innerHTML += `<div style="position:relative;display:flex;flex-direction:column;align-items:center;flex:0 0 38px"><div style="position:absolute;top:-14px;color:${markerColor};font-family:var(--mono);font-size:11px;font-weight:600;height:14px">${marker}</div><div style="width:38px;height:38px;border-radius:6px;border:0.5px solid ${border};background:${bg};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;font-weight:600;color:${color}">${SI_NUMS[k]}</div><div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px">${k}</div></div>`;
+    }
+    if (s.terminal) {
+      document.getElementById('si-calc').innerHTML = `<div style="color:var(--text-success)">★ Majority = ${s.answer} (survives all cancellations).</div>`;
+    } else if (s.isInit) {
+      document.getElementById('si-calc').innerHTML = `<div style="color:var(--text3)">${s.caption}</div>`;
+    } else {
+      document.getElementById('si-i').textContent = s.i;
+      document.getElementById('si-num').textContent = s.num;
+      document.getElementById('si-prev-cand').textContent = s.prevCand === null ? 'none' : s.prevCand;
+      document.getElementById('si-action').textContent = s.action;
+      const badge = document.getElementById('si-decision-badge');
+      if (s.reset) { badge.textContent = '⤴ reset candidate'; badge.style.color = 'var(--text-warn)'; }
+      else if (s.num === s.prevCand) { badge.textContent = '+1 vote'; badge.style.color = 'var(--text-success)'; }
+      else { badge.textContent = '−1 vote'; badge.style.color = 'var(--text-info)'; }
+    }
+    document.getElementById('si-cand-big').textContent = s.cand === null ? '—' : s.cand;
+    document.getElementById('si-count-big').textContent = s.count;
+    document.getElementById('si-caption').textContent = s.caption;
+    document.getElementById('si-sctr').textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext() { siStopPlay(); siCur = Math.min(siCur + 1, siSteps.length - 1); siRender(); }
+  function siPrev() { siStopPlay(); siCur = Math.max(siCur - 1, 0); siRender(); }
+  function siReset() { siStopPlay(); siCur = 0; siRender(); }
+  function siStopPlay() { if (siTimer) { clearInterval(siTimer); siTimer = null; document.getElementById('si-bplay').textContent = '▶ Auto'; } }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur >= siSteps.length - 1) { siStopPlay(); return; }
+      siCur++; siRender();
+    }, 1400);
+  }
+  siRender();
+</script>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">For each element at index i, scan the entire array to count how many times it appears. If count &gt; n/2, return it. This is O(n²): the outer loop is O(n), each inner scan is O(n). For n = 5×10⁴ that's 2.5 billion operations.</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">Ex 1: [1,2,2,2,2] → 2</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">Ex 2: [2,2,1,1,2] → 2</button>
+  </div>
+
+  <div class="bf-nums" id="bf-strip"></div>
+  <div style="margin:.625rem 0;font-family:var(--mono);font-size:13px;color:var(--text2)" id="bf-status">—</div>
+  <div style="display:flex;gap:1.5rem;margin:.5rem 0;font-family:var(--mono);font-size:13px">
+    <span>Checks: <strong id="bf-checks">0</strong></span>
+    <span>Count so far: <strong id="bf-count">0</strong></span>
+  </div>
+
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+<pre class="cb"><span class="kw">int</span> <span class="fn">majorityElement</span>(vector&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.size();
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        <span class="kw">int</span> count = <span class="nu">0</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> j = <span class="nu">0</span>; j &lt; n; j++) {
+            <span class="kw">if</span> (nums[j] == nums[i]) { count++; }
+        }
+        <span class="kw">if</span> (count &gt; n / <span class="nu">2</span>) { <span class="kw">return</span> nums[i]; }
+    }
+    <span class="kw">return</span> <span class="nu">-1</span>; <span class="cm">// unreachable — majority guaranteed</span>
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Two independent improvements take the brute-force O(n²)/O(1) to Boyer-Moore O(n)/O(1). Read both before reading the code.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 1 — Full rescan → hash map</p>
+        <p class="wt-desc">The O(n²) approach rescans the entire array once per candidate element. Instead, one pass builds a frequency map: for nums = [2,2,1,1,2], the map is {2:3, 1:2}. A second scan (or inline check) finds count &gt; n/2 = 2 → return 2. No rescanning needed.</p>
+        <p class="wt-gain">→ O(n²) → O(n) time; O(1) auxiliary → O(n) auxiliary (the hash map)</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 2 — Hash map → Boyer-Moore vote</p>
+        <p class="wt-desc">The hash map stores counts for every distinct element, but we only need one answer. Key observation: when a non-candidate element cancels a candidate vote (count drops to 0), both cancel out — the majority relationship for the remaining elements is unchanged. Discard both and start fresh. We never need more than one candidate and one counter.</p>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--text2)">
+          <div>[2, 1, 1, 2, 2]: candidate=2 meets 1, count→0. Discard pair. Resume at idx 2.</div>
+          <div>idx 2: count=0 → candidate=1, count=1. idx 3: 2≠1 → count=0. Discard again.</div>
+          <div>idx 4: count=0 → candidate=2, count=1. Return 2. ✓</div>
+        </div>
+        <p class="wt-gain">→ O(n) time, O(n) space → O(n) time, O(1) space</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t"><b>Set</b> <code>candidate = 0</code> and <code>count = 0</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t"><b>For each</b> <code>num</code> in the array:</span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t">&nbsp;&nbsp;&nbsp;If <code>count == 0</code>, <b>reassign</b> <code>candidate = num</code> — start a fresh tally.</span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t">&nbsp;&nbsp;&nbsp;<b>Update</b> count: add 1 if <code>num == candidate</code>, subtract 1 otherwise.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t"><b>Return</b> <code>candidate</code> — the majority element always survives vote cancellation.</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <p class="body">Try writing it from the five steps above. Reveal when ready to compare.</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+<pre class="cb"><span class="kw">int</span> <span class="fn">majorityElement</span>(vector&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> candidate = <span class="nu">0</span>, count = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> num : nums) {
+        <span class="kw">if</span> (count == <span class="nu">0</span>) { candidate = num; }
+        count += (num == candidate) ? <span class="nu">1</span> : <span class="nu">-1</span>;
+    }
+    <span class="kw">return</span> candidate;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">Ex 1: [2,2,1,1,2] → 2</button>
+    <button class="ex-btn" id="cv-ex1" onclick="cvLoadEx(1)">Ex 2: [2,2,2,1,2,1,2,1,2,1,2] → 2</button>
+  </div>
+
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px">nums</p>
+        <div id="cv-strip" class="me-strip" style="margin:0 0 .5rem"></div>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin:.25rem 0">Variables</p>
+        <div class="cv-var-grid">
+          <div class="cv-var-card dim" id="cvv-candidate"><p class="cv-var-name">candidate</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-count"><p class="cv-var-name">count</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-num"><p class="cv-var-name">num</p><p class="cv-var-val">—</p></div>
+        </div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Select an example to begin.</div>
+    </div>
+  </div>
+
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="cv-bp" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="cv-bn" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn" onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1: [2,2,1,1,2] → 2</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">Ex 2: [2,2,2,1,2,1,2,1,2] → 2 (slow)</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">Ex 3: [2,1,1,2,2] → 2 (two wipes)</button>
+  </div>
+
+  <div id="dr-strip" class="me-strip"></div>
+
+  <div class="panels-fixed">
+    <div class="formula-panel" id="dr-formula">
+      <div class="formula-grid">
+        <div><p class="fitem-label">i</p><p class="fitem-val" id="f-i">—</p><p class="fitem-sub">index</p></div>
+        <div><p class="fitem-label">num</p><p class="fitem-val" id="f-num">—</p><p class="fitem-sub">nums[i]</p></div>
+        <div><p class="fitem-label">candidate</p><p class="fitem-val" id="f-cand" style="font-size:18px">—</p><p class="fitem-sub">current guess</p></div>
+        <div><p class="fitem-label">count</p><p class="fitem-val" id="f-cnt">—</p><p class="fitem-sub">net votes</p></div>
+      </div>
+      <div class="formula-eq" id="dr-eq">Select an example to begin.</div>
+    </div>
+    <div class="step-panel" id="dr-step">
+      <p class="step-what" id="dr-what">—</p>
+      <p class="step-why" id="dr-why">Use the controls below to step through.</p>
+    </div>
+  </div>
+
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div>
+      <p class="corner-title">n = 1 — single element (e.g. [7])</p>
+      <p class="corner-body">count = 0 at start → candidate = 7, count = 1. Loop ends immediately. Return 7. A single element trivially satisfies "appears more than ⌊1/2⌋ = 0 times."</p>
+    </div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div>
+      <p class="corner-title">All identical (e.g. [3, 3, 3, 3])</p>
+      <p class="corner-body">candidate = 3 at i = 0, count climbs 1→2→3→4. count never reaches 0; candidate never resets. Return 3. No vote cancellation needed when majority dominates completely.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div>
+      <p class="corner-title">Minority element at the start (e.g. [1, 2, 2, 2, 2])</p>
+      <p class="corner-body">candidate = 1 at i = 0. i = 1: num ≠ candidate → count = 0. Wipe: candidate = 2, count = 1. count then builds to 3. Return 2. The initial wrong guess is discarded after the first wipe.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div>
+      <p class="corner-title">Two-value alternating (e.g. [1, 2, 1, 2, 1])</p>
+      <p class="corner-body">count resets to 0 every two elements. Candidate flips: 1→wipe→2→wipe→1. At the final reset, candidate = 1, count = 1. Return 1. The majority (3 out of 5) claims the last reset.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div>
+      <p class="corner-title">Candidate changes multiple times (e.g. [2, 1, 1, 2, 2])</p>
+      <p class="corner-body">Candidate changes 2→1→2 across two wipes (see dry-run Ex 3). A mid-stream candidate change never means the wrong final answer — the majority always has enough votes to reclaim the last slot.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>n = 1</b> — loop runs once, candidate = nums[0], returns immediately. Correct.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>All identical</b> — count climbs to n; candidate never resets. Return nums[0]. Correct.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Majority at end</b> — wrong initial candidate gets wiped; majority reclaims the last reset. Correct.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Integer range</b> — count is at most n (≤ 5×10⁴); no overflow on 32-bit int. candidate holds a value from the input — no arithmetic on it.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Guarantee dependency</b> — Boyer-Moore is only correct when majority is guaranteed. Without the guarantee, add a second O(n) verification pass: recount candidate's occurrences and check count &gt; n/2.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>O(1) auxiliary space</b> — candidate and count are the only variables. No extra allocation of any kind.</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Boyer-Moore Vote</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Hash Map</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Sort</button>
+  </div>
+
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(n)</span><span class="tag tag-space">O(1)</span>
+    <p class="body">One pass, two variables. The most space-efficient solution and the one interviewers expect after you mention "we can do better than a hash map." Requires the majority guarantee — without it, a second O(n) verification pass is needed. Same code as Step 4.</p>
+  </div>
+
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(n)</span><span class="tag tag-space">O(n)</span>
+    <p class="body">Build an <code>unordered_map&lt;int,int&gt;</code> of frequencies in one pass. Return the key with count &gt; n/2. Straightforward — no special insight needed. Good first answer in an interview before optimising to Boyer-Moore.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-hash',this)">▶ Reveal code</button>
+    <div id="code-hash" class="code-block">
+<pre class="cb"><span class="kw">int</span> <span class="fn">majorityElement</span>(vector&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    unordered_map&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt; freq;
+    <span class="kw">for</span> (<span class="kw">int</span> x : nums) { freq[x]++; }
+    <span class="kw">for</span> (<span class="kw">auto</span>&amp; [k, v] : freq) {
+        <span class="kw">if</span> (v &gt; (<span class="kw">int</span>)nums.size() / <span class="nu">2</span>) { <span class="kw">return</span> k; }
+    }
+    <span class="kw">return</span> <span class="nu">-1</span>;
+}</pre>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O(n log n)</span><span class="tag tag-space">O(1)</span>
+    <p class="body">Sort the array; <code>nums[n/2]</code> is always the majority element — since it occupies more than half the positions, it must cover the median. Elegant correctness argument but O(n log n) is wasteful when O(n) is achievable. Useful when the array is already nearly sorted.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-sort',this)">▶ Reveal code</button>
+    <div id="code-sort" class="code-block">
+<pre class="cb"><span class="kw">int</span> <span class="fn">majorityElement</span>(vector&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    sort(nums.begin(), nums.end());
+    <span class="kw">return</span> nums[nums.size() / <span class="nu">2</span>];
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <p class="ccard-l">Time</p>
+      <p class="ccard-v">O(n)</p>
+      <p class="ccard-n">One pass through the array; each element either resets or adjusts count in O(1).</p>
+    </div>
+    <div class="ccard">
+      <p class="ccard-l">Space</p>
+      <p class="ccard-v">O(1)</p>
+      <p class="ccard-n">Two integers — candidate and count. No auxiliary data structures of any kind.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p class="body"><strong>LC 229 — Majority Element II.</strong> Same voting idea, extended: find all elements appearing &gt; n/3 times. Requires maintaining two candidates simultaneously. At most two such elements can exist.</p>
+    <p class="body"><strong>LC 1150 — Check If a Number Is Majority Element in a Sorted Array.</strong> Given sorted array and target, check if target appears &gt; n/2 times. Binary search for first and last occurrence — O(log n) since the array is sorted.</p>
+    <p class="body"><strong>LC 169 → streaming algorithms.</strong> Boyer-Moore is the gateway to the heavy-hitters problem in data-stream processing: Misra-Gries and count-min sketch use the same vote-cancellation idea at massive scale.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+/* ═══════════════════════════════════
+   SHARED DATA
+═══════════════════════════════════ */
+const EXAMPLES = [
+  {nums: [2,2,1,1,2]},
+  {nums: [2,2,2,1,2,1,2,1,2]},
+  {nums: [2,1,1,2,2]},
+];
+const BF_EXAMPLES = [
+  {nums: [1,2,2,2,2]},
+  {nums: [2,2,1,1,2]},
+];
+
+function buildMeStrip(containerId, nums, prefix) {
+  const con = document.getElementById(containerId);
+  con.innerHTML = '';
+  for (let i = 0; i < nums.length; i++) {
+    const wrap = document.createElement('div'); wrap.className = 'me-cellwrap';
+    const idx  = document.createElement('div'); idx.className = 'me-idx'; idx.textContent = i;
+    const cell = document.createElement('div'); cell.className = 'me-cell'; cell.textContent = nums[i];
+    cell.id = prefix + i;
+    wrap.appendChild(idx); wrap.appendChild(cell);
+    con.appendChild(wrap);
+  }
+}
+
+function buildBfStrip(containerId, nums, prefix) {
+  const con = document.getElementById(containerId);
+  con.innerHTML = '';
+  for (let i = 0; i < nums.length; i++) {
+    const cell = document.createElement('div'); cell.className = 'bf-num'; cell.id = prefix + i;
+    const val = document.createElement('span'); val.textContent = nums[i];
+    const idx = document.createElement('div'); idx.className = 'bf-idx'; idx.textContent = i;
+    cell.appendChild(val); cell.appendChild(idx);
+    con.appendChild(cell);
+  }
+}
+
+/* ═══════════════════════════════════
+   BRUTE FORCE
+═══════════════════════════════════ */
+let bfSteps = [], bfCur = 0, bfTimer = null, bfExIdx = 0;
+
+function bfGenSteps({nums}) {
+  const n = nums.length, out = [];
+  let checks = 0;
+  out.push({i:-1, j:-1, cnt:0, checks:0, phase:'init',
+    status:`n = ${n}. Outer loop tries each element as candidate.`});
+  for (let i = 0; i < n; i++) {
+    let cnt = 0;
+    for (let j = 0; j < n; j++) {
+      checks++;
+      const matched = nums[j] === nums[i];
+      if (matched) { cnt++; }
+      out.push({i, j, cnt, checks, phase:'scan', matched,
+        status:`nums[${j}] = ${nums[j]} vs nums[${i}] = ${nums[i]}${matched ? ' ✓' : ''}`});
+    }
+    if (cnt > n / 2) {
+      out.push({i, j:-1, cnt, checks, phase:'found',
+        status:`nums[${i}] = ${nums[i]} appears ${cnt} times > n/2 = ${Math.floor(n/2)}. Return ${nums[i]}.`});
+      return out;
+    } else {
+      out.push({i, j:-1, cnt, checks, phase:'next',
+        status:`nums[${i}] = ${nums[i]} appears ${cnt} time(s) — not majority. Try next element.`});
+    }
+  }
+  return out;
+}
+
+function bfRender(st) {
+  const nums = BF_EXAMPLES[bfExIdx].nums;
+  for (let k = 0; k < nums.length; k++) {
+    const cell = document.getElementById('bfc' + k);
+    if (!cell) { continue; }
+    cell.className = 'bf-num';
+    if (k === st.i) { cell.classList.add('bi'); }
+    if (st.phase === 'scan' && k === st.j) {
+      if (st.matched) { cell.classList.add('bmatch'); }
+      else if (k !== st.i) { cell.classList.add('bj'); }
+    }
+    if (st.phase === 'found' && k === st.i) { cell.classList.add('bmatch'); }
+  }
+  document.getElementById('bf-checks').textContent = st.checks;
+  document.getElementById('bf-count').textContent  = st.cnt;
+  document.getElementById('bf-status').textContent = st.status;
+  document.getElementById('bf-sctr').textContent   = `Step ${bfCur+1}/${bfSteps.length}`;
+  document.getElementById('bf-prev').disabled = bfCur === 0;
+  document.getElementById('bf-next').disabled = bfCur === bfSteps.length - 1;
+}
+
+function bfNext()  { if (bfCur < bfSteps.length-1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+function bfLoadEx(idx) {
+  bfStopPlay(); bfCur = 0; bfExIdx = idx;
+  [0,1].forEach(i => document.getElementById('bf-ex'+i).classList.toggle('active', i===idx));
+  bfSteps = bfGenSteps(BF_EXAMPLES[idx]);
+  buildBfStrip('bf-strip', BF_EXAMPLES[idx].nums, 'bfc');
+  bfRender(bfSteps[0]);
+}
+
+/* ═══════════════════════════════════
+   CODE VISUALIZATION
+═══════════════════════════════════ */
+const CV_LINES = [
+  {n:1, c:'int majorityElement(vector<int>& nums) {'},
+  {n:2, c:'    int candidate = 0, count = 0;'},
+  {n:3, c:'    for (int num : nums) {'},
+  {n:4, c:'        if (count == 0) { candidate = num; }'},
+  {n:5, c:'        count += (num == candidate) ? 1 : -1;'},
+  {n:6, c:'    }'},
+  {n:7, c:'    return candidate;'},
+  {n:8, c:'}'},
+];
+
+const CV_LIVE = {
+  init:         [],
+  setup:        ['candidate','count'],
+  loop_enter:   ['candidate','count','num'],
+  check_reset:  ['candidate','count','num'],
+  vote:         ['candidate','count','num'],
+  done:         ['candidate'],
+};
+
+let cvSteps = [], cvCur = 0, cvTimer = null, cvExIdx = 0;
+
+function cvGenSteps({nums}) {
+  const out = [];
+  const snap = (line, narr, phase, vars, arrIdx) =>
+    out.push({line, narr, phase, vars: {...vars}, arrIdx: (arrIdx !== undefined) ? arrIdx : -1});
+
+  snap(1, 'Enter majorityElement.', 'init', {});
+  snap(2, 'Initialize candidate = 0, count = 0.', 'setup', {candidate:0, count:0});
+
+  let candidate = 0, count = 0;
+
+  for (let idx = 0; idx < nums.length; idx++) {
+    const num = nums[idx];
+    snap(3, `Iteration ${idx}: num = nums[${idx}] = ${num}.`, 'loop_enter', {candidate, count, num}, idx);
+
+    if (count === 0) {
+      candidate = num;
+      snap(4, `count is 0 → reset candidate to ${candidate}.`, 'check_reset',
+           {candidate, count: 0, num}, idx);
+    } else {
+      snap(4, `count = ${count} ≠ 0 — skip reset.`, 'check_reset',
+           {candidate, count, num}, idx);
+    }
+
+    const wasCandidate = candidate;
+    count += (num === candidate) ? 1 : -1;
+    snap(5, (num === wasCandidate)
+      ? `num == candidate → count + 1 = ${count}.`
+      : `num ≠ candidate → count − 1 = ${count}.`,
+      'vote', {candidate, count, num}, idx);
+  }
+
+  snap(7, `Return candidate = ${candidate}.`, 'done', {candidate, count});
+  return out;
+}
+
+function cvRender(st) {
+  document.querySelectorAll('.cv-line').forEach(el => el.classList.remove('active','active-match'));
+  const al = document.getElementById('cvL' + st.line);
+  if (al) { al.classList.add(st.phase === 'done' ? 'active-match' : 'active'); }
+
+  const nums = EXAMPLES[cvExIdx].nums;
+  for (let k = 0; k < nums.length; k++) {
+    const cell = document.getElementById('cvc' + k);
+    if (!cell) { continue; }
+    cell.className = 'me-cell';
+    if (k < st.arrIdx) {
+      cell.classList.add('done');
+    } else if (k === st.arrIdx) {
+      if (st.phase === 'check_reset' && st.vars.count === 0) {
+        cell.classList.add('wipe');
+      } else if (st.phase === 'vote') {
+        cell.classList.add(st.vars.num === st.vars.candidate ? 'same' : 'diff');
+      } else {
+        cell.classList.add('active');
+      }
+    }
+  }
+
+  const live = CV_LIVE[st.phase] || [];
+  ['candidate','count','num'].forEach(id => {
+    const card = document.getElementById('cvv-' + id);
+    if (!card) { return; }
+    card.classList.remove('hl','hl-match','dim');
+    const valEl = card.querySelector('.cv-var-val');
+    const v = st.vars[id];
+    if (!live.includes(id)) {
+      if (v != null) { valEl.textContent = v; }
+      card.classList.add('dim');
+    } else {
+      if (v != null) { valEl.textContent = v; }
+      const isHighlight = st.phase === 'done' ||
+        (id === 'candidate' && st.phase === 'check_reset' && st.vars.count === 0);
+      card.classList.add(isHighlight ? 'hl-match' : 'hl');
+    }
+  });
+
+  const narr = document.getElementById('cv-narration');
+  narr.textContent = st.narr;
+  narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : ' is-active');
+
+  document.getElementById('cv-sctr').textContent = `Step ${cvCur+1} / ${cvSteps.length}`;
+  document.getElementById('cv-bp').disabled = cvCur === 0;
+  document.getElementById('cv-bn').disabled = cvCur === cvSteps.length - 1;
+}
+
+function cvNext()  { if (cvCur < cvSteps.length-1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+function cvLoadEx(idx) {
+  cvStopPlay(); cvCur = 0; cvExIdx = idx;
+  [0,1].forEach(i => document.getElementById('cv-ex'+i).classList.toggle('active', i===idx));
+  cvSteps = cvGenSteps(EXAMPLES[idx]);
+  cvBuildCode(CV_LINES);
+  buildMeStrip('cv-strip', EXAMPLES[idx].nums, 'cvc');
+  cvRender(cvSteps[0]);
+}
+
+/* ═══════════════════════════════════
+   DRY RUN
+═══════════════════════════════════ */
+let drSteps = [], drCur = 0, drTimer = null, drExIdx = 0;
+
+function drGenSteps({nums}) {
+  const n = nums.length, out = [];
+
+  out.push({i:'—', num:'—', candidate:0, count:0, active:-1, phase:'init',
+    what:`Initialize: candidate = 0, count = 0.`,
+    why:`Start with no assumption about the majority element.`,
+    eq:`n = ${n}`});
+
+  let candidate = 0, count = 0;
+
+  for (let i = 0; i < n; i++) {
+    const num = nums[i];
+    if (count === 0) {
+      candidate = num; count = 1;
+      out.push({i, num, candidate, count, active:i, phase:'reset',
+        what:`Reset: candidate = ${candidate}, count = 1.`,
+        why:`count was 0 — discard prior votes and start fresh with ${candidate}.`,
+        eq:`count = 0 → new candidate`});
+    } else if (num === candidate) {
+      count++;
+      out.push({i, num, candidate, count, active:i, phase:'vote_up',
+        what:`Vote for ${num}: count = ${count}.`,
+        why:`num == candidate — majority candidate gains a vote.`,
+        eq:`count = ${count}`});
+    } else {
+      count--;
+      out.push({i, num, candidate, count, active:i, phase:'vote_down',
+        what:`Vote against: count = ${count}.`,
+        why:`num ≠ candidate — one "pro" and one "con" vote cancel out.`,
+        eq:`count = ${count}`});
+    }
+  }
+
+  out.push({i:'—', num:'—', candidate, count, active:-1, phase:'done',
+    what:`Return candidate = ${candidate}.`,
+    why:`Majority element always survives vote cancellation.`,
+    eq:`→ ${candidate}`});
+
+  return out;
+}
+
+function drRender(st) {
+  const nums = EXAMPLES[drExIdx].nums;
+  for (let k = 0; k < nums.length; k++) {
+    const cell = document.getElementById('drc' + k);
+    if (!cell) { continue; }
+    cell.className = 'me-cell';
+    if (k < st.active) {
+      cell.classList.add('done');
+    } else if (k === st.active) {
+      if      (st.phase === 'reset')     { cell.classList.add('wipe'); }
+      else if (st.phase === 'vote_up')   { cell.classList.add('same'); }
+      else if (st.phase === 'vote_down') { cell.classList.add('diff'); }
+    }
+  }
+
+  document.getElementById('f-i').textContent    = st.i;
+  document.getElementById('f-num').textContent  = st.num;
+  document.getElementById('f-cand').textContent = st.candidate;
+  document.getElementById('f-cnt').textContent  = st.count;
+  document.getElementById('dr-eq').textContent  = st.eq;
+
+  const fp = document.getElementById('dr-formula');
+  fp.className = 'formula-panel';
+  if (st.phase === 'done' || st.phase === 'reset' || st.phase === 'vote_up') {
+    fp.classList.add('is-match');
+  } else if (st.phase === 'vote_down') {
+    fp.classList.add('is-squeeze');
+  }
+
+  const sp = document.getElementById('dr-step');
+  sp.className = 'step-panel';
+  if (st.phase === 'done' || st.phase === 'reset') { sp.classList.add('match'); }
+  else if (st.phase === 'vote_down') { sp.classList.add('squeeze'); }
+
+  document.getElementById('dr-what').textContent = st.what;
+  document.getElementById('dr-why').textContent  = st.why;
+  document.getElementById('dr-sctr').textContent = `Step ${drCur+1} / ${drSteps.length}`;
+  document.getElementById('dr-bp').disabled = drCur === 0;
+  document.getElementById('dr-bn').disabled = drCur === drSteps.length - 1;
+}
+
+function drNext()  { if (drCur < drSteps.length-1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+function drLoadEx(idx) {
+  drStopPlay(); drCur = 0; drExIdx = idx;
+  [0,1,2].forEach(i => document.getElementById('dr-ex'+i).classList.toggle('active', i===idx));
+  drSteps = drGenSteps(EXAMPLES[idx]);
+  buildMeStrip('dr-strip', EXAMPLES[idx].nums, 'drc');
+  drRender(drSteps[0]);
+}
+
+/* ═══════════════════════════════════
+   INIT
+═══════════════════════════════════ */
+cvBuildCode(CV_LINES);
+cvLoadEx(0);
+drLoadEx(0);
+bfLoadEx(0);
+</script>
+</body>
+</html>

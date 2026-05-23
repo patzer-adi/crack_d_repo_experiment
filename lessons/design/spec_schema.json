@@ -1,0 +1,283 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://crack_d.local/spec_schema.json",
+  "title": "Lesson spec",
+  "description": "Per-problem inputs to lessons/_template.html. PLAN-011 Phase 2 (renderer) consumes this. The model emits this JSON; render_lesson.py turns it into HTML deterministically.",
+  "type": "object",
+  "required": [
+    "spec_version",
+    "slug",
+    "title",
+    "lc_num",
+    "difficulty",
+    "archetype",
+    "clarifying",
+    "insight",
+    "brute_force",
+    "translations",
+    "algorithm_english",
+    "code",
+    "examples",
+    "corner_cases",
+    "production",
+    "approaches",
+    "complexity",
+    "take_home"
+  ],
+  "properties": {
+    "spec_version": { "type": "string", "const": "1.0" },
+    "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "title": { "type": "string" },
+    "lc_num": { "type": "integer", "minimum": 1 },
+    "difficulty": { "enum": ["Easy", "Medium", "Hard"] },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "e.g. ['Arrays', 'Two Pointers'] — rendered as topic badges."
+    },
+    "archetype": {
+      "enum": ["two_pointer", "sliding_window", "prefix_scan", "divide_conquer", "custom"],
+      "description": "Drives which archetype JS step-generator template is used. See design/archetypes.md."
+    },
+
+    "clarifying": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["q", "a", "unlocks"],
+        "properties": {
+          "q": { "type": "string" },
+          "a": { "type": "string" },
+          "unlocks": { "type": "string", "description": "Mono green line: what design decision this answer enables." }
+        }
+      }
+    },
+    "assumptions_carry_forward": {
+      "type": "string",
+      "description": "Optional infobox paragraph summarising the answers."
+    },
+
+    "insight": {
+      "type": "object",
+      "required": ["kernel_paragraph", "kernel_short", "foundational_visual"],
+      "properties": {
+        "kernel_short": { "type": "string", "description": "One-line kernel used as the section's .sec-title." },
+        "kernel_paragraph": { "type": "string" },
+        "foundational_visual": {
+          "type": "object",
+          "required": ["type", "data"],
+          "description": "Visual that comes BEFORE the kernel. type drives renderer choice.",
+          "properties": {
+            "type": { "enum": ["number_line", "freq_triple", "histogram_walls", "custom_html"] },
+            "data": { "type": "object", "description": "Type-specific payload (e.g. number_line: {nums, fixed_i, l, r})." }
+          }
+        },
+        "equivalence_chain": {
+          "type": "array",
+          "description": "Optional. Each row: a symbol/text line + concrete pill examples.",
+          "items": {
+            "type": "object",
+            "required": ["text", "pills"],
+            "properties": {
+              "text": { "type": "string" },
+              "pills": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["label", "kind"],
+                  "properties": {
+                    "label": { "type": "string" },
+                    "kind": { "enum": ["ok", "bad", "neutral"] }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "brute_force": {
+      "type": "object",
+      "required": ["paragraph", "code", "complexity", "counter_label", "examples"],
+      "properties": {
+        "paragraph": { "type": "string" },
+        "code": { "type": "string", "description": "C++ source with explicit braces." },
+        "complexity": { "type": "string", "description": "e.g. O(n^3)." },
+        "counter_label": { "type": "string", "description": "Label for the live op counter, e.g. 'Checks'." },
+        "examples": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": { "description": "Problem-specific input shape." }
+        }
+      }
+    },
+
+    "translations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "description", "gain"],
+        "properties": {
+          "name": { "type": "string", "description": "Distinct verb-led name, e.g. 'Translation 2 — Frequency map → int[26]'." },
+          "description": { "type": "string" },
+          "gain": { "type": "string", "description": "Mono green complexity-gain line." }
+        }
+      }
+    },
+
+    "algorithm_english": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 6,
+      "items": { "type": "string", "description": "One imperative sentence per step." }
+    },
+
+    "code": {
+      "type": "object",
+      "required": ["language", "lines"],
+      "properties": {
+        "language": { "enum": ["cpp", "python", "java"] },
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["n", "c"],
+            "properties": {
+              "n": { "type": "integer" },
+              "c": { "type": "string" }
+            }
+          }
+        },
+        "python": {
+          "type": "string",
+          "description": "Python equivalent of the algorithm used by scripts/verify_algorithm.py."
+        },
+        "variables": {
+          "type": "array",
+          "description": "Variable cards shown in the CV state panel.",
+          "items": {
+            "type": "object",
+            "required": ["name", "appears_on_line"],
+            "properties": {
+              "name": { "type": "string" },
+              "appears_on_line": { "type": "integer" },
+              "initial_label": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "examples": {
+      "type": "array",
+      "minItems": 2,
+      "description": "Used by §6 (code viz) and §7 (dry run). Should include one short (3–5 step) and one long (10–15 step) example. See design/sec7_dry_run.md.",
+      "items": {
+        "type": "object",
+        "required": ["name", "input", "expected"],
+        "properties": {
+          "name": { "type": "string" },
+          "input": { "description": "Problem-specific." },
+          "expected": { "description": "Problem-specific." },
+          "pacing": { "enum": ["fast", "slow"] }
+        }
+      }
+    },
+
+    "corner_cases": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["title", "body"],
+        "properties": {
+          "title": { "type": "string" },
+          "body": { "type": "string" }
+        }
+      }
+    },
+
+    "production": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["label", "explanation"],
+        "properties": {
+          "label": { "type": "string", "description": "Bold label." },
+          "explanation": { "type": "string", "description": "One sentence." }
+        }
+      }
+    },
+
+    "approaches": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["name", "time", "space", "paragraph", "code"],
+        "properties": {
+          "name": { "type": "string" },
+          "time": { "type": "string" },
+          "space": { "type": "string" },
+          "paragraph": { "type": "string" },
+          "code": { "type": "string", "description": "C++ source with explicit braces." }
+        }
+      }
+    },
+
+    "complexity": {
+      "type": "object",
+      "required": ["time", "time_note", "space", "space_note"],
+      "properties": {
+        "time": { "type": "string" },
+        "time_note": { "type": "string" },
+        "space": { "type": "string" },
+        "space_note": { "type": "string" }
+      }
+    },
+
+    "take_home": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["problem", "differs_by"],
+        "properties": {
+          "problem": { "type": "string", "description": "e.g. 'LC 16 — 3Sum Closest'." },
+          "differs_by": { "type": "string", "description": "One sentence describing the variation." }
+        }
+      }
+    },
+
+    "play_speeds": {
+      "type": "object",
+      "description": "Per-widget play speed override in ms. Renderer emits override functions before static/lesson.js loads.",
+      "properties": {
+        "bf": { "type": "integer", "minimum": 100, "maximum": 3000 },
+        "cv": { "type": "integer", "minimum": 100, "maximum": 3000 },
+        "dr": { "type": "integer", "minimum": 100, "maximum": 3000 }
+      }
+    },
+
+    "custom_step_generator_js": {
+      "type": "string",
+      "description": "Escape hatch for problems outside the four archetypes. Verbatim JS interpolated into the inline <script> block. Use sparingly — adds tokens and bypasses partial templates."
+    },
+
+    "overrides": {
+      "type": "object",
+      "description": "Per-section raw HTML overrides for one-off layouts the partials cannot express. Keys are section numbers (string '0'..'12'); values are full <div class=\"section\">...</div> blocks.",
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}

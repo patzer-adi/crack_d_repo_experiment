@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Valid Palindrome — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  .str-grid { display: flex; gap: 2px; margin: 1rem 0; flex-wrap: wrap; }
+  .str-cell {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--bg2);
+    color: var(--text);
+  }
+  .str-cell.alnum { background: var(--bg2); font-weight: 600; }
+  .str-cell.skip { background: var(--bg3); color: var(--text3); text-decoration: line-through; }
+  .str-cell.pL { background: var(--info-bg); color: var(--text-info); border-color: var(--text-info); }
+  .str-cell.pR { background: var(--warn-bg); color: var(--text-warn); border-color: var(--text-warn); }
+  .str-cell.match { background: var(--success-bg); color: var(--text-success); border-color: var(--text-success); }
+  .str-cell.mismatch { background: var(--danger-bg); color: var(--text-danger); border-color: var(--text-danger); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Valid Palindrome</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/valid-palindrome/" target="_blank">LC #125</a>
+    <span class="badge badge-med">Easy</span>
+    <span class="badge badge-arr">Strings & Two Pointers</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <p class="acard-q">Which characters should we ignore?</p>
+      <p class="acard-a">Non-alphanumeric characters only: letters and digits count. Spaces, punctuation, symbols are ignored.</p>
+      <span class="acard-u">→ Can skip ahead without storing; only compare alphanumeric chars</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Is comparison case-sensitive?</p>
+      <p class="acard-a">No. 'A' and 'a' are treated as identical.</p>
+      <span class="acard-u">→ Normalize each character on-the-fly; no pre-processing needed</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">What if the string has only non-alphanumeric characters?</p>
+      <p class="acard-a">It is a valid palindrome (vacuously true).</p>
+      <span class="acard-u">→ After filtering, an empty string is a palindrome</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can we use O(n) extra space?</p>
+      <p class="acard-a">Better not to. A clean solution skips non-alphanumeric in-place with O(1) space.</p>
+      <span class="acard-u">→ Two pointers advance inward; no cleaned copy needed</span>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">The input is a string of printable ASCII characters (letters, digits, spaces, punctuation). We ignore case and non-alphanumeric characters. Empty strings and single characters are valid palindromes. We return a boolean: true if the string (after filtering and normalization) reads the same forwards and backwards, false otherwise.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Two pointers squeeze from both ends, comparing only alphanumeric characters.</p>
+
+  <p class="body">A palindrome reads the same forwards and backwards — so a string of length n is a palindrome iff <code>s[i]</code> equals <code>s[n−1−i]</code> for every i. Two pointers walking inward from both ends test exactly that pairing, one comparison at a time. Non-alphanumeric characters are skipped <em>in place</em> by advancing the relevant pointer past them; no cleaned copy is ever built.</p>
+
+  <!-- Foundational visual: animated two-pointer squeeze on "race a car" (returns false).
+       Pattern (PLAN-017): left/right pointers (info-blue / warning-orange), matched pairs (success-green),
+       skipped non-alphanumeric (dim), mismatch (danger-red). -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <!-- Legend -->
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--info-bg);border:1.5px solid var(--text-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>left pointer</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--warn-bg);border:1.5px solid var(--text-warn);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>right pointer</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--success-bg);border:1.5px solid var(--text-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>matched pair</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--danger-bg);border:1.5px solid var(--text-danger);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>mismatch</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;vertical-align:middle;margin-right:.25rem;opacity:.5"></span>skipped (non-alphanumeric)</span>
+    </div>
+
+    <!-- String cells -->
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.25rem">s = "race a car" (returns <b>false</b>)</div>
+    <div id="si-strip" class="str-grid" style="margin:.25rem 0"></div>
+
+    <!-- State display -->
+    <div style="display:flex;gap:1rem;align-items:center;margin:.625rem 0;font-family:var(--mono);font-size:13px;flex-wrap:wrap">
+      <span>left = <b id="si-left" style="color:var(--text-info)">—</b></span>
+      <span>right = <b id="si-right" style="color:var(--text-warn)">—</b></span>
+      <span id="si-cmp">—</span>
+      <span id="si-result-pill" style="display:none;padding:3px 10px;border-radius:6px;font-weight:700">return <span id="si-result-val">—</span></span>
+    </div>
+
+    <!-- Caption -->
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <!-- Controls -->
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Initialize left=0 and right=n−1. Loop while left &lt; right: skip non-alphanumeric characters by incrementing left and decrementing right. At each step, compare s[left].lower() with s[right].lower(). If they differ, return false. If they match, advance both pointers. If pointers meet or cross, return true. This works in O(n) time with O(1) auxiliary space.</p>
+  </div>
+
+  <p class="body" style="margin-top:1rem">Why filtering on-the-fly is the key:</p>
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">check if string is a palindrome (ignoring non-alphanumeric and case)</div>
+        <div class="chain-note">the problem</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">cleaned(s) reads the same forwards and backwards &nbsp;⟺&nbsp; <span class="chain-hl">cleaned(s)[i] == cleaned(s)[n−1−i]</span> for every i</div>
+        <div class="chain-note">"reads the same" is a per-pair condition — symmetry around the centre</div>
+        <div class="chain-example">
+          <span class="pill n">"abcba" (n=5)</span><span class="arrow">→</span>
+          <span class="pill ok">(0,4)=a=a · (1,3)=b=b · centre 'c' alone</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">test the pairs <span class="chain-hl">in place</span>: walk left ↑, right ↓; skip non-alphanumerics by advancing past them</div>
+        <div class="chain-note">no need to materialise cleaned(s) — comparing endpoints of the unprocessed-so-far region is equivalent to comparing endpoints of cleaned(s)</div>
+        <div class="chain-example">
+          <span class="pill n">left at ',', right at 'a'</span><span class="arrow">→</span>
+          <span class="pill n">skip left</span><span class="arrow">→</span>
+          <span class="pill ok">compare next alphanumeric</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">first mismatch → false</span>, pointers cross → true. O(n) time, O(1) extra space.</div>
+        <div class="chain-note">no auxiliary string allocated; the two integer pointers carry the entire state</div>
+        <div class="chain-example">
+          <span class="pill n">cleanup-then-reverse</span><span class="arrow">→</span><span class="pill bad">O(n) extra space</span>
+          <span style="margin:0 4px;color:var(--text3)">vs</span>
+          <span class="pill n">two pointers</span><span class="arrow">→</span><span class="pill ok">O(1)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force: clean first, then compare</p>
+  <p class="body">Create a new string containing only alphanumeric characters (lowercased). Then check if this cleaned string equals its reverse. Two passes: one to build the cleaned string, one to compare.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">Ex 1: a.</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">Ex 2: A man, a plan, a canal: Panama</button>
+    <button class="ex-btn" id="bf-ex2" onclick="bfLoadEx(2)">Ex 3: 0P</button>
+  </div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    Original: <span id="bf-orig" style="font-weight:600;color:var(--text)">—</span>
+  </div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    Cleaned: <span id="bf-cleaned" style="font-weight:600;color:var(--text-info)">—</span>
+  </div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    Reversed: <span id="bf-reversed" style="font-weight:600;color:var(--text-warn)">—</span>
+  </div>
+  <div id="bf-verdict" style="font-family:var(--mono);font-size:13px;margin:.5rem 0;min-height:18px"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n) time, O(n) space</p>
+    <p class="infobox-d">One pass to build the cleaned string, one to reverse, one to compare. Auxiliary space needed for the cleaned copy.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('bf-code',this)">▶ Show brute force code</button>
+  <div class="code-block" id="bf-code">
+<pre class="cb"><span class="kw">bool</span> <span class="fn">isPalindrome_BF</span>(<span class="tp">string</span> s) {
+    <span class="tp">string</span> cleaned = <span class="nu">""</span>;
+    <span class="kw">for</span> (<span class="kw">char</span> c : s) {
+        <span class="kw">if</span> (isalnum(c)) {
+            cleaned += tolower(c);
+        }
+    }
+    <span class="tp">string</span> rev = cleaned;
+    reverse(rev.begin(), rev.end());
+    <span class="kw">return</span> cleaned == rev;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">The brute-force approach builds an entire cleaned string before comparing. The key insight is that we don't need to store anything — we can compare characters on-the-fly as we advance two pointers inward.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Brute force: cleanup then compare</div>
+        <div class="wt-desc">Iterate through the string, keep only alphanumeric characters (lowercased) in a new string. Compare this string to its reverse.</div>
+        <div class="wt-gain"><span class="tag"><span class="tag-space">O(n) space</span></span> — must store the cleaned copy</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Two-pointer with on-the-fly filtering (taught)</div>
+        <div class="wt-desc">Use left and right pointers. Skip non-alphanumeric at each end. Compare alphanumeric characters (case-insensitive). No pre-processing; no cleaned copy.</div>
+        <div class="wt-gain"><span class="tag"><span class="tag-space">O(1) space</span></span> — optimal</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Initialize</b> left = 0, right = length(s) − 1.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Loop</b> while left &lt; right.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Skip</b> non-alphanumeric: increment left while s[left] is not alphanumeric.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Skip</b> non-alphanumeric: decrement right while s[right] is not alphanumeric.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>Compare</b> s[left].lower() and s[right].lower(). If not equal, <b>return false</b>.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">6</div>
+      <div class="algo-t"><b>Advance</b> left++, right−−. Continue loop.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">7</div>
+      <div class="algo-t"><b>Return true</b> if loop completes without a mismatch.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+<pre class="cb"><span class="kw">bool</span> <span class="fn">isPalindrome</span>(<span class="tp">string</span> s) {
+    <span class="kw">int</span> left = <span class="nu">0</span>, right = s.length() - <span class="nu">1</span>;
+    <span class="kw">while</span> (left &lt; right) {
+        <span class="kw">while</span> (left &lt; right &amp;&amp; !isalnum(s[left])) {
+            left++;
+        }
+        <span class="kw">while</span> (left &lt; right &amp;&amp; !isalnum(s[right])) {
+            right--;
+        }
+        <span class="kw">if</span> (tolower(s[left]) != tolower(s[right])) {
+            <span class="kw">return</span> <span class="kw">false</span>;
+        }
+        left++;
+        right--;
+    }
+    <span class="kw">return</span> <span class="kw">true</span>;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card">
+          <div class="cv-var-name">left</div>
+          <div class="cv-var-val" id="cv-left">—</div>
+        </div>
+        <div class="cv-var-card">
+          <div class="cv-var-name">right</div>
+          <div class="cv-var-val" id="cv-right">—</div>
+        </div>
+        <div class="cv-var-card">
+          <div class="cv-var-name">s[left]</div>
+          <div class="cv-var-val" id="cv-sleft">—</div>
+        </div>
+        <div class="cv-var-card">
+          <div class="cv-var-name">s[right]</div>
+          <div class="cv-var-val" id="cv-sright">—</div>
+        </div>
+      </div>
+      <div id="cv-narration" class="cv-narration">—</div>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">a.</button>
+    <button class="ex-btn" id="cv-ex1" onclick="cvLoadEx(1)">A man, a plan, a canal: Panama</button>
+    <button class="ex-btn" id="cv-ex2" onclick="cvLoadEx(2)">0P</button>
+    <span style="flex-grow:1"></span>
+    <button class="ctrl-btn" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-play" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn" onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+
+  <div style="margin:1rem 0">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.5rem" id="dr-input">—</div>
+    <div class="str-grid" id="dr-str-grid"></div>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid">
+        <div class="fitem-label">left</div>
+        <div class="fitem-val" id="dr-left">—</div>
+        <div class="fitem-label">right</div>
+        <div class="fitem-val" id="dr-right">—</div>
+        <div class="fitem-label">s[left]</div>
+        <div class="fitem-val" id="dr-sleft">—</div>
+        <div class="fitem-label">s[right]</div>
+        <div class="fitem-val" id="dr-sright">—</div>
+      </div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what" id="dr-what">—</div>
+      <div class="step-why" id="dr-why">—</div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1: a.</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">Ex 2: A man, a plan, a canal: Panama</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">Ex 3: 0P</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">Empty string</div>
+    <div class="corner-body">Input: <code>""</code>. No characters; left=0, right=−1; loop doesn't run. Return true.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">Single character</div>
+    <div class="corner-body">Input: <code>"a"</code>. left=0, right=0; left &lt; right is false; loop doesn't run. Return true.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">All non-alphanumeric</div>
+    <div class="corner-body">Input: <code>"!@#$%"</code>. Both pointers skip to out-of-bounds; loop exits. Return true.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Mixed case</div>
+    <div class="corner-body">Input: <code>"Aa"</code>. left='A'→'a', right='a'; they match after normalization. Return true.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">Mismatch at edges</div>
+    <div class="corner-body">Input: <code>"ab"</code>. left='a', right='b'; no match. Return false immediately.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Handles empty strings and single characters.</b> Loop condition left &lt; right prevents issues.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Case-insensitive comparison.</b> Using tolower() on both sides.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Skips non-alphanumeric characters in-place.</b> While loops handle skipping without storing.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Early exit on mismatch.</b> Returns false immediately when characters don't match.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Bounds checking.</b> Inner while loops check left &lt; right before accessing array.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>O(n) time, O(1) space.</b> Single pass through string; no auxiliary data structures.</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab(event, 'tab-optimal')">Two-pointer (optimal)</button>
+    <button class="tab-btn" onclick="switchTab(event, 'tab-brute')">Brute force (cleanup)</button>
+    <button class="tab-btn" onclick="switchTab(event, 'tab-regex')">Regex variant</button>
+  </div>
+
+  <div class="tab-pane active" id="tab-optimal">
+    <div style="display:flex;gap:8px;margin-bottom:.75rem;flex-wrap:wrap">
+      <span class="tag"><span class="tag-time">O(n)</span></span>
+      <span class="tag"><span class="tag-space">O(1)</span></span>
+    </div>
+    <p class="body">Maintain left and right pointers. Skip non-alphanumeric characters at each end. Compare normalized characters on-the-fly. No modification of input; no auxiliary storage. This is the optimal solution.</p>
+    <button class="reveal-btn" onclick="toggleEl('opt-code',this)">▶ Show code</button>
+    <div class="code-block" id="opt-code">
+<pre class="cb"><span class="kw">bool</span> <span class="fn">isPalindrome</span>(<span class="tp">string</span> s) {
+    <span class="kw">int</span> left = <span class="nu">0</span>, right = s.length() - <span class="nu">1</span>;
+    <span class="kw">while</span> (left &lt; right) {
+        <span class="kw">while</span> (left &lt; right &amp;&amp; !isalnum(s[left])) left++;
+        <span class="kw">while</span> (left &lt; right &amp;&amp; !isalnum(s[right])) right--;
+        <span class="kw">if</span> (tolower(s[left]) != tolower(s[right])) <span class="kw">return</span> <span class="kw">false</span>;
+        left++; right--;
+    }
+    <span class="kw">return</span> <span class="kw">true</span>;
+}</pre>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="tab-brute">
+    <div style="display:flex;gap:8px;margin-bottom:.75rem;flex-wrap:wrap">
+      <span class="tag"><span class="tag-time">O(n)</span></span>
+      <span class="tag"><span class="tag-space">O(n)</span></span>
+    </div>
+    <p class="body">Build a cleaned, lowercased string by iterating through and keeping only alphanumeric characters. Then check if this string equals its reverse. Simple and intuitive, but uses O(n) space for the cleaned copy.</p>
+    <button class="reveal-btn" onclick="toggleEl('brute-code',this)">▶ Show code</button>
+    <div class="code-block" id="brute-code">
+<pre class="cb"><span class="kw">bool</span> <span class="fn">isPalindrome</span>(<span class="tp">string</span> s) {
+    <span class="tp">string</span> cleaned;
+    <span class="kw">for</span> (<span class="kw">char</span> c : s) {
+        <span class="kw">if</span> (isalnum(c)) cleaned += tolower(c);
+    }
+    <span class="tp">string</span> rev = cleaned;
+    reverse(rev.begin(), rev.end());
+    <span class="kw">return</span> cleaned == rev;
+}</pre>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="tab-regex">
+    <div style="display:flex;gap:8px;margin-bottom:.75rem;flex-wrap:wrap">
+      <span class="tag"><span class="tag-time">O(n)</span></span>
+      <span class="tag"><span class="tag-space">O(n)</span></span>
+    </div>
+    <p class="body">Use regex to remove all non-alphanumeric characters, convert to lowercase, then compare with reversed string. Concise in languages with strong regex support (Python, JavaScript), but slightly slower due to regex compilation.</p>
+    <button class="reveal-btn" onclick="toggleEl('regex-code',this)">▶ Show code</button>
+    <div class="code-block" id="regex-code">
+<pre class="cb"><span class="cm">// Python example:</span>
+<span class="kw">import</span> re
+<span class="kw">def</span> isPalindrome(s: <span class="tp">str</span>) -> <span class="kw">bool</span>:
+    cleaned = re.sub(r<span class="nu">'[^a-zA-Z0-9]'</span>, <span class="nu">''</span>, s).lower()
+    <span class="kw">return</span> cleaned == cleaned[:<span class="kw">-1</span>]</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(n)</div>
+      <div class="ccard-n">Each character is visited once by either left or right pointer.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(1)</div>
+      <div class="ccard-n">Only two pointers; no auxiliary data structures or cleaned copies.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><b>LC 680 — Valid Palindrome II:</b> Same problem but allow one character deletion. Introduces a two-pointer recovery strategy: if characters don't match, try skipping either the left or right character and continue checking.</p>
+    <p><b>LC 1332 — Remove Palindromic Subsequences:</b> Combine palindrome checking with subsequence removal. Use the two-pointer insight to identify which characters can form palindromic subsequences.</p>
+    <p><b>LC 1216 — Valid Palindrome III:</b> Use dynamic programming to check if a string is a palindrome after removing at most k characters. Two pointers help define the DP recurrence.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+
+<script>
+  // §1 animation — two-pointer squeeze on "race a car" (returns false)
+  const SI_STR = 'race a car';
+  let siSteps = siGenSteps(SI_STR);
+  let siCur = 0;
+  let siTimer = null;
+
+  function isAlnum(c) { return /[A-Za-z0-9]/.test(c); }
+
+  function siGenSteps(s) {
+    const steps = [];
+    let left = 0, right = s.length - 1;
+    const matched = new Set();
+    const skipped = new Set();
+
+    steps.push({
+      left, right, matched: new Set(), skipped: new Set(),
+      cmp: null, mismatch: false, result: null,
+      caption: `Init: left = 0, right = ${right}. Walk inward; compare alphanumeric chars (case-insensitive).`,
+    });
+
+    while (left < right) {
+      // Skip non-alphanumeric on left
+      while (left < right && !isAlnum(s[left])) {
+        skipped.add(left);
+        steps.push({
+          left, right, matched: new Set(matched), skipped: new Set(skipped),
+          cmp: null, mismatch: false, result: null,
+          caption: `s[${left}] = '${s[left]}' is non-alphanumeric → skip; left → ${left + 1}.`,
+        });
+        left++;
+      }
+      while (left < right && !isAlnum(s[right])) {
+        skipped.add(right);
+        steps.push({
+          left, right, matched: new Set(matched), skipped: new Set(skipped),
+          cmp: null, mismatch: false, result: null,
+          caption: `s[${right}] = '${s[right]}' is non-alphanumeric → skip; right → ${right - 1}.`,
+        });
+        right--;
+      }
+      if (left >= right) break;
+      const cl = s[left].toLowerCase();
+      const cr = s[right].toLowerCase();
+      if (cl === cr) {
+        matched.add(left);
+        matched.add(right);
+        steps.push({
+          left, right, matched: new Set(matched), skipped: new Set(skipped),
+          cmp: { l: s[left], r: s[right] }, mismatch: false, result: null,
+          caption: `Compare s[${left}]='${s[left]}' vs s[${right}]='${s[right]}' (case-insensitive '${cl}' vs '${cr}') ✓ match. Advance both pointers.`,
+        });
+        left++;
+        right--;
+      } else {
+        steps.push({
+          left, right, matched: new Set(matched), skipped: new Set(skipped),
+          cmp: { l: s[left], r: s[right] }, mismatch: true, result: false,
+          caption: `Compare s[${left}]='${s[left]}' vs s[${right}]='${s[right]}' — case-insensitive '${cl}' ≠ '${cr}'. First mismatch → return false.`,
+        });
+        return steps;
+      }
+    }
+    steps.push({
+      left, right, matched: new Set(matched), skipped: new Set(skipped),
+      cmp: null, mismatch: false, result: true,
+      caption: `Pointers met (left=${left}, right=${right}). All pairs matched → return true.`,
+    });
+    return steps;
+  }
+
+  function siRender(st) {
+    const strip = document.getElementById('si-strip');
+    strip.innerHTML = '';
+    [...SI_STR].forEach((ch, idx) => {
+      const cell = document.createElement('div');
+      cell.className = 'str-cell';
+      if (st.mismatch && (idx === st.left || idx === st.right)) cell.classList.add('mismatch');
+      else if (st.matched.has(idx)) cell.classList.add('match');
+      else if (idx === st.left) cell.classList.add('pL');
+      else if (idx === st.right) cell.classList.add('pR');
+      else if (st.skipped.has(idx)) cell.classList.add('skip');
+      else if (!isAlnum(ch)) cell.style.opacity = '0.5';
+      cell.textContent = ch === ' ' ? '·' : ch;
+      strip.appendChild(cell);
+    });
+
+    document.getElementById('si-left').textContent = st.left;
+    document.getElementById('si-right').textContent = st.right;
+    const cmp = document.getElementById('si-cmp');
+    if (st.cmp) {
+      cmp.innerHTML = st.mismatch
+        ? `<span style="color:var(--text-danger)">'${st.cmp.l}' ≠ '${st.cmp.r}'</span>`
+        : `<span style="color:var(--text-success)">'${st.cmp.l}' = '${st.cmp.r}' ✓</span>`;
+    } else cmp.textContent = '';
+    const resultPill = document.getElementById('si-result-pill');
+    if (st.result === true || st.result === false) {
+      resultPill.style.display = 'inline-block';
+      resultPill.style.background = st.result ? 'var(--success-bg)' : 'var(--danger-bg)';
+      resultPill.style.borderColor = st.result ? 'var(--text-success)' : 'var(--text-danger)';
+      resultPill.style.color = st.result ? 'var(--text-success)' : 'var(--text-danger)';
+      resultPill.style.border = '0.5px solid';
+      document.getElementById('si-result-val').textContent = st.result ? 'true' : 'false';
+    } else {
+      resultPill.style.display = 'none';
+    }
+
+    document.getElementById('si-caption').textContent = st.caption;
+    const ctr = document.getElementById('si-sctr');
+    if (ctr) ctr.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() {
+    clearInterval(siTimer); siTimer = null;
+    const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto';
+  }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur < siSteps.length - 1) siNext(); else siStopPlay();
+    }, 1400);
+  }
+
+  siRender(siSteps[0]);
+</script>
+
+<script>
+  const EXAMPLES = [
+    { input: "a.", expected: true },
+    { input: "A man, a plan, a canal: Panama", expected: true },
+    { input: "0P", expected: false },
+  ];
+
+  // ═══ BRUTE FORCE ═══ (stepped: build cleaned, then reverse, then compare)
+  let bfCur = 0, bfSteps = [], bfTimer = null;
+
+  function bfGenSteps(input) {
+    const steps = [];
+    let cleaned = '';
+    steps.push({input, cleaned: '', reversed: '', phase: 'init',
+                narr: `Start with empty cleaned. Walk the input once keeping only alphanumerics, lowercased.`});
+    for (let k = 0; k < input.length; k++) {
+      const c = input[k];
+      const keep = /[a-z0-9]/i.test(c);
+      if (keep) cleaned += c.toLowerCase();
+      steps.push({input, k, c, keep, cleaned, reversed: '', phase: 'build',
+                  narr: keep ? `s[${k}] = '${c}' is alphanumeric → append '${c.toLowerCase()}' → cleaned = "${cleaned}".`
+                             : `s[${k}] = '${c}' is non-alphanumeric → skip.`});
+    }
+    const reversed = cleaned.split('').reverse().join('');
+    steps.push({input, cleaned, reversed, phase: 'reverse',
+                narr: `Build reversed = "${reversed}" by reversing cleaned in place.`});
+    const verdict = cleaned === reversed;
+    steps.push({input, cleaned, reversed, phase: 'done', verdict,
+                narr: verdict ? `★ "${cleaned}" == "${reversed}" → palindrome.`
+                              : `✗ "${cleaned}" ≠ "${reversed}" → not a palindrome.`});
+    return steps;
+  }
+
+  function bfRender(st) {
+    document.getElementById('bf-orig').textContent = st.input;
+    document.getElementById('bf-cleaned').textContent = st.cleaned || '—';
+    document.getElementById('bf-reversed').textContent = st.reversed || '—';
+    const v = document.getElementById('bf-verdict');
+    if (st.phase === 'done') {
+      v.textContent = st.verdict ? '✓ Palindrome' : '✗ Not a palindrome';
+      v.style.color = st.verdict ? 'var(--text-success)' : 'var(--text-danger)';
+    } else {
+      v.textContent = st.narr;
+      v.style.color = 'var(--text2)';
+    }
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+
+  function bfLoadEx(idx) {
+    bfStopPlay();
+    bfCur = 0;
+    bfSteps = bfGenSteps(EXAMPLES[idx].input);
+    [0, 1, 2].forEach(i => {
+      const b = document.getElementById('bf-ex' + i);
+      if (b) b.classList.toggle('active', i === idx);
+    });
+    bfRender(bfSteps[0]);
+  }
+
+  function bfNext() { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev() { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+  // bfTogglePlay / bfStopPlay are provided by static/lesson.js — they look for #bf-play and call bfNext().
+
+  // ═══ CODE VISUALIZATION ═══
+  const CV_LINES = [
+    { n: 1, c: "int left = 0, right = s.length() - 1;" },
+    { n: 2, c: "while (left < right) {" },
+    { n: 3, c: "  while (left < right && !isalnum(s[left])) {" },
+    { n: 4, c: "    left++;" },
+    { n: 5, c: "  }" },
+    { n: 6, c: "  while (left < right && !isalnum(s[right])) {" },
+    { n: 7, c: "    right--;" },
+    { n: 8, c: "  }" },
+    { n: 9, c: "  if (tolower(s[left]) != tolower(s[right])) return false;" },
+    { n: 10, c: "  left++;" },
+    { n: 11, c: "  right--;" },
+    { n: 12, c: "}" },
+    { n: 13, c: "return true;" },
+  ];
+
+  let cvSteps = [], cvCur = 0, cvTimer = null;
+
+  function cvGenSteps(input) {
+    const steps = [];
+    let left = 0, right = input.length - 1;
+
+    steps.push({
+      line: 1,
+      vars: { left, right, sLeft: '—', sRight: '—' },
+      narr: `Initialize: left=0, right=${input.length - 1}`,
+      phase: 'init'
+    });
+
+    while (left < right) {
+      while (left < right && !/[a-z0-9]/i.test(input[left])) {
+        steps.push({
+          line: 3,
+          vars: { left, right, sLeft: input[left], sRight: input[right] },
+          narr: `Skip non-alphanumeric at left: '${input[left]}'`,
+          phase: 'skip'
+        });
+        left++;
+      }
+
+      while (left < right && !/[a-z0-9]/i.test(input[right])) {
+        steps.push({
+          line: 6,
+          vars: { left, right, sLeft: input[left], sRight: input[right] },
+          narr: `Skip non-alphanumeric at right: '${input[right]}'`,
+          phase: 'skip'
+        });
+        right--;
+      }
+
+      if (left >= right) break;
+
+      const cL = input[left].toLowerCase();
+      const cR = input[right].toLowerCase();
+      steps.push({
+        line: 9,
+        vars: { left, right, sLeft: cL, sRight: cR },
+        narr: `Compare: '${cL}' vs '${cR}' — ${cL === cR ? 'match ✓' : 'mismatch ✗'}`,
+        phase: cL === cR ? 'match' : 'fail'
+      });
+
+      if (cL !== cR) {
+        steps.push({
+          line: 9,
+          vars: { left, right, sLeft: cL, sRight: cR },
+          narr: 'Return false — not a palindrome',
+          phase: 'fail'
+        });
+        return steps;
+      }
+
+      left++;
+      right--;
+      steps.push({
+        line: 10,
+        vars: { left, right, sLeft: '—', sRight: '—' },
+        narr: `Advance: left=${left}, right=${right}`,
+        phase: 'advance'
+      });
+    }
+
+    steps.push({
+      line: 13,
+      vars: { left, right, sLeft: '—', sRight: '—' },
+      narr: 'Return true — palindrome verified',
+      phase: 'success'
+    });
+
+    return steps;
+  }
+
+  function cvRender(step) {
+    const phaseColors = {
+      init: 'var(--text)',
+      skip: 'var(--text3)',
+      advance: 'var(--text2)',
+      match: 'var(--text-success)',
+      fail: 'var(--text-danger)',
+      success: 'var(--text-success)'
+    };
+
+    document.querySelectorAll('.cv-line').forEach(el => el.classList.remove('active'));
+    const lineEl = document.querySelector(`.cv-line[data-line="${step.line}"]`);
+    if (lineEl) lineEl.classList.add('active');
+
+    document.getElementById('cv-left').textContent = step.vars.left;
+    document.getElementById('cv-right').textContent = step.vars.right;
+    document.getElementById('cv-sleft').textContent = step.vars.sLeft;
+    document.getElementById('cv-sright').textContent = step.vars.sRight;
+    document.getElementById('cv-narration').textContent = step.narr;
+    document.getElementById('cv-narration').style.color = phaseColors[step.phase] || 'var(--text)';
+    document.getElementById('cv-sctr').textContent = `${cvCur + 1}/${cvSteps.length}`;
+  }
+
+  function cvNext() {
+    if (cvCur < cvSteps.length - 1) {
+      cvCur++;
+      cvRender(cvSteps[cvCur]);
+    }
+  }
+
+  function cvPrev() {
+    if (cvCur > 0) {
+      cvCur--;
+      cvRender(cvSteps[cvCur]);
+    }
+  }
+
+  function cvReset() {
+    cvCur = 0;
+    if (cvTimer) { clearInterval(cvTimer); cvTimer = null; }
+    document.getElementById('cv-play').textContent = '▶ Auto';
+    cvRender(cvSteps[0]);
+  }
+
+  function cvLoadEx(idx) {
+    cvSteps = cvGenSteps(EXAMPLES[idx].input);
+    cvCur = 0;
+    cvReset();
+    document.querySelectorAll('#cv-ex0, #cv-ex1, #cv-ex2').forEach((b, i) => b.classList.toggle('active', i === idx));
+  }
+
+  // ═══ DRY RUN ═══
+  let drSteps = [], drCur = 0, drTimer = null, drExampleIdx = 0;
+
+  function drGenSteps(input) {
+    const steps = [];
+    let left = 0, right = input.length - 1;
+
+    steps.push({
+      line: 0,
+      left, right,
+      sLeft: '—',
+      sRight: '—',
+      what: 'Initialize pointers',
+      why: `left=0, right=${input.length - 1}`,
+      phase: 'init'
+    });
+
+    while (left < right) {
+      while (left < right && !/[a-z0-9]/i.test(input[left])) {
+        steps.push({
+          line: 1,
+          left, right,
+          sLeft: input[left],
+          sRight: input[right],
+          what: `Skip '${input[left]}' (not alphanumeric)`,
+          why: 'Non-alphanumeric at left',
+          phase: 'skip'
+        });
+        left++;
+      }
+
+      while (left < right && !/[a-z0-9]/i.test(input[right])) {
+        steps.push({
+          line: 2,
+          left, right,
+          sLeft: input[left],
+          sRight: input[right],
+          what: `Skip '${input[right]}' (not alphanumeric)`,
+          why: 'Non-alphanumeric at right',
+          phase: 'skip'
+        });
+        right--;
+      }
+
+      if (left >= right) break;
+
+      const cL = input[left].toLowerCase();
+      const cR = input[right].toLowerCase();
+      steps.push({
+        line: 3,
+        left, right,
+        sLeft: cL,
+        sRight: cR,
+        what: `Compare '${cL}' and '${cR}'`,
+        why: cL === cR ? 'Characters match ✓' : 'Characters differ ✗',
+        phase: cL === cR ? 'match' : 'fail'
+      });
+
+      if (cL !== cR) {
+        steps.push({
+          line: 4,
+          left, right,
+          sLeft: cL,
+          sRight: cR,
+          what: 'Return false',
+          why: 'Mismatch found — not a palindrome',
+          phase: 'fail'
+        });
+        return steps;
+      }
+
+      left++;
+      right--;
+    }
+
+    steps.push({
+      line: 5,
+      left, right,
+      sLeft: '—',
+      sRight: '—',
+      what: 'Return true',
+      why: 'All alphanumeric pairs matched — palindrome',
+      phase: 'success'
+    });
+
+    return steps;
+  }
+
+  function drRender(step) {
+    const phaseColors = {
+      init: 'var(--text)',
+      skip: 'var(--text3)',
+      match: 'var(--text-success)',
+      fail: 'var(--text-danger)',
+      success: 'var(--text-success)'
+    };
+
+    const input = EXAMPLES[drExampleIdx].input;
+    const grid = document.getElementById('dr-str-grid');
+    grid.innerHTML = '';
+    for (let i = 0; i < input.length; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'str-cell';
+      const isAlnum = /[a-z0-9]/i.test(input[i]);
+      if (!isAlnum) cell.classList.add('skip');
+      if (i === step.left && i === step.right) cell.classList.add('match');
+      else if (i === step.left) cell.classList.add('pL');
+      else if (i === step.right) cell.classList.add('pR');
+      else if (isAlnum) cell.classList.add('alnum');
+      cell.textContent = input[i];
+      grid.appendChild(cell);
+    }
+
+    document.getElementById('dr-left').textContent = step.left;
+    document.getElementById('dr-right').textContent = step.right;
+    document.getElementById('dr-sleft').textContent = step.sLeft;
+    document.getElementById('dr-sright').textContent = step.sRight;
+    document.getElementById('dr-what').textContent = step.what;
+    document.getElementById('dr-why').textContent = step.why;
+    document.getElementById('dr-what').style.color = phaseColors[step.phase] || 'var(--text)';
+    document.getElementById('dr-sctr').textContent = `${drCur + 1}/${drSteps.length}`;
+  }
+
+  function drNext() {
+    if (drCur < drSteps.length - 1) {
+      drCur++;
+      drRender(drSteps[drCur]);
+    }
+  }
+
+  function drPrev() {
+    if (drCur > 0) {
+      drCur--;
+      drRender(drSteps[drCur]);
+    }
+  }
+
+  function drReset() {
+    drCur = 0;
+    if (drTimer) { clearInterval(drTimer); drTimer = null; }
+    document.getElementById('dr-play').textContent = '▶ Auto';
+    drRender(drSteps[0]);
+  }
+
+  function drLoadEx(idx) {
+    drExampleIdx = idx;
+    const input = EXAMPLES[idx].input;
+    document.getElementById('dr-input').textContent = `s = "${input}"`;
+    drSteps = drGenSteps(input);
+    drReset();
+    document.querySelectorAll('#dr-ex0, #dr-ex1, #dr-ex2').forEach((b, i) => b.classList.toggle('active', i === idx));
+  }
+
+  function switchTab(e, tabId) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    e.target.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+  }
+
+  // ═══ INIT ═══
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  bfLoadEx(0);
+  drLoadEx(0);
+</script>
+
+</body>
+</html>

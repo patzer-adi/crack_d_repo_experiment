@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sliding Window Maximum — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC CSS ONLY — bar charts, freq arrays, panel-height overrides */
+  /* Do not redefine any class already in static/lesson.css */
+
+  /* §1 / §2 / §7 — sliding-window-maximum visual */
+  .swm-vis { margin: 1rem 0; }
+  .swm-step-label {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--text2);
+    margin-bottom: .5rem; min-height: 1.2em;
+  }
+  .swm-cells {
+    display: flex; gap: 6px;
+    border: 1px solid var(--border1);
+    border-radius: 4px;
+    padding: .5rem;
+    background: var(--bg2);
+  }
+  .swm-cell {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: .35rem .15rem;
+    border: 1px solid var(--border1);
+    border-radius: 3px;
+    background: var(--bg1);
+    font-family: var(--mono);
+    transition: background .25s, border-color .25s, opacity .25s;
+  }
+  .swm-cell .swm-v { font-size: 14px; color: var(--text1); font-weight: 600; }
+  .swm-cell .swm-i { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .swm-cell.out      { opacity: .35; }
+  .swm-cell.in-win   { background: rgba(46, 130, 200, .15); border-color: var(--info); }
+  .swm-cell.in-dq    { background: rgba(46, 130, 200, .25); border-color: var(--info); }
+  .swm-cell.is-max   { background: var(--success-soft, rgba(56, 161, 105, .25)); border-color: var(--success); }
+  .swm-cell.is-max .swm-v { color: var(--success); }
+  .swm-cell.dom      { opacity: .35; text-decoration: line-through; }
+  .swm-cell.pop      { background: rgba(220, 80, 80, .22); border-color: var(--danger, #c25151); }
+  .swm-cell.pop .swm-v { text-decoration: line-through; }
+  .swm-meta { margin-top: .75rem; display: flex; flex-direction: column; gap: .35rem; }
+  .swm-meta-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
+  .swm-meta-lbl { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; }
+  .swm-mono { font-family: var(--mono); font-size: 13px; color: var(--text1); }
+  .swm-deque { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+  .swm-dchip {
+    font-family: var(--mono); font-size: 12px;
+    padding: 1px 8px;
+    border: 1px solid var(--info);
+    background: rgba(46, 130, 200, .18);
+    color: var(--text1);
+    border-radius: 10px;
+  }
+  .swm-dchip.front { background: var(--success-soft, rgba(56, 161, 105, .25)); border-color: var(--success); }
+  .swm-legend {
+    display: flex; flex-wrap: wrap; gap: .75rem;
+    font-size: 11px; color: var(--text3);
+    margin-top: .5rem;
+  }
+  .swm-legend .swl { display: inline-flex; align-items: center; gap: 4px; }
+  .swm-legend .sws {
+    display: inline-block; width: 10px; height: 10px;
+    border: 1px solid var(--border1);
+    border-radius: 2px;
+  }
+  /* brute-force state modifiers (re-uses .swm-cell base) */
+  .swm-cell.bf-win  { background: rgba(217, 165, 60, .18); border-color: var(--warn, #c89a3c); }
+  .swm-cell.bf-scan { background: rgba(46, 130, 200, .35); border-color: var(--info); }
+  .swm-cell.bf-best { background: var(--success-soft, rgba(56, 161, 105, .25)); border-color: var(--success); }
+  .swm-cell.bf-best .swm-v { color: var(--success); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Sliding Window Maximum</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/sliding-window-maximum/" target="_blank">LC #239</a>
+    <span class="badge badge-med">Hard</span>
+    <span class="badge badge-arr">Sliding Window</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing any code. Each answer constrains a specific design choice.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <p class="acard-q">How many maxima do we return?</p>
+      <p class="acard-a">Exactly <b>n − k + 1</b> — one per window. The first window covers indices [0..k−1]; the last covers [n−k..n−1].</p>
+      <span class="acard-u">→ record only once <b>i ≥ k − 1</b></span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can elements be negative or zero?</p>
+      <p class="acard-a">Yes — values lie in [−10⁴, 10⁴]. So 0 is not a safe sentinel for "smaller than everything seen so far".</p>
+      <span class="acard-u">→ compare values directly; never use 0 or −1 as magic</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can k exceed the array length?</p>
+      <p class="acard-a">No — constraints guarantee <b>1 ≤ k ≤ n</b>. Every window fits.</p>
+      <span class="acard-u">→ no bounds guard; loop ranges are always valid</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can the array contain duplicates?</p>
+      <p class="acard-a">Yes. If two equal values are in the same window, either one is a valid max — no tie-break needed.</p>
+      <span class="acard-u">→ use <code>≤</code> (not <code>&lt;</code>) when evicting older candidates</span>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">nums is non-empty, k is a valid window size, values may be negative. We return n − k + 1 maxima in left-to-right order. We never need to handle k &gt; n or an empty input.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Once a bigger value lands to your right, you're dominated forever.</p>
+
+  <p class="body">For each window of size k we want a max. Brute force rescans k cells every step. Notice: when a new value <code>v</code> enters at index <code>i</code>, every <em>smaller</em> value sitting to its left can never beat <code>v</code> — every future window that contains them also contains <code>v</code>, so they're permanently dominated. Drop them. The set of "could still be max" indices forms a chain whose values strictly decrease left to right.</p>
+
+  <!-- Foundational visual: animated cells + deque row + window/max readout -->
+  <div class="swm-vis">
+    <div class="swm-step-label" id="si-action">step 1 of 8 — i=0: push idx 0</div>
+
+    <div class="swm-cells" id="si-cells">
+      <div class="swm-cell" data-idx="0"><span class="swm-v">1</span><span class="swm-i">i=0</span></div>
+      <div class="swm-cell" data-idx="1"><span class="swm-v">3</span><span class="swm-i">i=1</span></div>
+      <div class="swm-cell" data-idx="2"><span class="swm-v">-1</span><span class="swm-i">i=2</span></div>
+      <div class="swm-cell" data-idx="3"><span class="swm-v">-3</span><span class="swm-i">i=3</span></div>
+      <div class="swm-cell" data-idx="4"><span class="swm-v">5</span><span class="swm-i">i=4</span></div>
+      <div class="swm-cell" data-idx="5"><span class="swm-v">3</span><span class="swm-i">i=5</span></div>
+      <div class="swm-cell" data-idx="6"><span class="swm-v">6</span><span class="swm-i">i=6</span></div>
+      <div class="swm-cell" data-idx="7"><span class="swm-v">7</span><span class="swm-i">i=7</span></div>
+    </div>
+
+    <div class="swm-meta">
+      <div class="swm-meta-row">
+        <span class="swm-meta-lbl">live candidates (deque):</span>
+        <span class="swm-deque" id="si-deque"></span>
+      </div>
+      <div class="swm-meta-row">
+        <span class="swm-meta-lbl">window:</span>
+        <span class="swm-mono" id="si-win">[—]</span>
+        <span class="swm-meta-lbl">current max:</span>
+        <span class="swm-mono" id="si-max">—</span>
+      </div>
+      <div class="swm-meta-row">
+        <span class="swm-meta-lbl">recorded so far:</span>
+        <span class="swm-mono" id="si-rec">[]</span>
+      </div>
+    </div>
+
+    <div class="swm-legend">
+      <span class="swl"><span class="sws" style="background:rgba(46,130,200,.15);border-color:var(--info)"></span>in window</span>
+      <span class="swl"><span class="sws" style="background:var(--success-soft, rgba(56,161,105,.25));border-color:var(--success)"></span>front of deque = current max</span>
+      <span class="swl"><span class="sws" style="background:rgba(220,80,80,.22);border-color:var(--danger,#c25151)"></span>popped this step</span>
+      <span class="swl"><span class="sws" style="opacity:.35"></span>outside window / dominated</span>
+    </div>
+
+    <div class="ctrl-row" style="margin-top:.625rem">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Maintain a deque of <b>indices</b> whose values strictly decrease left to right. For each new index <code>i</code>, pop dominated entries from the back (<code>nums[back] ≤ nums[i]</code>), push <code>i</code>; then pop the front if it slid out of the window (<code>front ≤ i − k</code>). The front is always the current window's max. Each index is pushed and popped at most once — amortised O(1) per step, O(n) total.</p>
+  </div>
+
+  <p class="body" style="margin-top:1rem">Why a monotonic deque beats per-window scanning:</p>
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">Give me the max of every contiguous window of size k.</div>
+        <div class="chain-note">the problem</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">At each step, keep only the indices that <em>could still</em> be the max of some current or future window.</div>
+        <div class="chain-note">indices already known to lose to a later, larger value are dead — drop them</div>
+        <div class="chain-example">
+          <span class="pill n">nums[j] = 1, then nums[i] = 3, i &gt; j</span><span class="arrow">→</span>
+          <span class="pill bad">j is dominated by i forever — drop j</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">The live candidates, ordered by index, have values that <span class="chain-hl">strictly decrease left to right</span>.</div>
+        <div class="chain-note">if values went up anywhere in the chain, the earlier (smaller) one would already be dominated</div>
+        <div class="chain-example">
+          <span class="pill n">candidates [3, -1, -3]</span><span class="arrow">→</span>
+          <span class="pill ok">monotone ✓</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">candidates [3, -1, 5]</span><span class="arrow">→</span>
+          <span class="pill bad">3 and -1 are now dominated by 5 ✗</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">Front pops when its index expires; back pops when a bigger value lands.</span> The front is the current max.</div>
+        <div class="chain-note">amortised O(1) per step — each index touches the deque at most twice</div>
+        <div class="chain-example">
+          <span class="pill n">front idx ≤ i − k</span><span class="arrow">→</span><span class="pill bad">popleft</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">nums[back] ≤ nums[i]</span><span class="arrow">→</span><span class="pill bad">pop back</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill ok">answer = nums[front]</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">For every window start <code>i ∈ [0, n−k]</code>, walk all k elements and remember the largest. Output that max, slide one cell right, repeat. Two nested loops — <b>O(n·k)</b> time, O(1) extra space. With n = 10⁵ and k ≈ 10⁵, that's 10¹⁰ comparisons — comfortably TLE. Step through to see why every slide redoes work the previous slide already did.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">Ex 1: [1,3,-1,-3,5,3,6,7], k=3</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">Ex 2: [1,3,1,2], k=2</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">Ex 3: [5,4,3,2,1], k=3</button>
+  </div>
+
+  <div id="bf-cells" class="swm-cells" style="margin-top:.75rem"></div>
+
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    window start <span id="bf-i" style="font-weight:600;color:var(--text-warn)">—</span>
+    &nbsp;·&nbsp; scanning <span id="bf-j" style="font-weight:600;color:var(--text-info)">—</span>
+    &nbsp;·&nbsp; running max <span id="bf-best" style="font-weight:600;color:var(--success)">—</span>
+    &nbsp;·&nbsp; checks <span id="bf-ops" style="font-weight:600;color:var(--text-danger)">0</span>
+  </div>
+  <div id="bf-out" style="font-family:var(--mono);font-size:13px;margin:.5rem 0;min-height:18px;color:var(--text2)">output so far: []</div>
+
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n·k) time, O(1) space</p>
+    <p class="infobox-d">Each of the <code>n − k + 1</code> windows re-scans k elements from scratch. The <em>checks</em> counter makes it visible: when the window slides one step right, we throw away k−1 comparisons we just did. The deque solution below pays each index exactly twice — once on push, once on pop.</p>
+  </div>
+
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal Code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; maxSlidingWindow_BF(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums, <span class="kw">int</span> k) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>();
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; out;
+    <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt;= n - k; i++) {
+        <span class="kw">int</span> best = nums[i];
+        <span class="kw">for</span> (<span class="kw">int</span> j = i + <span class="nu">1</span>; j &lt; i + k; j++) {
+            <span class="kw">if</span> (nums[j] &gt; best) { best = nums[j]; }
+        }
+        out.<span class="fn">push_back</span>(best);
+    }
+    <span class="kw">return</span> out;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three independent moves take us from <b>O(n·k)</b> to <b>O(n)</b>. Each removes a different kind of waste: redundant re-scanning, redundant max comparison, and the cost of the data structure itself.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Brute force — rescan each window</div>
+        <div class="wt-desc">For each of the <code>n − k + 1</code> window starts, walk all k cells and remember the largest. Every slide throws away k−1 comparisons just done.</div>
+        <div class="wt-gain" style="color:var(--text3)">O(n·k) time, O(1) space</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Max-heap with lazy deletion</div>
+        <div class="wt-desc">Push <code>(value, index)</code> for every element. When reading the window max, pop entries from the top whose <code>index ≤ i − k</code> (expired) until the top is in-window. Heap operations cost O(log n); each element enters once.</div>
+        <div class="wt-gain" style="color:var(--text3)">O(n log n) time, O(n) space</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">Discard dominated values — monotonic deque</div>
+        <div class="wt-desc">Maintain a deque of <em>indices</em> whose <em>values</em> strictly decrease left to right. When index <code>i</code> arrives: <code>while nums[back] ≤ nums[i]: pop back</code>; <code>push i</code>; <code>if dq[0] ≤ i − k: popleft</code>. Front is the current max. Each index touches the deque at most twice — O(1) amortised per step.</div>
+        <div class="wt-gain" style="color:var(--text-success)">O(n) time, O(k) space — taught</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Create</b> an empty deque <code>dq</code>. It stores <em>indices</em>, not values. <b>Create</b> an empty result list <code>out</code>.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>For</b> each index <code>i</code> from 0 to n−1:</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>While</b> the deque is non-empty and <code>nums[dq.back()] ≤ nums[i]</code>, <b>pop</b> from the back. (Those indices are dominated by the new value.)</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Push</b> <code>i</code> onto the back of the deque.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>If</b> <code>dq.front() ≤ i − k</code>, <b>popleft</b> — the front has slid out of the window.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">6</div>
+      <div class="algo-t"><b>If</b> <code>i ≥ k − 1</code>, <b>append</b> <code>nums[dq.front()]</code> to <code>out</code>. <b>Return</b> <code>out</code> after the loop.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main')">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; maxSlidingWindow(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums, <span class="kw">int</span> k) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>();
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; out;
+    <span class="kw">deque</span>&lt;<span class="kw">int</span>&gt; dq;                                 <span class="cm">// stores indices, values strictly decreasing</span>
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        <span class="cm">// 1. Pop dominated indices from the back.</span>
+        <span class="kw">while</span> (!dq.<span class="fn">empty</span>() &amp;&amp; nums[dq.<span class="fn">back</span>()] &lt;= nums[i]) {
+            dq.<span class="fn">pop_back</span>();
+        }
+        <span class="cm">// 2. Push current index.</span>
+        dq.<span class="fn">push_back</span>(i);
+        <span class="cm">// 3. Pop the front if it slid out of the window.</span>
+        <span class="kw">if</span> (dq.<span class="fn">front</span>() &lt;= i - k) {
+            dq.<span class="fn">pop_front</span>();
+        }
+        <span class="cm">// 4. Record once the window is full.</span>
+        <span class="kw">if</span> (i &gt;= k - <span class="nu">1</span>) {
+            out.<span class="fn">push_back</span>(nums[dq.<span class="fn">front</span>()]);
+        }
+    }
+    <span class="kw">return</span> out;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Walk through the deque code one statement at a time. Variable cards stay dim until their initialising line fires; the active card lights cyan. Watch the array below: cells inside the current window light blue, the front-of-deque cell (the current max) lights green, and cells about to be popped from the back briefly flash red before disappearing from the live-candidate row.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-n"><div class="cv-var-name">n</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-k"><div class="cv-var-name">k</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-i"><div class="cv-var-name">i</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-dq"><div class="cv-var-name">dq (indices)</div><div class="cv-var-val">[]</div></div>
+        <div class="cv-var-card dim" id="cv-v-front"><div class="cv-var-name">front value</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-out"><div class="cv-var-name">out</div><div class="cv-var-val">[]</div></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-arr-con" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0;"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">Ex 1: [1,3,1,2], k=2</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">Ex 2: [1,3,-1,-3,5,3,6,7], k=3</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">Ex 3: [5,4,3,2,1], k=3</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+
+  <div id="dr-arr-con" style="margin-bottom:1rem"></div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    live candidates (deque): <span id="dr-deque" class="swm-deque">·</span>
+  </div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.25rem 0">
+    output so far: <span id="dr-out">[]</span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">i / v</div>
+          <div class="fitem-val" id="f-iv">— / —</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">window</div>
+          <div class="fitem-val" id="f-win">—</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">action</div>
+          <div class="fitem-val" id="f-action">init</div>
+        </div>
+      </div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1: [1,3,-1,-3,5,3,6,7], k=3</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">Ex 2: [5,4,3,2,1], k=3</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">Ex 3: [1,2,3,4,5], k=3</button>
+    <button class="ex-btn"        id="dr-ex3" onclick="drLoadEx(3)">Ex 4: [7,7,7,7], k=2</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">Single element [5], k=1</div>
+    <div class="corner-body">Loop runs once. Push idx 0; window already full at i=0 (since i ≥ k−1 = 0). Front is the only candidate. Output: [5].</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">k = 1 — output equals input</div>
+    <div class="corner-body">Every cell is its own window. Each iteration pushes the new index; the front-pop check <code>dq[0] ≤ i − 1</code> fires every step, leaving the deque holding only the current index. Output is just <code>nums</code> itself.</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">k = n — single window over the whole array</div>
+    <div class="corner-body">Output has length 1. The front-pop branch never fires (no front index ever drops below 0). The deque ends holding whichever indices survived all back-pops, with the global max at the front.</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Strictly decreasing [5,4,3,2,1], k=3</div>
+    <div class="corner-body">No back-pops ever happen — every new value is smaller than its predecessor. The deque grows to size k, then front-pops every step. Output: [5,4,3]. This is the case where the deque is at its largest.</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">Strictly increasing [1,2,3,4,5], k=3</div>
+    <div class="corner-body">Every new value clears the entire back of the deque. The deque never holds more than one index. Output: [3,4,5]. Front-pops never fire because the deque is already cleared down to the new index.</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">6</div>
+    <div class="corner-title">All equal [7,7,7,7], k=2</div>
+    <div class="corner-body">The <code>≤</code> rule pops the older equal-valued back entry on every step, so the deque stays size 1. Output: [7,7,7]. If we used strict <code>&lt;</code>, the deque would accumulate stale duplicates that the front-pop would later have to clean up — same result, more work.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Deque stores indices, not values.</b> Storing values forces a second container for "what's the index?" lookups. Indices give you both — the index is the position, and <code>nums[idx]</code> is the value.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Pop with <code>≤</code>, not <code>&lt;</code>.</b> Equal values to the left of a newer copy are dominated — the newer one will outlive them and is always a valid max while it's in the window.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Front-pop check uses <code>≤ i − k</code>, not <code>&lt; i − k + 1</code>.</b> Both are equivalent, but <code>≤ i − k</code> reads as "index that just fell out of the new window starting at <code>i − k + 1</code>".</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Record only after the window is full.</b> Guard with <code>if (i ≥ k − 1)</code> — record before this and the first k−1 outputs are partial-window maxes, which is wrong.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Reserve output capacity.</b> The result has length <code>n − k + 1</code>. In C++, <code>out.reserve(n - k + 1)</code> avoids repeated vector reallocation on tight loops.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Use <code>std::deque&lt;int&gt;</code> or a hand-rolled ring buffer.</b> Both are O(1) at both ends. Avoid <code>std::list</code> (cache-unfriendly) and avoid <code>std::vector</code> as a back-and-front structure (front pop is O(n)).</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Each index touches the deque ≤ 2 times.</b> Once on push, at most once on pop. The total work is bounded by 2n — amortised O(1) per step, even though one iteration can pop many entries.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="showTab(this,'tab-brute')">Brute force</button>
+    <button class="tab-btn" onclick="showTab(this,'tab-heap')">Max-heap</button>
+    <button class="tab-btn" onclick="showTab(this,'tab-deque')">Monotonic deque</button>
+  </div>
+
+  <div id="tab-brute" class="tab-pane active">
+    <span class="tag tag-time">Time O(n·k)</span>
+    <span class="tag tag-space">Space O(1)</span>
+    <p class="body">For each window start, walk all k cells and remember the max. Simplest possible — and fine if k is tiny. TLE on the LeetCode upper bound (n = 10⁵, k ≈ 10⁵). Worth knowing because it makes the cost of redundant rescanning visible.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-brute-app',this)">▶ Reveal Code</button>
+    <div id="code-brute-app" class="code-block">
+      <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; maxSlidingWindow(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums, <span class="kw">int</span> k) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>();
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; out;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt;= n - k; i++) {
+        <span class="kw">int</span> best = nums[i];
+        <span class="kw">for</span> (<span class="kw">int</span> j = i + <span class="nu">1</span>; j &lt; i + k; j++) {
+            <span class="kw">if</span> (nums[j] &gt; best) { best = nums[j]; }
+        }
+        out.<span class="fn">push_back</span>(best);
+    }
+    <span class="kw">return</span> out;
+}</pre>
+    </div>
+  </div>
+
+  <div id="tab-heap" class="tab-pane">
+    <span class="tag tag-time">Time O(n log n)</span>
+    <span class="tag tag-space">Space O(n)</span>
+    <p class="body">Push <code>(value, index)</code> pairs onto a max-heap. When reading the answer, pop expired pairs (<code>index ≤ i − k</code>) from the top until the top is in-window. Each element enters once and may be popped once — n heap operations of cost O(log n). Cleaner when the language has no native deque, but always slower than the deque on this problem. Generalises to "k-th largest of every window" where the deque trick alone does not.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-heap-app',this)">▶ Reveal Code</button>
+    <div id="code-heap-app" class="code-block">
+      <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; maxSlidingWindow(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums, <span class="kw">int</span> k) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>();
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; out;
+    <span class="kw">priority_queue</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">int</span>, <span class="kw">int</span>&gt;&gt; heap;   <span class="cm">// (value, index)</span>
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        heap.<span class="fn">emplace</span>(nums[i], i);
+        <span class="kw">if</span> (i &gt;= k - <span class="nu">1</span>) {
+            <span class="kw">while</span> (heap.<span class="fn">top</span>().second &lt;= i - k) {
+                heap.<span class="fn">pop</span>();
+            }
+            out.<span class="fn">push_back</span>(heap.<span class="fn">top</span>().first);
+        }
+    }
+    <span class="kw">return</span> out;
+}</pre>
+    </div>
+  </div>
+
+  <div id="tab-deque" class="tab-pane">
+    <span class="tag tag-time">Time O(n)</span>
+    <span class="tag tag-space">Space O(k)</span>
+    <p class="body">Maintain a deque of indices whose values strictly decrease left to right. Each new index pops dominated indices from the back, then pushes itself; an expired front is popped on entry. The front is always the window's max. Each index is touched at most twice — total work is bounded by 2n. The canonical answer. Subtler to derive, but lighter and faster than the heap.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-deque-app',this)">▶ Reveal Code</button>
+    <div id="code-deque-app" class="code-block">
+      <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; maxSlidingWindow(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums, <span class="kw">int</span> k) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>();
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; out;
+    <span class="kw">deque</span>&lt;<span class="kw">int</span>&gt; dq;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        <span class="kw">while</span> (!dq.<span class="fn">empty</span>() &amp;&amp; nums[dq.<span class="fn">back</span>()] &lt;= nums[i]) {
+            dq.<span class="fn">pop_back</span>();
+        }
+        dq.<span class="fn">push_back</span>(i);
+        <span class="kw">if</span> (dq.<span class="fn">front</span>() &lt;= i - k) {
+            dq.<span class="fn">pop_front</span>();
+        }
+        <span class="kw">if</span> (i &gt;= k - <span class="nu">1</span>) {
+            out.<span class="fn">push_back</span>(nums[dq.<span class="fn">front</span>()]);
+        }
+    }
+    <span class="kw">return</span> out;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(n)</div>
+      <div class="ccard-n">Each index is pushed onto the deque exactly once and popped at most once. Total deque work over the whole array is bounded by 2n, so the inner <code>while</code>'s amortised cost per outer step is O(1).</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(k)</div>
+      <div class="ccard-n">The deque holds only indices inside the current window — at most k of them. The output of length n−k+1 is not counted (it's required output, not auxiliary memory).</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><b>LC 1438 — Longest Continuous Subarray With Absolute Diff ≤ Limit.</b> Two monotonic deques in parallel — one tracking the window max, one tracking the window min — so <code>max − min ≤ limit</code> is O(1) per slide. Exact same "dominated candidates" idea, applied twice.</p>
+    <p><b>LC 862 — Shortest Subarray with Sum at Least K.</b> Monotonic deque on <em>prefix sums</em>, not raw values. Drop dominated prefix sums from the back; pop from the front when <code>prefix[i] − prefix[front] ≥ k</code>. Same skeleton, different invariant.</p>
+    <p><b>LC 84 — Largest Rectangle in Histogram.</b> Monotonic stack (one-sided deque). Keep a stack of indices whose bar heights are non-decreasing; pop and settle rectangles whenever a shorter bar arrives. Cousin of the deque trick — front-only access.</p>
+    <p><b>LC 480 — Sliding Window Median.</b> Same window structure, but the per-window question is median instead of max. Two heaps (lo max-heap, hi min-heap) with lazy deletion replace the deque — the monotonic-chain trick doesn't generalise beyond order-statistics endpoints (min / max).</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  /* ────────────────────────────────────────────────────────────
+     §1 INSIGHT ANIMATION
+     Canonical example: nums=[1,3,-1,-3,5,3,6,7], k=3
+     ──────────────────────────────────────────────────────────── */
+  const SI_NUMS = [1, 3, -1, -3, 5, 3, 6, 7];
+  const SI_K = 3;
+
+  function siGenSteps(nums, k) {
+    const steps = [];
+    const dq = [];          // indices
+    const recorded = [];
+    for (let i = 0; i < nums.length; i++) {
+      const v = nums[i];
+      // collect indices that will be popped from back (dominated)
+      const poppedBack = [];
+      while (dq.length && nums[dq[dq.length - 1]] <= v) {
+        poppedBack.push(dq.pop());
+      }
+      dq.push(i);
+      let poppedFront = null;
+      if (dq[0] <= i - k) {
+        poppedFront = dq.shift();
+      }
+      const winFull = i >= k - 1;
+      const winStart = winFull ? i - k + 1 : null;
+      const winEnd   = winFull ? i : null;
+      const curMax = winFull ? nums[dq[0]] : null;
+      if (winFull) recorded.push(curMax);
+
+      let action;
+      if (poppedBack.length === 0 && poppedFront == null) {
+        action = `i=${i}: push idx ${i} (value ${v}); deque grows`;
+      } else if (poppedBack.length > 0 && poppedFront == null) {
+        const ids = poppedBack.map(x => `${x}:${nums[x]}`).join(', ');
+        action = `i=${i}: ${v} dominates → pop back [${ids}], push idx ${i}`;
+      } else if (poppedBack.length === 0 && poppedFront != null) {
+        action = `i=${i}: push idx ${i}; front ${poppedFront} expired → popleft`;
+      } else {
+        const ids = poppedBack.map(x => `${x}:${nums[x]}`).join(', ');
+        action = `i=${i}: pop back [${ids}], push ${i}; popleft expired ${poppedFront}`;
+      }
+
+      steps.push({
+        idx: i,
+        deque: [...dq],
+        poppedBack: [...poppedBack],
+        poppedFront,
+        winStart, winEnd, curMax,
+        recorded: [...recorded],
+        action,
+      });
+    }
+    return steps;
+  }
+
+  let siSteps = [];
+  let siCur = 0;
+  let siTimer = null;
+
+  function siRender(st) {
+    const nums = SI_NUMS;
+    const cells = document.querySelectorAll('#si-cells .swm-cell');
+    cells.forEach((c, idx) => {
+      c.classList.remove('in-win', 'in-dq', 'is-max', 'dom', 'pop', 'out');
+      if (st.poppedBack.includes(idx) || st.poppedFront === idx) {
+        c.classList.add('pop');
+      } else if (st.winStart != null && idx >= st.winStart && idx <= st.winEnd) {
+        if (st.deque.length && st.deque[0] === idx) {
+          c.classList.add('is-max');
+        } else if (st.deque.includes(idx)) {
+          c.classList.add('in-dq');
+        } else {
+          c.classList.add('in-win');
+        }
+      } else if (idx <= st.idx) {
+        // before window: dominated or already-expired live cells
+        if (st.deque.includes(idx) && st.winStart == null) {
+          c.classList.add('in-dq');
+        } else {
+          c.classList.add('out');
+          if (idx < st.idx && !st.deque.includes(idx)) c.classList.add('dom');
+        }
+      } else {
+        c.classList.add('out');
+      }
+    });
+
+    const dqEl = document.getElementById('si-deque');
+    if (st.deque.length === 0) {
+      dqEl.textContent = '·';
+    } else {
+      dqEl.innerHTML = st.deque.map((idx, k) => {
+        const cls = k === 0 ? 'swm-dchip front' : 'swm-dchip';
+        return `<span class="${cls}">idx ${idx} → ${nums[idx]}</span>`;
+      }).join('');
+    }
+
+    const winEl = document.getElementById('si-win');
+    if (st.winStart == null) {
+      winEl.textContent = `[—] (filling, need ${SI_K - st.idx - 1} more)`;
+    } else {
+      const slice = nums.slice(st.winStart, st.winEnd + 1);
+      winEl.textContent = `[${st.winStart}..${st.winEnd}] = [${slice.join(', ')}]`;
+    }
+    document.getElementById('si-max').textContent = st.curMax == null ? '—' : st.curMax;
+    document.getElementById('si-rec').textContent = `[${st.recorded.join(', ')}]`;
+    document.getElementById('si-action').textContent = `step ${siCur + 1} of ${siSteps.length} — ${st.action}`;
+    siUpdateCtr();
+  }
+
+  function siNext()   { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()   { if (siCur > 0)                  { siCur--; siRender(siSteps[siCur]); } }
+  function siReset()  { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay(){ if (siTimer) { clearInterval(siTimer); siTimer = null; }
+                         const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay(){
+    if (siTimer) { siStopPlay(); }
+    else {
+      document.getElementById('si-bplay').textContent = '⏸ Pause';
+      siTimer = setInterval(() => {
+        if (siCur < siSteps.length - 1) siNext(); else siStopPlay();
+      }, 1400);
+    }
+  }
+  function siUpdateCtr(){
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  siSteps = siGenSteps(SI_NUMS, SI_K);
+  siCur = 0;
+  siRender(siSteps[0]);
+
+  /* ────────────────────────────────────────────────────────────
+     §10  Approaches tab handler
+     ──────────────────────────────────────────────────────────── */
+  function showTab(btn, paneId) {
+    const tabbar = btn.parentElement;
+    tabbar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const section = tabbar.parentElement;
+    section.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById(paneId);
+    if (target) target.classList.add('active');
+  }
+
+  /* ────────────────────────────────────────────────────────────
+     §2  Brute force animation
+     ──────────────────────────────────────────────────────────── */
+  const BF_EXAMPLES = [
+    { nums: [1, 3, -1, -3, 5, 3, 6, 7], k: 3 },
+    { nums: [1, 3, 1, 2],               k: 2 },
+    { nums: [5, 4, 3, 2, 1],            k: 3 },
+  ];
+  let bfSteps = [];
+  let bfCur = 0;
+  let bfTimer = null;
+  let bfActive = 0;
+
+  function bfGenSteps(nums, k) {
+    const n = nums.length;
+    const steps = [];
+    const out = [];
+    let ops = 0;
+    for (let i = 0; i <= n - k; i++) {
+      let best = nums[i];
+      let bestJ = i;
+      steps.push({ i, j: i, best, bestJ, ops, out: [...out],
+                   note: `window starts at ${i}: seed best = nums[${i}] = ${nums[i]}` });
+      for (let j = i + 1; j < i + k; j++) {
+        ops++;
+        const updated = nums[j] > best;
+        if (updated) { best = nums[j]; bestJ = j; }
+        steps.push({ i, j, best, bestJ, ops, out: [...out],
+                     note: updated
+                       ? `nums[${j}] = ${nums[j]} > prev best → best updates to ${best}`
+                       : `nums[${j}] = ${nums[j]} ≤ best ${best} → no change` });
+      }
+      out.push(best);
+      steps.push({ i, j: i + k - 1, best, bestJ, ops, out: [...out], commit: true,
+                   note: `commit max of window [${i}..${i + k - 1}] = ${best}` });
+    }
+    return steps;
+  }
+
+  function bfRender(st) {
+    const ex = BF_EXAMPLES[bfActive];
+    const con = document.getElementById('bf-cells');
+    con.innerHTML = '';
+    for (let idx = 0; idx < ex.nums.length; idx++) {
+      const cell = document.createElement('div');
+      cell.className = 'swm-cell';
+      if (idx >= st.i && idx < st.i + ex.k) {
+        cell.classList.add('bf-win');
+        if (idx === st.j)     cell.classList.add('bf-scan');
+        if (idx === st.bestJ) cell.classList.add('bf-best');
+      } else {
+        cell.classList.add('out');
+      }
+      cell.innerHTML = `<span class="swm-v">${ex.nums[idx]}</span><span class="swm-i">i=${idx}</span>`;
+      con.appendChild(cell);
+    }
+    document.getElementById('bf-i').textContent = st.i;
+    document.getElementById('bf-j').textContent = st.j;
+    document.getElementById('bf-best').textContent = st.best;
+    document.getElementById('bf-ops').textContent = st.ops;
+    document.getElementById('bf-out').textContent = `output so far: [${st.out.join(', ')}]`;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+
+  function bfLoadEx(idx) {
+    bfStopPlay();
+    bfActive = idx;
+    for (let i = 0; i < BF_EXAMPLES.length; i++) {
+      const b = document.getElementById('bf-ex' + i);
+      if (b) b.classList.toggle('active', i === idx);
+    }
+    const ex = BF_EXAMPLES[idx];
+    bfSteps = bfGenSteps(ex.nums, ex.k);
+    bfCur = 0;
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0)                  { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ────────────────────────────────────────────────────────────
+     §6  Code visualization
+     ──────────────────────────────────────────────────────────── */
+  const CV_LINES = [
+    { n: 1,  c: 'vector<int> maxSlidingWindow(vector<int>& nums, int k) {' },
+    { n: 2,  c: '    int n = nums.size();' },
+    { n: 3,  c: '    vector<int> out;' },
+    { n: 4,  c: '    deque<int> dq;' },
+    { n: 5,  c: '    for (int i = 0; i < n; i++) {' },
+    { n: 6,  c: '        while (!dq.empty() && nums[dq.back()] <= nums[i]) {' },
+    { n: 7,  c: '            dq.pop_back();' },
+    { n: 8,  c: '        }' },
+    { n: 9,  c: '        dq.push_back(i);' },
+    { n: 10, c: '        if (dq.front() <= i - k) {' },
+    { n: 11, c: '            dq.pop_front();' },
+    { n: 12, c: '        }' },
+    { n: 13, c: '        if (i >= k - 1) {' },
+    { n: 14, c: '            out.push_back(nums[dq.front()]);' },
+    { n: 15, c: '        }' },
+    { n: 16, c: '    }' },
+    { n: 17, c: '    return out;' },
+    { n: 18, c: '}' },
+  ];
+
+  const CV_EXAMPLES = [
+    { nums: [1, 3, 1, 2],               k: 2 },
+    { nums: [1, 3, -1, -3, 5, 3, 6, 7], k: 3 },
+    { nums: [5, 4, 3, 2, 1],            k: 3 },
+  ];
+
+  let cvSteps = [];
+  let cvCur = 0;
+  let cvTimer = null;
+  let cvActive = 0;
+
+  function cvGenSteps(nums, k) {
+    const steps = [];
+    const dq = [];
+    const out = [];
+    const n = nums.length;
+
+    const snap = (extra = {}) => ({
+      n, k, i: extra.i,
+      dq: [...dq], dqStr: `[${dq.join(', ')}]`,
+      frontVal: dq.length ? nums[dq[0]] : null,
+      out: [...out], outStr: `[${out.join(', ')}]`,
+      ...extra,
+    });
+
+    steps.push({ ...snap({ i: null }), line: 2, narr: `n = nums.size() = ${n}.`, changed: ['n'] });
+    steps.push({ ...snap({ i: null }), line: 3, narr: `Initialise empty output vector.`, changed: ['out'] });
+    steps.push({ ...snap({ i: null }), line: 4, narr: `Initialise empty deque (stores indices, values strictly decreasing).`, changed: ['dq'] });
+
+    for (let i = 0; i < n; i++) {
+      steps.push({ ...snap({ i }), line: 5, narr: `i = ${i}, nums[i] = ${nums[i]}.`, changed: ['i'] });
+
+      while (dq.length && nums[dq[dq.length - 1]] <= nums[i]) {
+        const popped = dq[dq.length - 1];
+        steps.push({ ...snap({ i, popping: popped }), line: 6,
+                     narr: `Back idx ${popped} (value ${nums[popped]}) ≤ ${nums[i]} → dominated, pop_back.` });
+        dq.pop();
+        steps.push({ ...snap({ i }), line: 7,
+                     narr: `pop_back(): index ${popped} removed.`, changed: ['dq'] });
+      }
+      if (dq.length) {
+        steps.push({ ...snap({ i }), line: 8,
+                     narr: `Back idx ${dq[dq.length - 1]} (value ${nums[dq[dq.length - 1]]}) > ${nums[i]} — back-pop loop done.` });
+      } else {
+        steps.push({ ...snap({ i }), line: 8, narr: `Deque empty — back-pop loop done.` });
+      }
+
+      dq.push(i);
+      steps.push({ ...snap({ i }), line: 9,
+                   narr: `push_back(${i}) — new live candidate.`, changed: ['dq'] });
+
+      if (dq[0] <= i - k) {
+        const popped = dq[0];
+        steps.push({ ...snap({ i }), line: 10,
+                     narr: `Front idx ${popped} ≤ i − k = ${i - k} → expired, pop_front.` });
+        dq.shift();
+        steps.push({ ...snap({ i }), line: 11,
+                     narr: `pop_front(): expired index ${popped} removed.`, changed: ['dq'] });
+      } else {
+        steps.push({ ...snap({ i }), line: 10,
+                     narr: `Front idx ${dq[0]} > i − k = ${i - k} — still in window.` });
+      }
+
+      if (i >= k - 1) {
+        steps.push({ ...snap({ i }), line: 13,
+                     narr: `Window is full (i ≥ k − 1 = ${k - 1}).` });
+        out.push(nums[dq[0]]);
+        steps.push({ ...snap({ i }), line: 14, phase: 'match',
+                     narr: `Record nums[dq.front()] = nums[${dq[0]}] = ${nums[dq[0]]}.`,
+                     changed: ['out', 'front'] });
+      } else {
+        steps.push({ ...snap({ i }), line: 13,
+                     narr: `Window not full yet (i = ${i} < k − 1 = ${k - 1}) — skip record.` });
+      }
+    }
+
+    steps.push({ ...snap({ i: n - 1 }), line: 17, phase: 'done',
+                 narr: `Loop done. Return out = [${out.join(', ')}].`, changed: ['out'] });
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const lineEl = document.getElementById('cvL' + st.line);
+    if (lineEl) lineEl.classList.add(st.phase === 'match' || st.phase === 'done' ? 'active-match' : 'active');
+
+    const setCard = (id, val, hl, matchCard) => {
+      const el = document.getElementById(id); if (!el) return;
+      const vEl = el.querySelector('.cv-var-val');
+      vEl.textContent = (val == null || val === '') ? '—' : val;
+      el.classList.remove('hl', 'hl-match', 'dim');
+      if (matchCard) el.classList.add('hl-match');
+      else if (hl) el.classList.add('hl');
+      else if (vEl.textContent === '—' || vEl.textContent === '[]') el.classList.add('dim');
+    };
+    const ch = st.changed || [];
+    setCard('cv-v-n',     st.line >= 2 ? st.n : null,           ch.includes('n'),     false);
+    setCard('cv-v-k',     st.line >= 2 ? st.k : null,           false,                false);
+    setCard('cv-v-i',     st.i,                                  ch.includes('i'),     false);
+    setCard('cv-v-dq',    st.line >= 4 ? st.dqStr : null,        ch.includes('dq'),    false);
+    setCard('cv-v-front', st.frontVal,                           ch.includes('front'), st.phase === 'match');
+    setCard('cv-v-out',   st.line >= 3 ? st.outStr : null,       ch.includes('out'),   st.phase === 'match' || st.phase === 'done');
+
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr || '';
+    narr.classList.remove('is-active', 'is-match');
+    narr.classList.add(st.phase === 'match' || st.phase === 'done' ? 'is-match' : 'is-active');
+
+    // Array visual
+    const ex = CV_EXAMPLES[cvActive];
+    const con = document.getElementById('cv-arr-con');
+    con.innerHTML = '';
+    const row = document.createElement('div');
+    row.className = 'swm-cells';
+    for (let idx = 0; idx < ex.nums.length; idx++) {
+      const cell = document.createElement('div');
+      cell.className = 'swm-cell';
+      const i = st.i;
+      const winStart = (i != null && i >= ex.k - 1) ? i - ex.k + 1 : null;
+      const winEnd   = (i != null && i >= ex.k - 1) ? i : null;
+      if (st.popping === idx) {
+        cell.classList.add('pop');
+      } else if (winStart != null && idx >= winStart && idx <= winEnd) {
+        if (st.dq.length && st.dq[0] === idx) cell.classList.add('is-max');
+        else if (st.dq.includes(idx))         cell.classList.add('in-dq');
+        else                                   cell.classList.add('in-win');
+      } else if (i != null && idx === i && winStart == null) {
+        cell.classList.add('in-win');
+      } else {
+        cell.classList.add('out');
+      }
+      cell.innerHTML = `<span class="swm-v">${ex.nums[idx]}</span><span class="swm-i">i=${idx}</span>`;
+      row.appendChild(cell);
+    }
+    con.appendChild(row);
+
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+
+  function cvLoadEx(idx) {
+    cvStopPlay();
+    cvActive = idx;
+    for (let i = 0; i < CV_EXAMPLES.length; i++) {
+      const b = document.getElementById('cv-ex' + i);
+      if (b) b.classList.toggle('active', i === idx);
+    }
+    const ex = CV_EXAMPLES[idx];
+    cvSteps = cvGenSteps(ex.nums, ex.k);
+    cvCur = 0;
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0)                  { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ────────────────────────────────────────────────────────────
+     §7  Dry run
+     ──────────────────────────────────────────────────────────── */
+  const DR_EXAMPLES = [
+    { nums: [1, 3, -1, -3, 5, 3, 6, 7], k: 3 },
+    { nums: [5, 4, 3, 2, 1],            k: 3 },
+    { nums: [1, 2, 3, 4, 5],            k: 3 },
+    { nums: [7, 7, 7, 7],               k: 2 },
+  ];
+
+  let drSteps = [];
+  let drCur = 0;
+  let drTimer = null;
+  let drActive = 0;
+
+  function drGenSteps(nums, k) {
+    const steps = [];
+    const dq = [];
+    const out = [];
+    for (let i = 0; i < nums.length; i++) {
+      const poppedBack = [];
+      while (dq.length && nums[dq[dq.length - 1]] <= nums[i]) {
+        poppedBack.push(dq.pop());
+      }
+      dq.push(i);
+      let poppedFront = null;
+      if (dq[0] <= i - k) poppedFront = dq.shift();
+      const winStart = i >= k - 1 ? i - k + 1 : null;
+      const winEnd   = winStart == null ? null : i;
+      const curMax   = winStart == null ? null : nums[dq[0]];
+      if (winStart != null) out.push(curMax);
+
+      let action, what, why;
+      if (poppedBack.length === 0 && poppedFront == null) {
+        action = `push ${i}`;
+        what = `i = ${i}: push idx ${i} (value ${nums[i]}).`;
+        why = dq.length > 1
+          ? `Back value ${nums[dq[dq.length - 2]]} > ${nums[i]} — chain stays monotone, nothing dominated.`
+          : `Deque was empty — start a fresh chain.`;
+      } else if (poppedBack.length > 0 && poppedFront == null) {
+        const desc = poppedBack.map(p => `${p}:${nums[p]}`).join(', ');
+        action = `pop ${poppedBack.length} back, push ${i}`;
+        what = `i = ${i}: pop back [${desc}], then push idx ${i}.`;
+        why = `${nums[i]} dominates each popped value — those indices can never beat ${nums[i]} in any future window containing it.`;
+      } else if (poppedBack.length === 0 && poppedFront != null) {
+        action = `push ${i}; popleft expired ${poppedFront}`;
+        what = `i = ${i}: push idx ${i}; front idx ${poppedFront} expired → popleft.`;
+        why = `Front index ${poppedFront} fell out of the new window starting at ${i - k + 1}.`;
+      } else {
+        const desc = poppedBack.map(p => `${p}:${nums[p]}`).join(', ');
+        action = `pop back, push ${i}, popleft expired ${poppedFront}`;
+        what = `i = ${i}: pop back [${desc}], push ${i}, popleft expired front ${poppedFront}.`;
+        why = `Both back-pop (dominated) and front-pop (expired) fire on the same step.`;
+      }
+
+      steps.push({
+        idx: i, nums, k,
+        dq: [...dq], poppedBack: [...poppedBack], poppedFront,
+        winStart, winEnd, curMax, out: [...out],
+        action, what, why,
+      });
+    }
+    return steps;
+  }
+
+  function drRender(st) {
+    const ex = DR_EXAMPLES[drActive];
+    const con = document.getElementById('dr-arr-con');
+    con.innerHTML = '';
+    const row = document.createElement('div');
+    row.className = 'swm-cells';
+    for (let idx = 0; idx < ex.nums.length; idx++) {
+      const cell = document.createElement('div');
+      cell.className = 'swm-cell';
+      if (st.poppedBack.includes(idx) || st.poppedFront === idx) {
+        cell.classList.add('pop');
+      } else if (st.winStart != null && idx >= st.winStart && idx <= st.winEnd) {
+        if (st.dq.length && st.dq[0] === idx)  cell.classList.add('is-max');
+        else if (st.dq.includes(idx))          cell.classList.add('in-dq');
+        else                                    cell.classList.add('in-win');
+      } else if (idx <= st.idx) {
+        if (st.dq.includes(idx) && st.winStart == null) cell.classList.add('in-dq');
+        else                                              cell.classList.add('out');
+      } else {
+        cell.classList.add('out');
+      }
+      cell.innerHTML = `<span class="swm-v">${ex.nums[idx]}</span><span class="swm-i">i=${idx}</span>`;
+      row.appendChild(cell);
+    }
+    con.appendChild(row);
+
+    const dqEl = document.getElementById('dr-deque');
+    if (st.dq.length === 0) dqEl.textContent = '·';
+    else {
+      dqEl.innerHTML = st.dq.map((idx, k) => {
+        const cls = k === 0 ? 'swm-dchip front' : 'swm-dchip';
+        return `<span class="${cls}">idx ${idx} → ${ex.nums[idx]}</span>`;
+      }).join('');
+    }
+    document.getElementById('dr-out').textContent = `[${st.out.join(', ')}]`;
+    document.getElementById('f-iv').textContent     = `${st.idx} / ${ex.nums[st.idx]}`;
+    document.getElementById('f-win').textContent    = st.winStart == null
+      ? `— (filling, need ${ex.k - st.idx - 1} more)`
+      : `[${st.winStart}..${st.winEnd}] → max ${st.curMax}`;
+    document.getElementById('f-action').textContent = st.action;
+    document.querySelector('#dr-step .step-what').textContent = st.what;
+    document.querySelector('#dr-step .step-why').textContent  = st.why;
+
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+
+  function drLoadEx(idx) {
+    drStopPlay();
+    drActive = idx;
+    for (let i = 0; i < DR_EXAMPLES.length; i++) {
+      const b = document.getElementById('dr-ex' + i);
+      if (b) b.classList.toggle('active', i === idx);
+    }
+    const ex = DR_EXAMPLES[idx];
+    drSteps = drGenSteps(ex.nums, ex.k);
+    drCur = 0;
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0)                  { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ────────────────────────────────────────────────────────────
+     Init
+     ──────────────────────────────────────────────────────────── */
+  cvBuildCode(CV_LINES);
+  bfLoadEx(0);
+  cvLoadEx(0);
+  drLoadEx(0);
+</script>
+
+</body>
+</html>

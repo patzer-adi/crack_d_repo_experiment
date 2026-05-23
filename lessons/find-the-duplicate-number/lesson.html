@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Find the Duplicate Number — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  .fdn-list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 1rem 0;
+  }
+  .fdn-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .fdn-cell {
+    width: 44px;
+    height: 44px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-weight: 600;
+    background: var(--bg);
+    font-size: 13px;
+  }
+  .fdn-cell.slow {
+    border-color: #ef4444;
+    background: #fee2e2;
+    color: #7f1d1d;
+  }
+  .fdn-cell.fast {
+    border-color: #3b82f6;
+    background: #dbeafe;
+    color: #0c2340;
+  }
+  .fdn-cell.both {
+    border-color: #8b5cf6;
+    background: #f3e8ff;
+    color: #4c1d95;
+  }
+  .fdn-idx {
+    font-size: 11px;
+    color: var(--text3);
+    font-weight: 500;
+  }
+  .fdn-arrow {
+    color: var(--text3);
+    font-size: 14px;
+  }
+  .fdn-ptr-label {
+    font-size: 10px;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .fdn-ptr-label.slow { color: #ef4444; }
+  .fdn-ptr-label.fast { color: #3b82f6; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Find the Duplicate Number</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/find-the-duplicate-number/" target="_blank">LC #287</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Array</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Can I modify the input array?</div>
+      <div class="acard-a">The problem doesn't forbid it, but a good solution should not. Modifying the input breaks reusability and can cause side effects.</div>
+      <div class="acard-u">→ Solutions must trade off between time and space; optimal is O(n) time with O(1) space and no modification.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">What if all numbers are unique?</div>
+      <div class="acard-a">The problem guarantees at least one duplicate. But a robust solution should handle the no-duplicate case gracefully.</div>
+      <div class="acard-u">→ Algorithm must terminate correctly even on edge cases.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Can the duplicate appear just once?</div>
+      <div class="acard-a">No. "Duplicate" means it appears at least twice, sometimes more.</div>
+      <div class="acard-u">→ The duplicate is guaranteed to be present; algorithm will always find it.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">How can we treat the array as a linked list?</div>
+      <div class="acard-a">Index i contains value nums[i]; treat nums[i] as a pointer to the next index. Follow: i → nums[i] → nums[nums[i]] → ...</div>
+      <div class="acard-u">→ This linked-list view reveals a cycle whose entry point is the duplicate.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Treat indices as a linked list — the duplicate is the cycle entry.</p>
+
+  <p class="body">Read the array as an implicit linked list: index i has a "next pointer" equal to <code>nums[i]</code>. With n+1 elements but only n distinct values in [1,n], two indices must point to the same next — that's the cycle. The duplicate value <em>is</em> the cycle entry index. Floyd's tortoise-and-hare finds it in O(1) space with no array modification.</p>
+
+  <!-- Foundational visual: animated 6-step Floyd's walkthrough on nums = [1, 3, 4, 2, 2].
+       Pattern (PLAN-017 adapted): slow pointer (red), fast pointer (blue), meeting/result (green),
+       phase-2 reset marker (⤴ slow returns to start). -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <!-- Legend -->
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-danger);border:1.5px solid var(--border-danger);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>slow (step 1)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);border:1.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>fast (step 2)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#f3e8ff;border:1.5px solid #8b5cf6;border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>slow + fast meet</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-success);border:1.5px solid var(--border-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>cycle entry (answer)</span>
+      <span><span style="color:var(--text-warn);font-weight:700;font-size:13px;vertical-align:middle">⤴</span> reset (Phase 2)</span>
+    </div>
+
+    <!-- Cells with pointer arrows above + implicit-list arrows below -->
+    <div style="margin:.5rem 0">
+      <div id="si-strip" class="fdn-list" style="margin:.5rem 0;justify-content:flex-start"></div>
+    </div>
+
+    <!-- State display -->
+    <div style="display:flex;gap:1rem;align-items:center;margin:.625rem 0;font-family:var(--mono);font-size:13px;flex-wrap:wrap">
+      <span>phase: <b id="si-phase">—</b></span>
+      <span>slow = <b id="si-slow-val" style="color:#ef4444">—</b></span>
+      <span id="si-fast-pill">fast = <b id="si-fast-val" style="color:#3b82f6">—</b></span>
+      <span id="si-slow2-pill" style="display:none">slow2 = <b id="si-slow2-val" style="color:#ef4444">—</b></span>
+      <span id="si-result-pill" style="display:none;padding:3px 10px;border-radius:6px;background:var(--bg-success);border:0.5px solid var(--border-success);color:var(--text-success);font-weight:700">duplicate = <span id="si-result-val">—</span></span>
+    </div>
+
+    <!-- Caption -->
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <!-- Controls -->
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d" style="font-family:var(--mono);font-size:13px;line-height:2">
+      <b>Phase 1</b> (detect cycle): slow = nums[slow], fast = nums[nums[fast]] until they meet.<br>
+      <b>Phase 2</b> (find entry): reset slow2 = nums[0]. Advance both 1 step at a time until they meet — that meeting index is the duplicate.<br>
+      <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:var(--text3)">O(n) time, O(1) extra space, no array modification.</span>
+    </p>
+  </div>
+</div>
+
+<script>
+  // §1 animation — Floyd's cycle detection on nums = [1, 3, 4, 2, 2]
+  const SI_NUMS = [1, 3, 4, 2, 2];
+  let siSteps = siGenSteps(SI_NUMS);
+  let siCur = 0;
+  let siTimer = null;
+
+  function siGenSteps(nums) {
+    const steps = [];
+
+    // Step 0: init
+    let slow = nums[0], fast = nums[0];
+    steps.push({
+      phase: 'init', slow, fast, slow2: null, meeting: false, result: null,
+      caption: `Init: slow = fast = nums[0] = ${nums[0]}. Both pointers start at index ${nums[0]}.`,
+    });
+
+    // Phase 1: detect cycle
+    let iter = 0;
+    while (true) {
+      iter++;
+      const prevSlow = slow, prevFast = fast;
+      slow = nums[slow];
+      fast = nums[nums[fast]];
+      const meet = slow === fast;
+      steps.push({
+        phase: 'P1', slow, fast, slow2: null, meeting: meet, result: null,
+        caption: meet
+          ? `P1 iter ${iter}: slow = nums[${prevSlow}] = ${slow}; fast = nums[nums[${prevFast}]] = ${fast}. They meet at index ${slow} — cycle confirmed.`
+          : `P1 iter ${iter}: slow = nums[${prevSlow}] = ${slow}; fast = nums[nums[${prevFast}]] = ${fast}. Not yet meeting.`,
+      });
+      if (meet) break;
+    }
+
+    // Phase 2 setup
+    let slow2 = nums[0];
+    steps.push({
+      phase: 'P2-init', slow, fast: null, slow2, meeting: false, result: null,
+      isReset: true,
+      caption: `⤴ Phase 2 reset: slow2 = nums[0] = ${slow2}. Keep slow at ${slow}; advance both one step at a time.`,
+    });
+
+    // Phase 2: find cycle entry
+    iter = 0;
+    while (slow !== slow2) {
+      iter++;
+      const prevSlow = slow, prevSlow2 = slow2;
+      slow = nums[slow];
+      slow2 = nums[slow2];
+      const meet = slow === slow2;
+      steps.push({
+        phase: 'P2', slow, fast: null, slow2, meeting: meet, result: meet ? slow : null,
+        caption: meet
+          ? `P2 iter ${iter}: slow = nums[${prevSlow}] = ${slow}; slow2 = nums[${prevSlow2}] = ${slow2}. They meet at index ${slow} → DUPLICATE = ${slow}.`
+          : `P2 iter ${iter}: slow = nums[${prevSlow}] = ${slow}; slow2 = nums[${prevSlow2}] = ${slow2}. Not yet meeting.`,
+      });
+    }
+
+    return steps;
+  }
+
+  function siRender(st) {
+    const n = SI_NUMS.length;
+    const strip = document.getElementById('si-strip');
+    strip.innerHTML = '';
+
+    // Decide which pointers are at which index
+    // In Phase 1: slow and fast both shown
+    // In Phase 2: slow and slow2 shown (no fast)
+    const at = (idx) => {
+      const tags = [];
+      if (idx === st.slow) tags.push('slow');
+      if (st.fast !== null && idx === st.fast) tags.push('fast');
+      if (st.slow2 !== null && idx === st.slow2) tags.push('slow2');
+      return tags;
+    };
+
+    for (let i = 0; i < n; i++) {
+      const node = document.createElement('div');
+      node.className = 'fdn-node';
+
+      // Pointer labels above
+      const tags = at(i);
+      const ptrLine = document.createElement('div');
+      ptrLine.style.cssText = 'min-height:14px;font-family:var(--mono);font-size:10px;font-weight:700;display:flex;gap:4px;justify-content:center';
+      if (tags.includes('slow') && tags.includes('fast')) {
+        const lab = document.createElement('span'); lab.style.color = '#8b5cf6'; lab.textContent = 's=f ↓'; ptrLine.appendChild(lab);
+      } else if (tags.includes('slow') && tags.includes('slow2')) {
+        const lab = document.createElement('span'); lab.style.color = '#22c55e'; lab.textContent = 's=s2 ↓'; ptrLine.appendChild(lab);
+      } else {
+        if (tags.includes('slow'))  { const e = document.createElement('span'); e.style.color = '#ef4444'; e.textContent = 'slow ↓';  ptrLine.appendChild(e); }
+        if (tags.includes('slow2')) { const e = document.createElement('span'); e.style.color = '#ef4444'; e.textContent = 'slow2 ↓'; ptrLine.appendChild(e); }
+        if (tags.includes('fast'))  { const e = document.createElement('span'); e.style.color = '#3b82f6'; e.textContent = 'fast ↓';  ptrLine.appendChild(e); }
+      }
+      node.appendChild(ptrLine);
+
+      const idxLbl = document.createElement('div');
+      idxLbl.className = 'fdn-idx';
+      idxLbl.textContent = i;
+      node.appendChild(idxLbl);
+
+      const cell = document.createElement('div');
+      cell.className = 'fdn-cell';
+      const meetingHere = st.meeting && i === st.slow;
+      const cycleAnswer = (st.result !== null && i === st.result);
+      if (cycleAnswer) cell.style.cssText = 'border-color:#22c55e;background:#dcfce7;color:#166534';
+      else if (meetingHere) cell.classList.add('both');
+      else if (tags.includes('slow') || tags.includes('slow2')) cell.classList.add('slow');
+      else if (tags.includes('fast')) cell.classList.add('fast');
+      cell.textContent = SI_NUMS[i];
+      node.appendChild(cell);
+      strip.appendChild(node);
+
+      // Implicit-list arrow between cells: i → nums[i]
+      // Only show static "→" between adjacent cells where nums[i] = i+1 isn't always true,
+      // so use a simple visual showing nums[i] below the cell
+      const nextLbl = document.createElement('div');
+      nextLbl.style.cssText = 'font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px';
+      nextLbl.textContent = `→${SI_NUMS[i]}`;
+      node.appendChild(nextLbl);
+
+      if (i < n - 1) {
+        const arrow = document.createElement('div');
+        arrow.className = 'fdn-arrow';
+        arrow.textContent = '';
+        strip.appendChild(arrow);
+      }
+    }
+
+    // State display
+    document.getElementById('si-phase').textContent = st.phase;
+    document.getElementById('si-slow-val').textContent = st.slow;
+    const fastPill = document.getElementById('si-fast-pill');
+    if (st.fast !== null) {
+      fastPill.style.display = '';
+      document.getElementById('si-fast-val').textContent = st.fast;
+    } else {
+      fastPill.style.display = 'none';
+    }
+    const slow2Pill = document.getElementById('si-slow2-pill');
+    if (st.slow2 !== null) {
+      slow2Pill.style.display = '';
+      document.getElementById('si-slow2-val').textContent = st.slow2;
+    } else {
+      slow2Pill.style.display = 'none';
+    }
+    const resultPill = document.getElementById('si-result-pill');
+    if (st.result !== null) {
+      resultPill.style.display = 'inline-block';
+      document.getElementById('si-result-val').textContent = st.result;
+    } else {
+      resultPill.style.display = 'none';
+    }
+
+    // Caption
+    document.getElementById('si-caption').textContent = st.caption;
+
+    // Step counter
+    const ctr = document.getElementById('si-sctr');
+    if (ctr) ctr.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() {
+    clearInterval(siTimer); siTimer = null;
+    const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto';
+  }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur < siSteps.length - 1) siNext(); else siStopPlay();
+    }, 1400);
+  }
+
+  siRender(siSteps[0]);
+</script>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">Walk the array left-to-right and remember each value in a hash set. The first value that's already in the set is the duplicate. O(n) time but O(n) extra space — the set grows with the input. Step through to see the set fill up until a hit.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">Ex 1: [1,3,4,2,2]</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">Ex 2: [1,4,4,2,4]</button>
+    <button class="ex-btn" id="bf-ex2" onclick="bfLoadEx(2)">Ex 3: [2,5,9,6,4,3,8,6,7,1]</button>
+  </div>
+  <div id="bf-arr-con" style="margin:.75rem 0;padding:.5rem;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);"></div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    i = <span id="bf-i" style="font-weight:600;color:var(--text-info)">—</span>
+    &nbsp;·&nbsp; nums[i] = <span id="bf-v" style="font-weight:600;color:var(--text-info)">—</span>
+    &nbsp;·&nbsp; seen = <span id="bf-seen" style="font-weight:600;color:var(--text2)">{}</span>
+  </div>
+  <div id="bf-verdict" style="font-family:var(--mono);font-size:13px;margin:.5rem 0;min-height:18px"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n) time, O(n) space</p>
+    <p class="infobox-d">Each insert + lookup is O(1) amortised, n total — fast. The cost is the hash set. The optimal Floyd's algorithm keeps O(1) extra space by treating the array as an implicit linked list.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal Code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="kw">int</span> findDuplicate_BF(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">unordered_set</span>&lt;<span class="kw">int</span>&gt; seen;
+    <span class="kw">for</span> (<span class="kw">int</span> v : nums) {
+        <span class="kw">if</span> (seen.<span class="fn">count</span>(v)) <span class="kw">return</span> v;
+        seen.<span class="fn">insert</span>(v);
+    }
+    <span class="kw">return</span> -1;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">The optimization from hash set to Floyd's cycle detection eliminates the O(n) extra space. Instead of storing elements, we use the array's implicit linked-list structure and two pointers to detect the cycle and find its entry point.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Hash set</div>
+        <div class="wt-desc">Iterate and store each element in a set. Return the first duplicate seen.</div>
+        <div class="wt-gain" style="color: var(--text3);">O(n) time, O(n) space</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Floyd's cycle detection (taught)</div>
+        <div class="wt-desc">Treat array as linked list. Use slow/fast pointers to find cycle, then find the entry point (the duplicate).</div>
+        <div class="wt-gain" style="color: var(--success);">O(n) time, O(1) space</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Phase 1 (Detect cycle):</b> Initialize slow = nums[0], fast = nums[0]. Move slow one step and fast two steps until they meet.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Phase 2 (Find entry):</b> Reset slow = nums[0]. Keep fast at the meeting point.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Advance both one step at a time</b> (slow = nums[slow], fast = nums[fast]) until they meet.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Return</b> slow (the cycle entry, which is the duplicate).</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main')">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">int</span> findDuplicate(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;& nums) {
+    <span class="kw">int</span> slow = nums[0];
+    <span class="kw">int</span> fast = nums[0];
+    <span class="cm">// Phase 1: Detect cycle</span>
+    <span class="kw">do</span> {
+        slow = nums[slow];
+        fast = nums[nums[fast]];
+    } <span class="kw">while</span> (slow != fast);
+    <span class="cm">// Phase 2: Find cycle entry</span>
+    slow = nums[0];
+    <span class="kw">while</span> (slow != fast) {
+        slow = nums[slow];
+        fast = nums[fast];
+    }
+    <span class="kw">return</span> slow;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div style="font-size: 13px; color: var(--text3); font-weight: 600; margin-bottom: 0.5rem;">State</div>
+      <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+        <div style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; background: var(--bg-subtle); min-width: 100px;">
+          <div style="font-size: 10px; color: var(--text3); font-weight: 600; margin-bottom: 4px;">slow</div>
+          <div style="font-family: var(--mono); font-size: 16px; font-weight: 700;" id="cvv-slow">0</div>
+        </div>
+        <div style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; background: var(--bg-subtle); min-width: 100px;">
+          <div style="font-size: 10px; color: var(--text3); font-weight: 600; margin-bottom: 4px;">fast</div>
+          <div style="font-family: var(--mono); font-size: 16px; font-weight: 700;" id="cvv-fast">0</div>
+        </div>
+        <div style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; background: var(--bg-subtle); min-width: 100px;">
+          <div style="font-size: 10px; color: var(--text3); font-weight: 600; margin-bottom: 4px;">phase</div>
+          <div style="font-family: var(--mono); font-size: 14px; font-weight: 700;" id="cvv-phase">init</div>
+        </div>
+      </div>
+      <div id="cv-narration" class="cv-narration"></div>
+    </div>
+  </div>
+  <div style="margin-top: 1.5rem; margin-bottom: 1.5rem;" id="cv-list-con"></div>
+  <div class="ctrl-row">
+    <button class="ex-btn active" onclick="cvLoadEx(0)">Ex 1: [1,3,4,2,2]</button>
+    <button class="ex-btn" onclick="cvLoadEx(1)">Ex 2: [1,4,4,2,4]</button>
+    <div style="flex: 1;"></div>
+    <button class="ctrl-btn" onclick="cvStopPlay()">■ Stop</button>
+    <button class="ctrl-btn pri" onclick="cvTogglePlay()">▶ Play</button>
+    <button class="ctrl-btn" onclick="cvNextStep()">Next ▶</button>
+    <div class="step-ctr"><span id="cv-step-num">0</span>/<span id="cv-step-max">0</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+
+  <div style="margin-bottom: 1.5rem;" id="dr-list-con"></div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div class="fitem-label">slow</div>
+          <div class="fitem-val" id="f-slow">0</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div class="fitem-label">fast</div>
+          <div class="fitem-val" id="f-fast">0</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div class="fitem-label">phase</div>
+          <div class="fitem-val" id="f-phase">init</div>
+        </div>
+      </div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">Ex 2</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">Ex 3</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">Minimal: [1, 1]</div>
+    <div class="corner-body">Both slow and fast start at nums[0]=1. Phase 1: slow=nums[1]=1, fast=nums[nums[1]]=nums[1]=1. They meet immediately. Phase 2 finds entry at 1.</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">Duplicate at start: [2, 1, 1, 3]</div>
+    <div class="corner-body">Duplicate is 1. Path follows 0→2→1→1 (cycle at index 1). Algorithm finds 1 as the entry point.</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Duplicate at end: [1, 2, 3, 3]</div>
+    <div class="corner-body">Duplicate is 3. Path: 0→1→2→3→3 (cycle at index 3). Algorithm correctly identifies 3 as the cycle entry.</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Many duplicates: [1, 4, 4, 2, 4]</div>
+    <div class="corner-body">Duplicate is 4 (appears 3 times). Cycle is centered at value 4. Algorithm finds 4 as the cycle entry on first encounter.</div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">Long cycle: [2, 5, 9, 6, 4, 3, 8, 6, 7, 1]</div>
+    <div class="corner-body">Duplicate 6 appears twice, creating a long cycle. Phase 1 and phase 2 together find 6 as the entry point.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Cycle guaranteed:</b> Array structure guarantees a cycle; algorithm always terminates.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>No modification:</b> Algorithm reads only; does not modify the input array.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Two-phase structure:</b> Phase 1 detects cycle, phase 2 finds entry. Both phases necessary.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>O(1) space:</b> Only two pointer variables; no extra data structures.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Time complexity O(n):</b> Each pointer moves through at most 2n steps (n in cycle + n to find entry).</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab(0)">Floyd's cycle detection</button>
+    <button class="tab-btn" onclick="switchTab(1)">Hash set</button>
+    <button class="tab-btn" onclick="switchTab(2)">Negative marking</button>
+  </div>
+
+  <div id="tab0" class="tab-pane active">
+    <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+      <span class="tag tag-time">O(n)</span>
+      <span class="tag tag-space">O(1)</span>
+    </div>
+    <p class="body">Two-phase algorithm: detect the cycle with fast/slow pointers, then find the entry point. No modification, no extra space. Optimal and elegant.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-app0')">▶ Code</button>
+    <div id="code-app0" class="code-block">
+      <pre class="cb"><span class="kw">int</span> findDuplicate(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;& nums) {
+    <span class="kw">int</span> slow = nums[0], fast = nums[0];
+    <span class="kw">do</span> {
+        slow = nums[slow];
+        fast = nums[nums[fast]];
+    } <span class="kw">while</span> (slow != fast);
+    slow = nums[0];
+    <span class="kw">while</span> (slow != fast) {
+        slow = nums[slow];
+        fast = nums[fast];
+    }
+    <span class="kw">return</span> slow;
+}</pre>
+    </div>
+  </div>
+
+  <div id="tab1" class="tab-pane">
+    <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+      <span class="tag tag-time">O(n)</span>
+      <span class="tag tag-space">O(n)</span>
+    </div>
+    <p class="body">Store each element in a hash set. Return the first element already in the set. Simple and intuitive, but uses O(n) extra space.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-app1')">▶ Code</button>
+    <div id="code-app1" class="code-block">
+      <pre class="cb"><span class="kw">int</span> findDuplicate(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;& nums) {
+    <span class="kw">unordered_set</span>&lt;<span class="kw">int</span>&gt; seen;
+    <span class="kw">for</span> (<span class="kw">int</span> num : nums) {
+        <span class="kw">if</span> (seen.<span class="fn">count</span>(num)) {
+            <span class="kw">return</span> num;
+        }
+        seen.<span class="fn">insert</span>(num);
+    }
+    <span class="kw">return</span> -1;
+}</pre>
+    </div>
+  </div>
+
+  <div id="tab2" class="tab-pane">
+    <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+      <span class="tag tag-time">O(n)</span>
+      <span class="tag tag-space">O(1)</span>
+    </div>
+    <p class="body">Mark visited indices by negating nums[i]. If nums[i] is already negative, nums[i] is a duplicate. O(1) space but modifies the input.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-app2')">▶ Code</button>
+    <div id="code-app2" class="code-block">
+      <pre class="cb"><span class="kw">int</span> findDuplicate(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;& nums) {
+    <span class="kw">for</span> (<span class="kw">int</span> num : nums) {
+        <span class="kw">int</span> idx = <span class="fn">abs</span>(num);
+        <span class="kw">if</span> (nums[idx] &lt; 0) {
+            <span class="kw">return</span> idx;
+        }
+        nums[idx] = -nums[idx];
+    }
+    <span class="kw">return</span> -1;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(n)</div>
+      <div class="ccard-n">Phase 1 and phase 2 combined visit at most 2n nodes. Constant time per visit.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(1) auxiliary</div>
+      <div class="ccard-n">Only two pointer variables; no extra data structures.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><strong>LC 141 — Linked List Cycle</strong> — classic cycle detection on an actual linked list; same Floyd's algorithm, but the list is given explicitly (not implicit).</p>
+    <p><strong>LC 142 — Linked List Cycle II</strong> — find the start of the cycle in a linked list; identical two-phase approach to this problem.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  const EXAMPLES = [
+    {nums: [1,3,4,2,2], name: "[1,3,4,2,2]"},
+    {nums: [1,4,4,2,4], name: "[1,4,4,2,4]"},
+    {nums: [2,5,9,6,4,3,8,6,7,1], name: "[2,5,9,6,4,3,8,6,7,1]"},
+  ];
+
+  const CV_LINES = [
+    {n:1, c:'int findDuplicate(vector<int>& nums) {'},
+    {n:2, c:'    int slow = nums[0];'},
+    {n:3, c:'    int fast = nums[0];'},
+    {n:4, c:'    do {'},
+    {n:5, c:'        slow = nums[slow];'},
+    {n:6, c:'        fast = nums[nums[fast]];'},
+    {n:7, c:'    } while (slow != fast);'},
+    {n:8, c:'    slow = nums[0];'},
+    {n:9, c:'    while (slow != fast) {'},
+    {n:10, c:'        slow = nums[slow];'},
+    {n:11, c:'        fast = nums[fast];'},
+    {n:12, c:'    }'},
+    {n:13, c:'    return slow;'},
+    {n:14, c:'}'},
+  ];
+
+  let cvCur = 0, cvTimer = null, cvSteps = [];
+  let drCur = 0, drTimer = null, drSteps = [];
+
+  function buildPointerList(nums, slow, fast, containerId, prefix, phase) {
+    const con = document.getElementById(containerId);
+    con.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'fdn-list';
+
+    for (let i = 0; i < nums.length; i++) {
+      const node = document.createElement('div');
+      node.className = 'fdn-node';
+
+      const idx = document.createElement('div');
+      idx.className = 'fdn-idx';
+      idx.textContent = i;
+
+      const cell = document.createElement('div');
+      cell.className = 'fdn-cell';
+      if (slow === i && fast === i) {
+        cell.classList.add('both');
+        cell.innerHTML = '⊙';
+      } else if (slow === i) {
+        cell.classList.add('slow');
+        cell.innerHTML = nums[i];
+      } else if (fast === i) {
+        cell.classList.add('fast');
+        cell.innerHTML = nums[i];
+      } else {
+        cell.textContent = nums[i];
+      }
+      cell.id = prefix + '_' + i;
+
+      node.appendChild(idx);
+      node.appendChild(cell);
+      wrapper.appendChild(node);
+
+      if (i < nums.length - 1) {
+        const arrow = document.createElement('div');
+        arrow.className = 'fdn-arrow';
+        arrow.textContent = '→';
+        wrapper.appendChild(arrow);
+      }
+    }
+
+    con.appendChild(wrapper);
+  }
+
+  function cvGenSteps(nums) {
+    const steps = [];
+    let slow = nums[0], fast = nums[0];
+
+    steps.push({line: 2, narr: 'slow = nums[0] = ' + slow, slow, fast, phase: 'init'});
+    steps.push({line: 3, narr: 'fast = nums[0] = ' + fast, slow, fast, phase: 'init'});
+
+    let iter = 0;
+    steps.push({line: 4, narr: 'Enter do-while loop (phase 1: detect cycle)', slow, fast, phase: 'p1'});
+
+    while (iter < 50) {
+      let newSlow = nums[slow];
+      let newFast = nums[nums[fast]];
+
+      steps.push({line: 5, narr: 'slow = nums[' + slow + '] = ' + newSlow, slow: newSlow, fast, phase: 'p1'});
+      slow = newSlow;
+
+      steps.push({line: 6, narr: 'fast = nums[nums[' + fast + ']] = nums[' + nums[fast] + '] = ' + newFast, slow, fast: newFast, phase: 'p1'});
+      fast = newFast;
+
+      if (slow === fast) {
+        steps.push({line: 7, narr: 'slow == fast (' + slow + ' == ' + fast + '), exit phase 1', slow, fast, phase: 'p1'});
+        break;
+      }
+      steps.push({line: 7, narr: 'slow != fast, continue', slow, fast, phase: 'p1'});
+      iter++;
+    }
+
+    steps.push({line: 8, narr: 'Phase 2: Find cycle entry. Reset slow = nums[0]', slow: nums[0], fast, phase: 'p2'});
+    slow = nums[0];
+
+    iter = 0;
+    while (iter < 50) {
+      if (slow === fast) {
+        steps.push({line: 9, narr: 'slow == fast (' + slow + ' == ' + fast + '), found cycle entry', slow, fast, phase: 'p2'});
+        break;
+      }
+
+      let newSlow = nums[slow];
+      let newFast = nums[fast];
+      steps.push({line: 10, narr: 'slow = nums[' + slow + '] = ' + newSlow, slow: newSlow, fast, phase: 'p2'});
+      slow = newSlow;
+
+      steps.push({line: 11, narr: 'fast = nums[' + fast + '] = ' + newFast, slow, fast: newFast, phase: 'p2'});
+      fast = newFast;
+
+      iter++;
+    }
+
+    steps.push({line: 13, narr: 'Return ' + slow + ' (the duplicate)', slow, fast, phase: 'done'});
+
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.getElementById('cvv-slow').textContent = st.slow;
+    document.getElementById('cvv-fast').textContent = st.fast;
+    document.getElementById('cvv-phase').textContent = st.phase === 'init' ? 'init' : st.phase === 'p1' ? 'phase 1' : st.phase === 'p2' ? 'phase 2' : 'done';
+    document.getElementById('cv-narration').textContent = st.narr;
+  }
+
+  function cvLoadEx(idx) {
+    const ex = EXAMPLES[idx];
+    cvSteps = cvGenSteps(ex.nums);
+    cvCur = 0;
+    cvStopPlay();
+    buildPointerList(ex.nums, cvSteps[0].slow, cvSteps[0].fast, 'cv-list-con', 'cv', 'init');
+    cvRender(cvSteps[0]);
+    document.querySelectorAll('.cv-section .ex-btn').forEach((btn, i) => {
+      btn.classList.toggle('active', i === idx);
+    });
+    document.getElementById('cv-step-num').textContent = '0';
+    document.getElementById('cv-step-max').textContent = Math.max(0, cvSteps.length - 1);
+  }
+
+  function cvNextStep() {
+    if (cvCur < cvSteps.length - 1) {
+      cvCur++;
+      const st = cvSteps[cvCur];
+      buildPointerList(cvCurrentEx.nums, st.slow, st.fast, 'cv-list-con', 'cv', st.phase);
+      cvRender(st);
+      document.getElementById('cv-step-num').textContent = cvCur;
+    }
+  }
+
+  function cvTogglePlay() {
+    if (cvTimer) {
+      cvStopPlay();
+    } else {
+      const btn = document.querySelectorAll('.cv-section .ctrl-row .ctrl-btn.pri')[0];
+      if (btn) btn.textContent = '⏸ Pause';
+      cvTimer = setInterval(() => {
+        cvNextStep();
+        if (cvCur === cvSteps.length - 1) cvStopPlay();
+      }, 500);
+    }
+  }
+
+  function cvStopPlay() {
+    if (cvTimer) {
+      clearInterval(cvTimer);
+      cvTimer = null;
+    }
+    const btn = document.querySelectorAll('.cv-section .ctrl-row .ctrl-btn.pri')[0];
+    if (btn) btn.textContent = '▶ Play';
+  }
+
+  let cvCurrentEx = EXAMPLES[0];
+
+  function drGenSteps(nums) {
+    const steps = [];
+    let slow = nums[0], fast = nums[0];
+
+    steps.push({nums, slow, fast, phase: 'init',
+                narr: `Initialize slow = fast = nums[0] = ${slow}. We'll race two pointers through the implicit linked list nums[i] → nums[nums[i]] → …`});
+
+    let iter = 0;
+    while (iter < 50) {
+      const newSlow = nums[slow];
+      steps.push({nums, slow: newSlow, fast, phase: 'p1',
+                  narr: `Phase 1 advance: slow = nums[${slow}] = ${newSlow}.`});
+      slow = newSlow;
+
+      const newFast = nums[nums[fast]];
+      steps.push({nums, slow, fast: newFast, phase: 'p1',
+                  narr: `Phase 1 advance: fast = nums[nums[${fast}]] = ${newFast}.`});
+      fast = newFast;
+
+      if (slow === fast) {
+        steps.push({nums, slow: nums[0], fast, phase: 'p2', reset: true,
+                    narr: `slow == fast == ${slow}: cycle detected. Reset slow to nums[0] = ${nums[0]} for phase 2.`});
+        slow = nums[0];
+        break;
+      }
+      iter++;
+    }
+
+    iter = 0;
+    while (iter < 50) {
+      if (slow === fast) {
+        steps.push({nums, slow, fast, phase: 'done', answer: slow,
+                    narr: `slow == fast == ${slow}: cycle entry found. The duplicate number is ${slow}.`});
+        break;
+      }
+      const newSlow = nums[slow];
+      const newFast = nums[fast];
+      steps.push({nums, slow: newSlow, fast: newFast, phase: 'p2',
+                  narr: `Phase 2 advance both 1 step: slow = ${newSlow}, fast = ${newFast}.`});
+      slow = newSlow;
+      fast = newFast;
+      iter++;
+    }
+
+    return steps;
+  }
+
+  function drRender(st) {
+    document.getElementById('f-slow').textContent = st.slow;
+    document.getElementById('f-fast').textContent = st.fast;
+    document.getElementById('f-phase').textContent = st.phase === 'init' ? 'init' : st.phase === 'p1' ? 'phase 1' : st.phase === 'p2' ? 'phase 2' : 'done';
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl  = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.narr.split('.')[0].trim();
+    if (whyEl)  whyEl.textContent  = st.narr;
+    // Redraw the pointer list with current slow/fast positions
+    if (st.nums) buildPointerList(st.nums, st.slow, st.fast, 'dr-list-con', 'dr', st.phase);
+    // Step counter + button enable
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+
+  function drLoadEx(idx) {
+    drStopPlay();
+    drCur = 0;
+    drSteps = drGenSteps(EXAMPLES[idx].nums);
+    drCurrentEx = EXAMPLES[idx];
+    [0, 1, 2].forEach(i => {
+      const b = document.getElementById('dr-ex' + i);
+      if (b) b.classList.toggle('active', i === idx);
+    });
+    drRender(drSteps[0]);
+  }
+
+  function drNext() { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev() { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+  // drTogglePlay / drStopPlay are provided by static/lesson.js — they look for #dr-bplay and call drNext().
+
+  let drCurrentEx = EXAMPLES[0];
+
+  /* ══════════════════════════════
+     BRUTE FORCE (hash-set walk)
+  ══════════════════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null, bfCurrentEx = EXAMPLES[0];
+
+  function bfGenSteps(nums) {
+    const steps = [];
+    const seen = new Set();
+    steps.push({nums, i: -1, v: null, seen: [], hit: false,
+                narr: `Start with an empty seen set. Walk left-to-right.`});
+    for (let i = 0; i < nums.length; i++) {
+      const v = nums[i];
+      const hit = seen.has(v);
+      steps.push({nums, i, v, seen: [...seen], hit,
+                  narr: hit
+                    ? `nums[${i}] = ${v} is already in seen → duplicate found. Return ${v}.`
+                    : `nums[${i}] = ${v} is new; insert into seen.`});
+      if (hit) {
+        steps.push({nums, i, v, seen: [...seen], hit: true, done: true, answer: v,
+                    narr: `★ Duplicate = ${v}. Set held ${seen.size} entries before the hit.`});
+        return steps;
+      }
+      seen.add(v);
+    }
+    return steps;
+  }
+
+  function bfRender(st) {
+    document.getElementById('bf-i').textContent = st.i >= 0 ? st.i : '—';
+    document.getElementById('bf-v').textContent = st.v != null ? st.v : '—';
+    document.getElementById('bf-seen').textContent = st.seen.length ? '{' + st.seen.join(', ') + '}' : '{}';
+    const verd = document.getElementById('bf-verdict');
+    if (st.done) {
+      verd.textContent = `★ duplicate = ${st.answer}`;
+      verd.style.color = 'var(--text-success)';
+    } else if (st.hit) {
+      verd.textContent = `nums[${st.i}] = ${st.v} matches seen!`;
+      verd.style.color = 'var(--text-warn)';
+    } else {
+      verd.textContent = '';
+    }
+    // Array preview — highlight current i and previously-seen values
+    const con = document.getElementById('bf-arr-con');
+    con.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center';
+    st.nums.forEach((val, k) => {
+      const cell = document.createElement('div');
+      const isCur = k === st.i;
+      const isPast = k < st.i;
+      const isDup = st.hit && val === st.v && k !== st.i;
+      cell.style.cssText = 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-family:var(--mono);font-size:14px;font-weight:600;'
+        + (isCur ? 'background:var(--bg-info);border:1.5px solid var(--border-info);color:var(--text-info)'
+          : isDup ? 'background:var(--bg-warn);border:1.5px solid var(--border-warn);color:var(--text-warn)'
+          : isPast ? 'background:var(--bg-success);border:0.5px solid var(--border-success);color:var(--text-success)'
+          : 'background:var(--bg2);border:0.5px solid var(--border);color:var(--text2)');
+      cell.textContent = val;
+      wrap.appendChild(cell);
+    });
+    con.appendChild(wrap);
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+
+  function bfLoadEx(idx) {
+    bfStopPlay();
+    bfCur = 0;
+    bfCurrentEx = EXAMPLES[idx];
+    bfSteps = bfGenSteps(bfCurrentEx.nums);
+    [0, 1, 2].forEach(i => {
+      const b = document.getElementById('bf-ex' + i);
+      if (b) b.classList.toggle('active', i === idx);
+    });
+    bfRender(bfSteps[0]);
+  }
+
+  function bfNext() { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev() { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>

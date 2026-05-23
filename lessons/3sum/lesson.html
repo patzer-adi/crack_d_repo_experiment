@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3Sum — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>3Sum</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/3sum/" target="_blank">LC #15</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Arrays · Two Pointers</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <p class="acard-q">Can the same element be used twice?</p>
+      <p class="acard-a">No — indices must be distinct (i ≠ j ≠ k).</p>
+      <span class="acard-u">→ L starts at i+1, never at i</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can there be duplicate values in the input?</p>
+      <p class="acard-a">Yes — e.g. [-1,-1,0,1,2]. Multiple copies of the same value are possible.</p>
+      <span class="acard-u">→ dedup logic required at both loops</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Is the array sorted?</p>
+      <p class="acard-a">No — unsorted input.</p>
+      <span class="acard-u">→ must sort first; O(n log n) is acceptable</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">What do we return?</p>
+      <p class="acard-a">All unique triplets [a,b,c] such that a+b+c=0 — no duplicate triplets in output.</p>
+      <span class="acard-u">→ dedup is part of correctness, not optional</span>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Array may be empty or contain fewer than 3 elements — return empty. Integers may be negative, zero, or positive. Output order does not matter. No two triplets in the result may be identical even if different indices produce them.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Fix one number. Find a pair that sums to its negation.</p>
+
+  <p class="body">The problem asks for three numbers that sum to zero: <code>a + b + c = 0</code>. Rewrite it as <code>b + c = −a</code>. If we fix <code>a</code>, the problem becomes: find two numbers in the remaining array that sum to <code>−a</code>. That's the classic two-sum problem — and on a sorted array, two-sum runs in O(n) with two pointers.</p>
+
+  <!-- §1 animation — 3sum two-pointer walk on sorted nums = [-4,-1,-1,0,1,2].
+       Layers (PLAN-017 convention): current pointers L/R (info-blue), triplets found so far (success-green),
+       pivot i advance / dup-skip (warn-orange ↹). -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);border:0.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>current L, R</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-success);border:0.5px solid var(--border-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>triplet found</span>
+      <span><span style="color:var(--text-warn);font-weight:700;font-size:14px;vertical-align:middle">↹</span> advance i / skip dup</span>
+    </div>
+
+    <!-- Row 1: array cells with i / L / R / dup markers above -->
+    <div style="display:flex;gap:6px;align-items:flex-end;margin-bottom:.75rem;padding:.5rem;background:var(--bg);border-radius:var(--r);min-height:74px" id="si-strip"></div>
+
+    <!-- Row 2: calculation breakdown -->
+    <div style="background:var(--bg);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:13px;line-height:1.9;color:var(--text2);min-height:60px">
+      <div id="si-calc">
+        <div>fix i = <span id="si-i" style="color:var(--text-warn);font-weight:600">—</span> · target = −nums[i] = <span id="si-tgt" style="font-weight:600">—</span></div>
+        <div>sum = nums[L] + nums[R] = <span id="si-a" style="font-weight:600">—</span> + <span id="si-b" style="font-weight:600">—</span> = <span id="si-sum" style="color:var(--text);font-weight:700">—</span> <span id="si-decision-badge" class="decision-badge">—</span></div>
+      </div>
+    </div>
+
+    <!-- Row 3: triplets found so far -->
+    <div style="display:flex;gap:.5rem;align-items:center;padding:.625rem .875rem;background:var(--bg);border-radius:var(--r);font-family:var(--mono);font-size:13px;margin:.5rem 0;min-height:36px">
+      <span style="color:var(--text3)">triplets:</span>
+      <span id="si-trips" style="color:var(--text-success);font-weight:600">—</span>
+    </div>
+
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Sort the array. Fix one element with index i. Run two pointers (L=i+1, R=n−1) inward: if sum &lt; 0, L++ to increase it; if sum &gt; 0, R-- to decrease it; if sum == 0, record and squeeze both. Repeat for each i. The entire algorithm falls out of this one idea.</p>
+  </div>
+
+  <!-- Equivalence chain -->
+  <p class="body" style="margin-top:1rem">Why sorting is the key that unlocks everything:</p>
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">find all unique triplets a+b+c = 0</div>
+        <div class="chain-note">the problem</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">for each fixed a: find pairs (b,c) with b+c = −a</div>
+        <div class="chain-note">reduce 3-variable to 2-variable problem</div>
+        <div class="chain-example">
+          <span class="pill n">fix a=-1</span><span class="arrow">→</span>
+          <span class="pill n">find b+c=1 in rest</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">sort first → two-pointer squeeze for each fixed element</div>
+        <div class="chain-note">sorted array makes pair-finding O(n) instead of O(n²)</div>
+        <div class="chain-example">
+          <span class="pill n">sum &lt; 0</span><span class="arrow">→</span><span class="pill n">L++ (need bigger)</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">sum &gt; 0</span><span class="arrow">→</span><span class="pill n">R-- (need smaller)</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill ok">sum = 0 → record</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">skip duplicates at both loops</span> to guarantee unique triplets</div>
+        <div class="chain-note">dedup is baked into the pointer movement, not a post-processing step</div>
+        <div class="chain-example">
+          <span class="pill n">nums[i]==nums[i-1]</span><span class="arrow">→</span><span class="pill bad">skip outer i</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">after match: skip equal neighbors</span><span class="arrow">→</span><span class="pill ok">no duplicate triplets</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // §1 animation — 3sum two-pointer squeeze on sorted nums = [-4,-1,-1,0,1,2] (answer [[-1,-1,2],[-1,0,1]])
+  const SI_NUMS = [-4, -1, -1, 0, 1, 2];
+  let siSteps = siGenSteps(SI_NUMS);
+  let siCur = 0;
+  let siTimer = null;
+
+  function siGenSteps(nums) {
+    const steps = [];
+    const triplets = [];
+    let i = 0;
+    while (i < nums.length - 2) {
+      if (nums[i] > 0) break;
+      if (i > 0 && nums[i] === nums[i - 1]) {
+        steps.push({i, L: -1, R: -1, isDupSkip: true, triplets: [...triplets],
+          caption: `nums[${i}] = ${nums[i]} duplicates nums[${i-1}]; skip to avoid duplicate triplets.`});
+        i++; continue;
+      }
+      steps.push({i, L: -1, R: -1, isPivot: true, target: -nums[i], triplets: [...triplets],
+        caption: `Fix i=${i} (nums[i]=${nums[i]}). Target for pair = ${-nums[i]}. Place L=${i+1}, R=${nums.length-1}.`});
+      let L = i + 1, R = nums.length - 1;
+      while (L < R) {
+        const sum = nums[L] + nums[R];
+        const target = -nums[i];
+        if (sum === target) {
+          triplets.push([nums[i], nums[L], nums[R]]);
+          steps.push({i, L, R, sum, target, decision: 'match', triplets: [...triplets],
+            caption: `nums[L]+nums[R] = ${nums[L]}+${nums[R]} = ${sum} matches target. Record [${nums[i]}, ${nums[L]}, ${nums[R]}], then move both inward.`});
+          L++; R--;
+          while (L < R && nums[L] === nums[L - 1]) L++;
+          while (L < R && nums[R] === nums[R + 1]) R--;
+        } else if (sum < target) {
+          steps.push({i, L, R, sum, target, decision: 'low', triplets: [...triplets],
+            caption: `Sum ${sum} < target ${target}. Need larger — advance L.`});
+          L++;
+        } else {
+          steps.push({i, L, R, sum, target, decision: 'high', triplets: [...triplets],
+            caption: `Sum ${sum} > target ${target}. Need smaller — pull R back.`});
+          R--;
+        }
+      }
+      i++;
+    }
+    steps.push({terminal: true, triplets: [...triplets],
+      caption: `Sweep complete. Found ${triplets.length} unique triplet${triplets.length === 1 ? '' : 's'}.`});
+    return steps;
+  }
+
+  function siRender() {
+    const s = siSteps[siCur];
+    const strip = document.getElementById('si-strip');
+    strip.innerHTML = '';
+    for (let j = 0; j < SI_NUMS.length; j++) {
+      const isI = !s.terminal && j === s.i;
+      const isL = !s.terminal && j === s.L;
+      const isR = !s.terminal && j === s.R;
+      let bg, border, color, marker = '';
+      if (isI) { bg = 'var(--bg-warn)'; border = 'var(--border-warn)'; color = 'var(--text-warn)'; marker = 'i'; }
+      else if (isL) { bg = 'var(--bg-info)'; border = 'var(--border-info)'; color = 'var(--text-info)'; marker = 'L'; }
+      else if (isR) { bg = 'var(--bg-info)'; border = 'var(--border-info)'; color = 'var(--text-info)'; marker = 'R'; }
+      else { bg = 'var(--bg2)'; border = 'var(--border)'; color = 'var(--text2)'; marker = String(j); }
+      const showVal = SI_NUMS[j] < 0 ? `${SI_NUMS[j]}` : ` ${SI_NUMS[j]}`;
+      strip.innerHTML += `<div style="display:flex;flex-direction:column;align-items:center;flex:0 0 38px"><div style="width:38px;height:38px;border-radius:6px;border:0.5px solid ${border};background:${bg};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;font-weight:600;color:${color}">${showVal}</div><div style="font-family:var(--mono);font-size:10px;color:${isI?'var(--text-warn)':isL||isR?'var(--text-info)':'var(--text3)'};margin-top:3px;font-weight:${isI||isL||isR?'600':'400'}">${marker}</div></div>`;
+    }
+    // Calc panel
+    if (s.terminal) {
+      document.getElementById('si-calc').innerHTML = `<div style="color:var(--text-success)">Done — ${s.triplets.length} triplet${s.triplets.length === 1 ? '' : 's'} found.</div>`;
+    } else if (s.isPivot) {
+      document.getElementById('si-calc').innerHTML = `<div>Pivot: fix i = <span style="color:var(--text-warn);font-weight:600">${s.i}</span> (nums[i] = ${SI_NUMS[s.i]}) · target = <span style="font-weight:600">${s.target}</span></div><div style="color:var(--text3)">Place L = ${s.i + 1}, R = ${SI_NUMS.length - 1}.</div>`;
+    } else if (s.isDupSkip) {
+      document.getElementById('si-calc').innerHTML = `<div style="color:var(--text-warn)">↹ Skip i = ${s.i} — nums[${s.i}] duplicates nums[${s.i - 1}].</div>`;
+    } else {
+      document.getElementById('si-i').textContent = s.i;
+      document.getElementById('si-tgt').textContent = s.target;
+      document.getElementById('si-a').textContent = SI_NUMS[s.L];
+      document.getElementById('si-b').textContent = SI_NUMS[s.R];
+      document.getElementById('si-sum').textContent = s.sum;
+      const badge = document.getElementById('si-decision-badge');
+      if (s.decision === 'match') { badge.textContent = '★ match → record'; badge.style.color = 'var(--text-success)'; }
+      else if (s.decision === 'low') { badge.textContent = 'too small → L++'; badge.style.color = 'var(--text-info)'; }
+      else { badge.textContent = 'too large → R−−'; badge.style.color = 'var(--text-warn)'; }
+    }
+    document.getElementById('si-trips').textContent = s.triplets.length === 0
+      ? '(none yet)'
+      : s.triplets.map(t => `[${t.join(',')}]`).join('  ');
+    document.getElementById('si-caption').textContent = s.caption;
+    document.getElementById('si-sctr').textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext() { siStopPlay(); siCur = Math.min(siCur + 1, siSteps.length - 1); siRender(); }
+  function siPrev() { siStopPlay(); siCur = Math.max(siCur - 1, 0); siRender(); }
+  function siReset() { siStopPlay(); siCur = 0; siRender(); }
+  function siStopPlay() { if (siTimer) { clearInterval(siTimer); siTimer = null; document.getElementById('si-bplay').textContent = '▶ Auto'; } }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur >= siSteps.length - 1) { siStopPlay(); return; }
+      siCur++; siRender();
+    }, 1400);
+  }
+  siRender();
+</script>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force: check every triple</p>
+  <p class="body">Try all combinations of three indices i &lt; j &lt; k. Check if <code>nums[i]+nums[j]+nums[k]==0</code>. Three nested loops.</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">[-1,0,1,2,-1,-4]</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">[0,0,0,0]</button>
+  </div>
+  <div class="bf-nums" id="bf-nums"></div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    i=<span id="bf-i" style="font-weight:600;color:var(--text)">—</span>
+    &nbsp;j=<span id="bf-j" style="font-weight:600;color:var(--text-info)">—</span>
+    &nbsp;k=<span id="bf-k" style="font-weight:600;color:var(--text-warn)">—</span>
+    &nbsp;·&nbsp; checks: <span id="bf-ops" style="font-weight:600;color:var(--text-danger)">0</span>
+  </div>
+  <div id="bf-verdict" style="display:none"></div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:.625rem">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n³) time</p>
+    <p class="infobox-d">Three nested loops over n elements. Even with dedup, worst case is C(n,3) ≈ n³/6 checks.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('bf-code',this)">▶ Show brute force code</button>
+  <div class="code-block" id="bf-code">
+<pre class="cb"><span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt; <span class="fn">threeSum_BF</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.size();
+    <span class="tp">set</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt; seen;  <span class="cm">// dedup via set</span>
+    <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nu">0</span>; i&lt;n-<span class="nu">2</span>; i++) {
+        <span class="kw">for</span> (<span class="kw">int</span> j=i+<span class="nu">1</span>; j&lt;n-<span class="nu">1</span>; j++) {
+            <span class="kw">for</span> (<span class="kw">int</span> k=j+<span class="nu">1</span>; k&lt;n; k++) {
+                <span class="kw">if</span> (nums[i]+nums[j]+nums[k] == <span class="nu">0</span>) {
+                    <span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; t = {nums[i],nums[j],nums[k]};
+                    sort(t.begin(), t.end());
+                    seen.insert(t);
+                }
+            }
+        }
+    }
+    <span class="kw">return</span> {seen.begin(), seen.end()};
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Two translations from O(n³) to O(n²)</p>
+  <p class="body">The brute force tests every triple blindly. Two translations eliminate the innermost loop entirely.</p>
+
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 1 — Fix one element, reduce to 2Sum</p>
+        <p class="wt-desc">Lock index i. The problem becomes: find pairs (L, R) in the subarray <code>nums[i+1..n-1]</code> such that <code>nums[L]+nums[R] = −nums[i]</code>. The three-variable search collapses to a two-variable search. This eliminates one loop conceptually — but finding the pair still costs O(n) unless the subarray is sorted.</p>
+        <p class="wt-gain">→ problem shape: O(n) outer × O(?) inner</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 2 — Sort first → two-pointer squeeze finds pairs in O(n)</p>
+        <p class="wt-desc">Sort the array once: O(n log n). Now the subarray <code>nums[i+1..n-1]</code> is sorted. On a sorted array, the two-pointer technique finds all pairs summing to a target in O(n): start L and R at both ends, advance L if sum is too small, retreat R if too large. Sorting is the key that makes the inner search O(n) instead of O(n²).</p>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:12px;line-height:2;color:var(--text2)">
+          <div>sum &lt; 0  →  L++  <span style="color:var(--text3)">// left side too small, move right to increase sum</span></div>
+          <div>sum &gt; 0  →  R--  <span style="color:var(--text3)">// right side too large, move left to decrease sum</span></div>
+          <div>sum = 0  →  record, skip duplicates, squeeze both</div>
+        </div>
+        <p class="wt-gain">→ O(n log n) sort + O(n) outer × O(n) inner = O(n²) total</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox info" style="margin-top:.875rem">
+    <p class="infobox-t">Why dedup is built into the pointer movement</p>
+    <p class="infobox-d">After recording a triplet, advance L past any equal values (<code>while nums[L]==nums[L+1]: L++</code>) and retreat R past equal values. This guarantees the next pair tried is different. At the outer loop, skip <code>nums[i]==nums[i-1]</code> to avoid repeating the same fixed element. No set or hash map needed — dedup is free.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <p class="body">Say this before writing any code.</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t"><b>Sort</b> the array. This is what makes the inner search O(n).</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t">For each index <b>i</b> from 0 to n−3: if <code>nums[i]==nums[i-1]</code>, skip (duplicate outer). Set <b>L=i+1</b>, <b>R=n−1</b>.</span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t">While <b>L &lt; R</b>: compute <code>sum = nums[i]+nums[L]+nums[R]</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t">If <b>sum &lt; 0</b>: L++ (need a larger value). If <b>sum &gt; 0</b>: R-- (need a smaller value). If <b>sum == 0</b>: record triplet, skip duplicate neighbors on both sides, then L++ and R--.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t">Return the collected triplets. No set needed — dedup is handled inline.</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Canonical C++ solution</p>
+  <p class="body">Try writing from the five steps above before revealing.</p>
+  <button class="reveal-btn" id="reveal-btn" onclick="toggleEl('code-block', document.getElementById('reveal-btn'))">▶ Reveal Code</button>
+  <div class="code-block" id="code-block">
+<pre class="cb"><span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt; <span class="fn">threeSum</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="fn">sort</span>(nums.<span class="fn">begin</span>(), nums.<span class="fn">end</span>());            <span class="cm">// Translation 2: sort first</span>
+    <span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt; result;
+    <span class="kw">int</span> n = nums.size();
+
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n - <span class="nu">2</span>; i++) {
+        <span class="kw">if</span> (i &gt; <span class="nu">0</span> &amp;&amp; nums[i] == nums[i-<span class="nu">1</span>]) { <span class="kw">continue</span>; }  <span class="cm">// skip dup outer</span>
+
+        <span class="kw">int</span> L = i + <span class="nu">1</span>, R = n - <span class="nu">1</span>;
+        <span class="kw">while</span> (L &lt; R) {
+            <span class="kw">int</span> sum = nums[i] + nums[L] + nums[R];
+            <span class="kw">if</span> (sum &lt; <span class="nu">0</span>) {
+                L++;                                      <span class="cm">// need larger</span>
+            } <span class="kw">else if</span> (sum &gt; <span class="nu">0</span>) {
+                R--;                                      <span class="cm">// need smaller</span>
+            } <span class="kw">else</span> {
+                result.push_back({nums[i], nums[L], nums[R]});
+                <span class="kw">while</span> (L &lt; R &amp;&amp; nums[L] == nums[L+<span class="nu">1</span>]) { L++; }  <span class="cm">// skip dup L</span>
+                <span class="kw">while</span> (L &lt; R &amp;&amp; nums[R] == nums[R-<span class="nu">1</span>]) { R--; }  <span class="cm">// skip dup R</span>
+                L++; R--;
+            }
+        }
+    }
+    <span class="kw">return</span> result;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — watch every variable</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">Ex 1: [-4,-1,-1,0,1,2]</button>
+    <button class="ex-btn" id="cv-ex1" onclick="cvLoadEx(1)">Ex 2: [-2,0,0,1,1,2]</button>
+    <button class="ex-btn" id="cv-ex2" onclick="cvLoadEx(2)">Ex 3: [0,0,0,0]</button>
+  </div>
+  <div class="cv-split">
+    <div class="cv-code-panel" id="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px">nums[] (sorted) — gray=i, blue=L, amber=R</p>
+        <div id="cv-strip" style="display:flex;gap:2px;flex-wrap:wrap;"></div>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:5px">Variables</p>
+        <div class="cv-var-grid">
+          <div class="cv-var-card dim" id="cvv-i"><p class="cv-var-name">i</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-L"><p class="cv-var-name">L</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-R"><p class="cv-var-name">R</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-fix"><p class="cv-var-name">nums[i]</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-sum"><p class="cv-var-name">sum</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-found"><p class="cv-var-name">triplets</p><p class="cv-var-val">—</p></div>
+        </div>
+      </div>
+      <div class="cv-narration" id="cv-narration">Select an example to begin.</div>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="cv-bp" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="cv-bn" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn" onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Interactive dry run</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1: [-4,-1,-1,0,1,2]</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">Ex 2: [-2,0,0,1,1,2]</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">Ex 3: [0,0,0,0]</button>
+  </div>
+  <div class="num-strip" id="dr-strip"></div>
+  <div class="panels-fixed">
+    <div class="formula-panel" id="dr-formula">
+      <div class="formula-grid">
+        <div><p class="fitem-label">i</p><p class="fitem-val" id="f-i">—</p><p class="fitem-sub">fixed idx</p></div>
+        <div><p class="fitem-label">nums[i]</p><p class="fitem-val" id="f-fix">—</p><p class="fitem-sub">target = −nums[i]</p></div>
+        <div><p class="fitem-label" style="color:var(--text-info)">L</p><p class="fitem-val" id="f-L">—</p><p class="fitem-sub">left ptr</p></div>
+        <div><p class="fitem-label" style="color:var(--text-warn)">R</p><p class="fitem-val" id="f-R">—</p><p class="fitem-sub">right ptr</p></div>
+        <div><p class="fitem-label">sum</p><p class="fitem-val" id="f-sum">—</p><p class="fitem-sub">L+R+i</p></div>
+      </div>
+      <div class="formula-eq" id="dr-feq">Select an example to begin.</div>
+    </div>
+    <div class="step-panel" id="dr-step">
+      <p class="step-what" id="dr-what">—</p>
+      <p class="step-why" id="dr-why">Use the controls below to step through.</p>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+  <div style="margin-top:.875rem">
+    <p style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-bottom:4px">Triplets found</p>
+    <p id="dr-result" style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--text)">—</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner"><div class="cnum">1</div><div>
+    <p class="corner-title">Fewer than 3 elements</p>
+    <p class="corner-body">Outer loop runs <code>i &lt; n−2</code>. If n &lt; 3, the loop never starts. Returns empty vector correctly.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">2</div><div>
+    <p class="corner-title">All zeros — [0,0,0,0]</p>
+    <p class="corner-body">i=0: L=1, R=3, sum=0 → record [0,0,0]. Dedup skips same neighbors. i=1: nums[1]==nums[0] → skip. Only one triplet returned.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">3</div><div>
+    <p class="corner-title">All positive or all negative — [1,2,3,4]</p>
+    <p class="corner-body">After sorting, the smallest element is positive. No three elements can sum to 0. The inner while loop immediately fails the sum check and the loop exhausts. Returns empty.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">4</div><div>
+    <p class="corner-title">Duplicates in input — [-1,-1,-1,0,1,1]</p>
+    <p class="corner-body">After sort: [-1,-1,-1,0,1,1]. i=0 fix=-1, finds [-1,0,1]. i=1: nums[1]==nums[0] → skip. i=2: nums[2]==nums[1] → skip. Only one [-1,0,1] triplet despite three copies of -1.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">5</div><div>
+    <p class="corner-title">Exactly one valid triplet — [−1, 0, 1, 2]</p>
+    <p class="corner-body">i=0 fix=-1: L=1(0), R=3(2) → sum=1 &gt; 0 → R--. L=1(0), R=2(1) → sum=0 → record [-1,0,1]. L=2, R=1 → loop ends. i=1 fix=0: no pair sums to 0. Returns [[-1,0,1]].</p>
+  </div></div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>n &lt; 3:</b> outer loop condition <code>i &lt; n-2</code> handles this — loop never runs.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Duplicate outer:</b> <code>i &gt; 0 &amp;&amp; nums[i]==nums[i-1]</code> — the <code>i &gt; 0</code> guard prevents out-of-bounds on the first iteration.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Duplicate inner after match:</b> skip L/R neighbors before the final L++/R-- — never skip before recording the triplet.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Integer overflow:</b> three integers summed — worst case 3×10⁴ for typical constraints. int is safe.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Early termination:</b> if <code>nums[i] &gt; 0</code>, break — all subsequent fixed elements are also positive, sum can never be zero. Optional but speeds up in practice.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Sort + two pointers (optimal)</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Sort + hash set inner</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Brute force</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">Time O(n²)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body" style="margin-top:.5rem">Sort once, then for each fixed i run two pointers inward. Dedup is free — handled by skipping equal neighbors. No extra data structures beyond the output.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">Time O(n²)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body" style="margin-top:.5rem">Sort first. For each fixed i, iterate j from i+1 to n-1. Use a hash set to check if <code>−nums[i]−nums[j]</code> exists in the remaining elements. Same asymptotic time but requires O(n) extra space and more careful dedup logic. Two-pointer is cleaner.</p>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">Time O(n³)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body" style="margin-top:.5rem">Three nested loops, collect matches in a set to deduplicate. Correct but TLE for n &gt; 500. The starting point for explaining the two translations above.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard"><p class="ccard-l">Time</p><p class="ccard-v">O(n²)</p><p class="ccard-n">Sort: O(n log n). Outer loop: O(n). Inner two-pointer: O(n) per iteration. Dominant term: O(n²).</p></div>
+    <div class="ccard"><p class="ccard-l">Space</p><p class="ccard-v">O(1)</p><p class="ccard-n">No extra data structures beyond the output vector. Sort is in-place. Four integer variables: i, L, R, sum.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">What to remember for similar problems</p>
+  <div class="takehome">
+    <p class="body">The <strong>fix-one, search-two</strong> pattern reduces kSum to (k−1)Sum. 3Sum → 2Sum. 4Sum → 3Sum → 2Sum. At the base level, two-pointer on a sorted array finds all pairs in O(n).</p>
+    <p class="body">Sorting is not just a convenience — it's what enables the two-pointer to work. On an unsorted array you need a hash set (O(n) space). On a sorted array you get O(1) space for free.</p>
+    <p class="body">The dedup logic is the hardest part to get right under pressure. The rule is: skip duplicates <em>after</em> processing, never before. Skipping before means you might miss valid triplets.</p>
+    <p class="body">Related: LC 1 (Two Sum — unsorted, hash map), LC 18 (4Sum — add one more outer loop), LC 16 (3Sum Closest — same skeleton, track minimum difference instead of exact match).</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+function bfTogglePlay(){if(bfTimer){bfStopPlay();}else{document.getElementById('bf-play').textContent='⏸ Pause';bfTimer=setInterval(()=>{if(bfCur<bfSteps.length-1)bfNext();else bfStopPlay();},250);}}
+/* ══════════════════════════════
+   DATA
+══════════════════════════════ */
+const EXAMPLES_RAW=[
+  [-4,-1,-1,0,1,2],
+  [-2,0,0,1,1,2],
+  [0,0,0,0],
+];
+// pre-sort all examples
+const EXAMPLES=EXAMPLES_RAW.map(a=>a.slice().sort((x,y)=>x-y));
+const BF_EXAMPLES_RAW=[[-1,0,1,2,-1,-4],[0,0,0,0]];
+
+/* ══════════════════════════════
+   BRUTE FORCE
+══════════════════════════════ */
+let bfSteps=[],bfCur=0,bfTimer=null;
+
+function bfGen(numsOrig){
+  const nums=numsOrig.slice();
+  const n=nums.length,out=[];
+  let ops=0;
+  const found=[];
+  out.push({nums,n,i:-1,j:-1,k:-1,ops:0,found:[],phase:'init',msg:'Check every triple (i,j,k).'});
+  for(let i=0;i<n-2;i++){
+    for(let j=i+1;j<n-1;j++){
+      for(let k=j+1;k<n;k++){
+        ops++;
+        const s=nums[i]+nums[j]+nums[k];
+        const isMatch=(s===0);
+        if(isMatch){
+          const t=[nums[i],nums[j],nums[k]].sort((a,b)=>a-b);
+          const key=t.join(',');
+          if(!found.map(f=>f.join(',')).includes(key)) found.push(t);
+        }
+        out.push({nums,n,i,j,k,ops,found:found.map(f=>f.slice()),phase:isMatch?'match':'check',
+          msg:`i=${i}(${nums[i]}) j=${j}(${nums[j]}) k=${k}(${nums[k]}) sum=${s}${isMatch?' ✓':''}`});
+      }
+    }
+  }
+  out.push({nums,n,i:-1,j:-1,k:-1,ops,found:found.map(f=>f.slice()),phase:'done',msg:`Done. ${found.length} triplet(s). Checks=${ops}.`});
+  return out;
+}
+
+function bfRender(st){
+  const con=document.getElementById('bf-nums'); con.innerHTML='';
+  st.nums.forEach((v,idx)=>{
+    const w=document.createElement('div'); w.style.cssText='display:flex;flex-direction:column;align-items:center;';
+    const cell=document.createElement('div'); cell.className='bf-num';
+    cell.textContent=v;
+    if(idx===st.i) cell.classList.add('bi');
+    if(idx===st.j) cell.classList.add('bj');
+    if(idx===st.k) cell.classList.add('bk');
+    if(st.phase==='match'&&(idx===st.i||idx===st.j||idx===st.k)) cell.classList.add('bmatch');
+    const idxEl=document.createElement('div'); idxEl.className='bf-idx'; idxEl.textContent=idx;
+    w.appendChild(cell); w.appendChild(idxEl); con.appendChild(w);
+  });
+  document.getElementById('bf-i').textContent=st.i>=0?st.i:'—';
+  document.getElementById('bf-j').textContent=st.j>=0?st.j:'—';
+  document.getElementById('bf-k').textContent=st.k>=0?st.k:'—';
+  document.getElementById('bf-ops').textContent=st.ops;
+  const vd=document.getElementById('bf-verdict');
+  if(st.phase==='done'){
+    vd.style.display='block';
+    vd.style.cssText='font-family:-apple-system,sans-serif;font-size:13px;padding:4px 10px;border-radius:6px;background:var(--bg-success);color:var(--text-success);margin-top:.5rem;display:inline-block';
+    vd.textContent='✓ '+st.msg;
+  } else vd.style.display='none';
+  document.getElementById('bf-sctr').textContent=`Step ${bfCur+1}/${bfSteps.length}`;
+  document.getElementById('bf-prev').disabled=bfCur===0;
+  document.getElementById('bf-next').disabled=bfCur===bfSteps.length-1;
+}
+function bfNext(){if(bfCur<bfSteps.length-1){bfCur++;bfRender(bfSteps[bfCur]);}else bfStopPlay();}
+function bfPrev(){if(bfCur>0){bfCur--;bfRender(bfSteps[bfCur]);}}
+function bfReset(){bfStopPlay();bfCur=0;bfRender(bfSteps[0]);}
+function bfLoadEx(idx){
+  bfStopPlay();bfCur=0;
+  [0,1].forEach(i=>document.getElementById('bf-ex'+i).classList.toggle('active',i===idx));
+  bfSteps=bfGen(BF_EXAMPLES_RAW[idx]); bfRender(bfSteps[0]);
+}
+
+/* ══════════════════════════════
+   CODE VISUALIZATION
+══════════════════════════════ */
+const CV_LINES=[
+  {n:1,  c:'vector<vector<int>> threeSum(vector<int>& nums) {'},
+  {n:2,  c:'    sort(nums.begin(), nums.end());'},
+  {n:3,  c:'    vector<vector<int>> result;'},
+  {n:4,  c:'    int n = nums.size();'},
+  {n:5,  c:'    for (int i = 0; i < n - 2; i++) {'},
+  {n:6,  c:'        if (i > 0 && nums[i] == nums[i-1]) { continue; }'},
+  {n:7,  c:'        int L = i + 1, R = n - 1;'},
+  {n:8,  c:'        while (L < R) {'},
+  {n:9,  c:'            int sum = nums[i] + nums[L] + nums[R];'},
+  {n:10, c:'            if (sum < 0) {'},
+  {n:11, c:'                L++;'},
+  {n:12, c:'            } else if (sum > 0) {'},
+  {n:13, c:'                R--;'},
+  {n:14, c:'            } else {'},
+  {n:15, c:'                result.push_back({nums[i], nums[L], nums[R]});'},
+  {n:16, c:'                while (L < R && nums[L] == nums[L+1]) { L++; }'},
+  {n:17, c:'                while (L < R && nums[R] == nums[R-1]) { R--; }'},
+  {n:18, c:'                L++; R--;'},
+  {n:19, c:'            }'},
+  {n:20, c:'        }'},
+  {n:21, c:'    }'},
+  {n:22, c:'    return result;'},
+  {n:23, c:'}'},
+];
+
+let cvSteps=[],cvCur=0,cvTimer=null;
+
+function cvGen(nums){
+  const out=[]; const n=nums.length;
+  let curI=-1,curL=-1,curR=-1,curSum=null,result=[];
+
+  const snap=(line,narr,phase,changed)=>{
+    out.push({line,narr,phase,changed:changed||[],
+      nums,i:curI,L:curL,R:curR,sum:curSum,result:result.map(r=>r.slice()),n});
+  };
+
+  snap(1,'Enter threeSum.','init',[]);
+  snap(2,`Sort: [${nums.join(', ')}].`,'init',['nums']);
+  snap(3,'Initialize result = [].','init',['found']);
+  snap(4,`n = ${n}.`,'init',[]);
+
+  for(let i=0;i<n-2;i++){
+    curI=i; curL=-1; curR=-1; curSum=null;
+    snap(5,`Outer loop: i=${i}, nums[i]=${nums[i]}.`,'active',['i','fix']);
+    if(i>0&&nums[i]===nums[i-1]){
+      snap(6,`nums[${i}]=${nums[i]} == nums[${i-1}]=${nums[i-1]}. Duplicate outer — skip.`,'skip',['i']);
+      continue;
+    }
+    snap(6,`No duplicate. Proceed with i=${i}.`,'active',['i']);
+    curL=i+1; curR=n-1;
+    snap(7,`L=${curL}, R=${curR}.`,'active',['L','R']);
+
+    while(curL<curR){
+      curSum=nums[curI]+nums[curL]+nums[curR];
+      snap(8,`while L(${curL}) < R(${curR}): enter.`,'active',['L','R']);
+      snap(9,`sum = nums[${curI}](${nums[curI]}) + nums[${curL}](${nums[curL]}) + nums[${curR}](${nums[curR]}) = ${curSum}.`,'active',['sum']);
+
+      if(curSum<0){
+        snap(10,`sum=${curSum} < 0. Need larger. L++.`,'active',['L']);
+        curL++;
+        snap(11,`L → ${curL}.`,'active',['L']);
+      } else if(curSum>0){
+        snap(12,`sum=${curSum} > 0. Need smaller. R--.`,'active',['R']);
+        curR--;
+        snap(13,`R → ${curR}.`,'active',['R']);
+      } else {
+        snap(14,`sum == 0!`,'match',['sum']);
+        result.push([nums[curI],nums[curL],nums[curR]]);
+        snap(15,`Record [${nums[curI]},${nums[curL]},${nums[curR]}]. Total: ${result.length}.`,'match',['found']);
+        while(curL<curR&&nums[curL]===nums[curL+1]){curL++;snap(16,`Skip dup L: nums[${curL}]==${nums[curL]}.`,'active',['L']);}
+        while(curL<curR&&nums[curR]===nums[curR-1]){curR--;snap(17,`Skip dup R: nums[${curR}]==${nums[curR]}.`,'active',['R']);}
+        curL++;curR--;
+        snap(18,`Squeeze: L=${curL}, R=${curR}.`,'active',['L','R']);
+      }
+    }
+  }
+  snap(22,`Done. ${result.length} triplet(s): ${result.map(t=>'['+t.join(',')+']').join(' ')}.`,'done',['found']);
+  return out;
+}
+
+function cvRenderStrip(st){
+  const strip=document.getElementById('cv-strip'); strip.innerHTML='';
+  st.nums.forEach((v,i)=>{
+    const w=document.createElement('div'); w.style.cssText='display:flex;flex-direction:column;align-items:center;flex-shrink:0;';
+    const cell=document.createElement('div');
+    cell.style.cssText='width:22px;height:26px;border-radius:3px;border:0.5px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text);transition:all .2s;';
+    cell.textContent=v;
+    if(i===st.i){cell.style.background='var(--bg3)';cell.style.borderColor='var(--border2)';}
+    if(i===st.L){cell.style.background='var(--bg-info)';cell.style.borderColor='var(--border-info)';cell.style.color='var(--text-info)';}
+    if(i===st.R&&i!==st.L){cell.style.background='var(--bg-warn)';cell.style.borderColor='var(--border-warn)';cell.style.color='var(--text-warn)';}
+    if(st.phase==='match'&&(i===st.L||i===st.R||i===st.i)){cell.style.background='var(--bg-success)';cell.style.borderColor='var(--border-success)';cell.style.color='var(--text-success)';}
+    const idx=document.createElement('div'); idx.style.cssText='font-size:7px;color:var(--text3);font-family:var(--mono);'; idx.textContent=i;
+    w.appendChild(cell); w.appendChild(idx); strip.appendChild(w);
+  });
+}
+
+function cvRender(st){
+  document.querySelectorAll('.cv-line').forEach(el=>el.classList.remove('active','active-match'));
+  const al=document.getElementById('cvL'+st.line);
+  if(al){al.classList.add(st.phase==='match'?'active-match':'active');if(visPx(document.querySelector('.cv-section'))>0)al.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  cvRenderStrip(st);
+
+  const vars={i:st.i>=0?st.i:'—', L:st.L>=0?st.L:'—', R:st.R>=0?st.R:'—',
+    fix:st.i>=0?st.nums[st.i]:'—', sum:st.sum!=null?st.sum:'—',
+    found:st.result.length>0?st.result.length+'✓':'0'};
+  Object.entries(vars).forEach(([id,val])=>{
+    const card=document.getElementById('cvv-'+id); if(!card) return;
+    card.querySelector('.cv-var-val').textContent=val;
+    card.classList.remove('hl','hl-match','dim');
+    if(st.changed.includes(id)||st.changed.includes(id==='fix'?'fix':id)){
+      card.classList.add(st.phase==='match'?'hl-match':'hl');
+    } else if(st.phase==='init'){
+      card.classList.add('dim');
+    }
+  });
+
+  const narr=document.getElementById('cv-narration');
+  narr.textContent=st.narr;
+  narr.className='cv-narration'+(st.phase==='match'?' is-match':st.phase!=='done'?' is-active':'');
+  document.getElementById('cv-sctr').textContent=`Step ${cvCur+1} / ${cvSteps.length}`;
+  document.getElementById('cv-bp').disabled=cvCur===0;
+  document.getElementById('cv-bn').disabled=cvCur===cvSteps.length-1;
+}
+
+function cvNext(){if(cvCur<cvSteps.length-1){cvCur++;cvRender(cvSteps[cvCur]);}else cvStopPlay();}
+function cvPrev(){if(cvCur>0){cvCur--;cvRender(cvSteps[cvCur]);}}
+function cvReset(){cvStopPlay();cvCur=0;cvRender(cvSteps[0]);}
+function cvLoadEx(idx){
+  cvStopPlay();cvCur=0;
+  [0,1,2].forEach(i=>document.getElementById('cv-ex'+i).classList.toggle('active',i===idx));
+  cvSteps=cvGen(EXAMPLES[idx]); cvBuildCode(CV_LINES); cvRender(cvSteps[0]);
+}
+
+/* ══════════════════════════════
+   DRY RUN
+══════════════════════════════ */
+let drSteps=[],drCur=0,drTimer=null;
+
+function drGen(nums){
+  const out=[]; const n=nums.length;
+  let result=[];
+
+  const snap=(curI,curL,curR,curSum,what,why,phase)=>
+    out.push({nums,n,i:curI,L:curL,R:curR,sum:curSum,
+      result:result.map(r=>r.slice()),what,why,phase});
+
+  snap(-1,-1,-1,null,
+    `Sorted input: [${nums.join(', ')}]`,
+    'Fix one element at a time with index i. Two pointers L,R squeeze inward for each i.',
+    'init');
+
+  for(let i=0;i<n-2;i++){
+    if(i>0&&nums[i]===nums[i-1]){
+      snap(i,-1,-1,null,
+        `i=${i}: nums[${i}]=${nums[i]} == nums[${i-1}] — duplicate outer, skip.`,
+        'Skipping avoids recording the same triplet twice for identical fixed values.',
+        'skip');
+      continue;
+    }
+    let L=i+1,R=n-1;
+    snap(i,L,R,null,
+      `i=${i}: fix nums[${i}]=${nums[i]}. Need L+R = ${-nums[i]}.`,
+      `Two pointers: L starts at ${L}, R at ${R}. Squeeze inward.`,
+      'squeeze');
+
+    while(L<R){
+      const sum=nums[i]+nums[L]+nums[R];
+      const phase=sum===0?'match':'squeeze';
+      const why=sum<0?`sum(${sum}) < 0: left side too small. L++ to increase.`:
+        sum>0?`sum(${sum}) > 0: right side too large. R-- to decrease.`:
+        `sum == 0: triplet found! Skip duplicates then squeeze.`;
+      snap(i,L,R,sum,
+        `i=${i} L=${L} R=${R}: ${nums[i]}+${nums[L]}+${nums[R]} = ${sum}`,
+        why, phase);
+
+      if(sum===0){
+        result.push([nums[i],nums[L],nums[R]]);
+        while(L<R&&nums[L]===nums[L+1]) L++;
+        while(L<R&&nums[R]===nums[R-1]) R--;
+        L++;R--;
+      } else if(sum<0){ L++; } else { R--; }
+    }
+  }
+  snap(-1,-1,-1,null,
+    `Done. ${result.length} triplet(s): ${result.map(t=>'['+t.join(',')+']').join('  ')}`,
+    'Every (i, L, R) combination processed without repeating duplicates.',
+    'done');
+  return out;
+}
+
+function drRenderStrip(st){
+  const con=document.getElementById('dr-strip'); con.innerHTML='';
+  st.nums.forEach((v,idx)=>{
+    const w=document.createElement('div'); w.className='ns-wrap';
+    const idxEl=document.createElement('div'); idxEl.className='ns-idx'; idxEl.textContent=idx;
+    const cell=document.createElement('div'); cell.className='ns-cell'; cell.textContent=v;
+    if(idx===st.i) cell.classList.add('fix');
+    if(idx===st.L&&st.L>=0) cell.classList.add('pL');
+    if(idx===st.R&&st.R>=0&&idx!==st.L) cell.classList.add('pR');
+    if(st.phase==='match'&&(idx===st.i||idx===st.L||idx===st.R)) cell.classList.add('done');
+    const lbl=document.createElement('div'); lbl.className='ns-lbl';
+    if(idx===st.i&&idx===st.L){lbl.classList.add('f');lbl.textContent='i=L';}
+    else if(idx===st.i){lbl.classList.add('f');lbl.textContent='i';}
+    else if(idx===st.L&&st.L>=0){lbl.classList.add('L');lbl.textContent='L';}
+    else if(idx===st.R&&st.R>=0){lbl.classList.add('R');lbl.textContent='R';}
+    w.appendChild(idxEl); w.appendChild(cell); w.appendChild(lbl); con.appendChild(w);
+  });
+}
+
+function drRender(st){
+  drRenderStrip(st);
+  document.getElementById('f-i').textContent=st.i>=0?st.i:'—';
+  document.getElementById('f-fix').textContent=st.i>=0?st.nums[st.i]:'—';
+  document.getElementById('f-L').textContent=st.L>=0?st.L:'—';
+  document.getElementById('f-R').textContent=st.R>=0?st.R:'—';
+  document.getElementById('f-sum').textContent=st.sum!=null?st.sum:'—';
+
+  const fp=document.getElementById('dr-formula');
+  let feqStr;
+  if(st.phase==='done') feqStr=`<span class="eq-hl">Result: ${st.result.map(t=>'['+t.join(',')+']').join(' ')}</span>`;
+  else if(st.phase==='match') feqStr=`<span class="eq-hl">sum = 0 → [${st.nums[st.i]},${st.nums[st.L]},${st.nums[st.R]}] ✓</span>`;
+  else if(st.sum!=null) feqStr=`${st.nums[st.i]} + ${st.L>=0?st.nums[st.L]:'?'} + ${st.R>=0?st.nums[st.R]:'?'} = ${st.sum}${st.sum<0?' → L++':st.sum>0?' → R--':''}`;
+  else feqStr=st.phase==='skip'?'duplicate outer → skip':st.i>=0?`fix=${st.nums[st.i]}  target L+R = ${-st.nums[st.i]}`:'Select an example.';
+  document.getElementById('dr-feq').innerHTML=feqStr;
+  fp.className='formula-panel'+(st.phase==='match'?' is-match':st.phase==='squeeze'?' is-squeeze':'');
+
+  const sp=document.getElementById('dr-step');
+  sp.className='step-panel'+(st.phase==='match'?' match':st.phase==='squeeze'?' squeeze':'');
+  document.getElementById('dr-what').textContent=st.what;
+  document.getElementById('dr-why').textContent=st.why;
+
+  const rl=document.getElementById('dr-result');
+  if(st.phase==='done'||st.result.length>0){
+    rl.textContent=st.result.length?st.result.map(t=>'['+t.join(',')+']').join('  '):'[]';
+    rl.style.color=st.result.length?'var(--text-success)':'var(--text3)';
+  } else {rl.textContent='…';rl.style.color='var(--text3)';}
+
+  document.getElementById('dr-sctr').textContent=`Step ${drCur+1} / ${drSteps.length}`;
+  document.getElementById('dr-bp').disabled=drCur===0;
+  document.getElementById('dr-bn').disabled=drCur===drSteps.length-1;
+}
+
+function drNext(){if(drCur<drSteps.length-1){drCur++;drRender(drSteps[drCur]);}else drStopPlay();}
+function drPrev(){if(drCur>0){drCur--;drRender(drSteps[drCur]);}}
+function drReset(){drStopPlay();drCur=0;drRender(drSteps[0]);}
+function drLoadEx(idx){
+  drStopPlay();drCur=0;
+  [0,1,2].forEach(i=>document.getElementById('dr-ex'+i).classList.toggle('active',i===idx));
+  drSteps=drGen(EXAMPLES[idx]); drRender(drSteps[0]);
+}
+
+/* ══════════════════════════════
+   INIT
+══════════════════════════════ */
+bfLoadEx(0);
+cvLoadEx(0);
+drLoadEx(0);
+</script>
+</body>
+</html>

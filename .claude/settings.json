@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk '/SECTION 7/,/SECTION 8/' lessons/repeated-substring-pattern/lesson.html)",
+      "Bash(awk '/SECTION 2/,/SECTION 3/' lessons/two-sum/lesson.html)",
+      "Bash(awk '/SECTION 2/,/SECTION 3/' lessons/first-missing-positive/lesson.html)",
+      "Bash(awk '/SECTION 2/,/SECTION 3/' lessons/valid-palindrome/lesson.html)",
+      "Bash(node -e ' *)",
+      "Bash(awk '/SECTION 2/,/SECTION 3/' lessons/spiral-matrix/lesson.html)",
+      "Bash(google-chrome --headless=new --no-sandbox --disable-gpu --hide-scrollbars --window-size=1400,9000 --virtual-time-budget=6000 --screenshot=/tmp/cv-shots/fmp-after.png http://localhost:8000/lessons/first-missing-positive/lesson.html)",
+      "Bash(identify /tmp/cv-shots/fmp-after.png)"
+    ]
+  }
+}

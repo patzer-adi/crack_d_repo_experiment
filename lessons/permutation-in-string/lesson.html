@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Permutation in String — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+/* ASSUMPTIONS */
+.assumptions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:.75rem 0;}
+.acard-unlock{font-family:var(--mono);font-size:11px;color:var(--text-success);background:var(--bg-success);border:0.5px solid var(--border-success);border-radius:4px;padding:2px 6px;display:inline-block;}
+
+/* KERNEL VISUAL */
+.kernel-cols{display:grid;grid-template-columns:1fr auto 1fr 1fr;gap:0;align-items:start;margin:1.25rem 0;}
+.kcol{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.kcol-label{font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:4px;}
+.kcol-chars{display:flex;gap:4px;}
+.kchar{width:34px;height:34px;border-radius:6px;border:0.5px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:15px;font-weight:600;color:var(--text);}
+.kchar.match{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);}
+.kchar.nomatch{background:var(--bg-danger);border-color:var(--border-danger);color:var(--text-danger);}
+.kbadges{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;}
+.kbadge{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500;}
+.kbadge.ok{background:var(--bg-success);border:0.5px solid var(--border-success);color:var(--text-success);}
+.kbadge.bad{background:var(--bg-danger);border:0.5px solid var(--border-danger);color:var(--text-danger);}
+.keq{font-size:20px;color:var(--text3);display:flex;align-items:center;padding-top:32px;}
+
+/* EQUIVALENCE CHAIN — PiS-specific pill variants */
+.chain-ex-pill{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:4px;}
+.chain-ex-pill.ok{background:var(--bg-success);border:0.5px solid var(--border-success);color:var(--text-success);}
+.chain-ex-pill.bad{background:var(--bg-danger);border:0.5px solid var(--border-danger);color:var(--text-danger);}
+.chain-ex-pill.neutral{background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);}
+.chain-ex-arrow{font-size:11px;color:var(--text3);}
+
+/* INT[26] GRID */
+.az-grid{display:flex;gap:2px;flex-wrap:wrap;margin:.5rem 0;}
+.az-cell{width:24px;height:32px;border-radius:4px;border:0.5px solid var(--border);background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;color:var(--text3);position:relative;}
+.az-cell.lit{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info);font-weight:600;}
+.az-val{font-size:10px;font-family:var(--mono);color:var(--text-info);font-weight:700;}
+.az-letter{font-size:9px;color:var(--text3);font-family:var(--mono);}
+.az-cell.lit .az-letter{color:var(--text-info);}
+
+/* DIFF SCANNER */
+.diff-scanner{background:var(--bg2);border-radius:var(--r2);padding:1rem 1.125rem;border:0.5px solid var(--border2);margin:.75rem 0;}
+.ds-ex-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:.875rem;}
+.ds-ex-panel{border:0.5px solid var(--border2);border-radius:var(--r);padding:.75rem;background:var(--bg);}
+.ds-ex-label{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.625rem;}
+.ds-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.ds-label{font-family:var(--mono);font-size:11px;color:var(--text3);width:64px;flex-shrink:0;}
+.ds-cells{display:flex;gap:3px;}
+.ds-cell{width:26px;height:26px;border-radius:4px;border:0.5px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text);transition:all .2s;}
+.ds-cell.scanning{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info);transform:scale(1.1);}
+.ds-cell.same{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);}
+.ds-cell.diff{background:var(--bg-danger);border-color:var(--border-danger);color:var(--text-danger);}
+.ds-diff-display{display:flex;align-items:baseline;gap:.5rem;margin-top:.625rem;}
+.ds-diff-num{font-family:var(--mono);font-size:28px;font-weight:600;color:var(--text);transition:color .3s;}
+.ds-diff-num.zero{color:var(--text-success);}
+.ds-diff-num.nonzero{color:var(--text-danger);}
+.ds-diff-label{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:var(--text3);}
+
+/* BRUTE FORCE */
+.bf-strip{display:flex;gap:3px;flex-wrap:wrap;margin:.875rem 0 .5rem;}
+.bf-cell{width:28px;height:32px;border-radius:4px;border:0.5px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text);transition:all .2s;}
+.bf-cell.bf-win{background:var(--bg-warn);border-color:var(--border-warn);color:var(--text-warn);}
+.bf-cell.bf-match{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);}
+.bf-verdict{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;padding:4px 10px;border-radius:6px;display:inline-block;margin-top:.5rem;}
+.bf-verdict.ok{background:var(--bg-success);color:var(--text-success);}
+.bf-verdict.no{background:var(--bg-danger);color:var(--text-danger);}
+
+/* CV variable cards — 4-column override + freq array */
+.cv-var-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
+.cv-var-card{background:var(--bg2);border-radius:6px;padding:5px 6px;border:0.5px solid var(--border2);text-align:center;transition:background .2s,border-color .2s;}
+.cv-var-card.hl{background:var(--bg-info);border-color:var(--border-info);}
+.cv-var-card.hl-match{background:var(--bg-success);border-color:var(--border-success);}
+.cv-var-card.dim{opacity:.35;}
+.cv-var-name{font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:1px;}
+.cv-var-val{font-size:14px;font-weight:600;font-family:var(--mono);color:var(--text);}
+.cv-freq-title{font-size:10px;font-weight:600;color:var(--text3);font-family:var(--mono);margin-bottom:5px;}
+.cv-freq-array{display:flex;gap:2px;flex-wrap:wrap;}
+.cv-freq-slot{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.cv-freq-slot-val{width:20px;height:20px;border-radius:3px;border:0.5px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;font-weight:600;color:var(--text);transition:all .2s;}
+.cv-freq-slot-val.pos{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info);}
+.cv-freq-slot-val.neg{background:var(--bg-danger);border-color:var(--border-danger);color:var(--text-danger);}
+.cv-freq-slot-val.zero{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);}
+.cv-freq-slot-val.active{outline:2px solid var(--text-warn);}
+.cv-freq-slot-ltr{font-size:8px;color:var(--text3);font-family:var(--mono);}
+
+/* STRING VIZ */
+#str-con{display:flex;gap:4px;flex-wrap:wrap;margin:.875rem 0;}
+.ch-wrap{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+.ch-idx{font-size:10px;color:var(--text3);margin-bottom:2px;height:14px;font-family:var(--mono);text-align:center;width:30px;}
+.ch-cell{width:30px;height:34px;border-radius:5px;border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);background:var(--bg);transition:all .2s;}
+.ch-cell.cwin{background:#e0f2fe;border-color:#7dd3fc;color:#0369a1;}
+.ch-cell.cmatch{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);outline:2px solid var(--border-success);}
+.ch-lbl{font-family:var(--mono);font-size:10px;font-weight:500;margin-top:2px;height:13px;color:transparent;}
+.ch-lbl.L{color:var(--text-info);}.ch-lbl.R{color:var(--text-warn);}
+
+/* PANELS FIXED — 180px override */
+.panels-fixed{display:grid;grid-template-rows:180px 110px;gap:.875rem;margin:.875rem 0;}
+.formula-panel.is-slide{background:var(--bg-info);border-color:var(--border-info);}
+.step-panel.slide{background:var(--bg-info);border-color:var(--border-info);}
+
+/* COMPLEXITY — minor overrides */
+.cplx-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.ccard{background:var(--bg2);border-radius:var(--r2);padding:.875rem 1rem;}
+.ccard-v{font-size:22px;font-weight:600;font-family:var(--mono);color:var(--text);margin-bottom:4px;}
+
+@media(max-width:680px){
+  .kernel-cols,.cv-split,.cplx-grid,.assumptions-grid,.ds-ex-row{grid-template-columns:1fr;}
+  .keq{display:none;}
+  .formula-grid{grid-template-columns:repeat(3,1fr);}
+  .cv-var-grid{grid-template-columns:repeat(3,1fr);}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Permutation in String</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/permutation-in-string/" target="_blank">LC #567</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-sw">Sliding Window</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">In an interview, ask these before touching any code. Each answer unlocks a specific design decision.</p>
+  <div class="assumptions-grid">
+    <div class="acard">
+      <p class="acard-q">Are both strings lowercase only?</p>
+      <p class="acard-a">Yes — constraints guarantee lowercase English letters.</p>
+      <span class="acard-unlock">→ int[26] is enough, no hash map needed</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can s1 be longer than s2?</p>
+      <p class="acard-a">Yes. If |s1| > |s2|, no window of size |s1| fits in s2.</p>
+      <span class="acard-unlock">→ early return if k &gt; n</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can s1 have duplicate characters?</p>
+      <p class="acard-a">Yes — e.g. s1="aab" requires exactly 2 a's and 1 b in the window.</p>
+      <span class="acard-unlock">→ need counts, not just presence</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">What do we return?</p>
+      <p class="acard-a">bool — true if any permutation of s1 appears as a substring of s2.</p>
+      <span class="acard-unlock">→ stop at first match, no need to find all</span>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Both strings are non-empty lowercase English strings. Characters not in s1 may appear in s2 — they must not cause a false match. We return as soon as the first permutation is found.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">A permutation = same characters, different order</p>
+  <p class="body">"ba" is a permutation of "ab" because it uses the exact same characters — just rearranged. To check whether two strings are permutations, you don't sort them. You compare <em>character counts</em>. Slide a fixed-size window of length |s1| across s2; at each step, check whether the window's letter frequencies match s1's.</p>
+
+  <!-- §1 animation — sliding window walk: s1="ab", s2="eidbaooo".
+       Layers (PLAN-017 convention): current window (info-blue), match found (success-green),
+       slide step (warn-orange →). Stop once diff = 0. -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);border:0.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>current window</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-success);border:0.5px solid var(--border-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>match found (diff = 0)</span>
+      <span><span style="color:var(--text-warn);font-weight:700;font-size:14px;vertical-align:middle">→</span> slide window by 1</span>
+    </div>
+
+    <!-- Row 1: s2 with window highlighted -->
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.25rem">s1 = "ab" · target freq: <span style="color:var(--text2)">a:1, b:1</span></div>
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:.75rem;padding:.5rem;background:var(--bg);border-radius:var(--r);min-height:50px" id="si-strip"></div>
+
+    <!-- Row 2: window freq vs target freq + diff -->
+    <div style="background:var(--bg);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:13px;line-height:1.9;color:var(--text2);min-height:60px">
+      <div id="si-calc">
+        <div>window "<span id="si-win" style="color:var(--text-info);font-weight:600">—</span>" freq: <span id="si-freq" style="font-weight:600">—</span></div>
+        <div>diff slots (where window freq ≠ s1 freq) = <span id="si-diff" style="color:var(--text);font-weight:700">—</span> <span id="si-decision-badge" class="decision-badge">—</span></div>
+      </div>
+    </div>
+
+    <!-- Row 3: status line -->
+    <div style="display:flex;gap:.5rem;align-items:center;padding:.625rem .875rem;background:var(--bg);border-radius:var(--r);font-family:var(--mono);font-size:13px;margin:.5rem 0;min-height:36px">
+      <span style="color:var(--text3)">status:</span>
+      <span id="si-status" style="font-weight:600">—</span>
+    </div>
+
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <div class="kernel-cols">
+    <div class="kcol">
+      <p class="kcol-label">s1 = "ab"</p>
+      <div class="kcol-chars"><div class="kchar">a</div><div class="kchar">b</div></div>
+      <div class="kbadges" style="margin-top:6px"><span class="kbadge ok">a:1</span><span class="kbadge ok">b:1</span></div>
+    </div>
+    <div class="keq">≡</div>
+    <div class="kcol">
+      <p class="kcol-label">"ba" — a permutation ✓</p>
+      <div class="kcol-chars"><div class="kchar match">b</div><div class="kchar match">a</div></div>
+      <div class="kbadges" style="margin-top:6px"><span class="kbadge ok">a:1 ✓</span><span class="kbadge ok">b:1 ✓</span></div>
+    </div>
+    <div class="kcol">
+      <p class="kcol-label">"cd" — not a permutation ✗</p>
+      <div class="kcol-chars"><div class="kchar nomatch">c</div><div class="kchar nomatch">d</div></div>
+      <div class="kbadges" style="margin-top:6px"><span class="kbadge bad">a:0 ≠ 1</span><span class="kbadge bad">b:0 ≠ 1</span></div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">Two strings are permutations iff their character frequency maps are identical.</p>
+    <p class="infobox-d">No sorting needed — just count the characters and compare.</p>
+  </div>
+
+  <p class="body" style="margin-top:1rem">This equivalence drives the entire algorithm. Each line below is one translation that makes it cheaper to compute:</p>
+
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">permutation of s1 exists somewhere in s2</div>
+        <div class="chain-note">the problem statement</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">some window of size k=|s1| in s2 has the same character counts as s1</div>
+        <div class="chain-note">definition of permutation — order doesn't matter, only counts do</div>
+        <div class="chain-example">
+          <span class="chain-ex-pill neutral">s1="ab", window="ba"</span>
+          <span class="chain-ex-arrow">→</span>
+          <span class="chain-ex-pill ok">same counts ✓</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">freq_s1[c] == freq_win[c] &nbsp;for every character c</div>
+        <div class="chain-note">write "same counts" as an array equality — one slot per letter</div>
+        <div class="chain-example">
+          <span class="chain-ex-pill neutral">freq_s1: a=1 b=1 rest=0</span>
+          <span class="chain-ex-arrow">vs</span>
+          <span class="chain-ex-pill neutral">freq_win("ba"): a=1 b=1 rest=0</span>
+          <span class="chain-ex-arrow">→</span>
+          <span class="chain-ex-pill ok">all 26 slots match ✓</span>
+        </div>
+        <div class="chain-example" style="margin-top:4px">
+          <span class="chain-ex-pill neutral">freq_win("cd"): c=1 d=1 rest=0</span>
+          <span class="chain-ex-arrow">→</span>
+          <span class="chain-ex-pill bad">a-slot: 0 ≠ 1, b-slot: 0 ≠ 1 ✗</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">diff == 0</span> &nbsp;where diff = number of slots where freq_s1[i] ≠ freq_win[i]</div>
+        <div class="chain-note">instead of comparing all 26 slots each time, just count the mismatches</div>
+        <div class="chain-example">
+          <span class="chain-ex-pill neutral">window="ba"</span>
+          <span class="chain-ex-arrow">→</span>
+          <span class="chain-ex-pill ok">0 mismatched slots → diff=0 ✓</span>
+        </div>
+        <div class="chain-example" style="margin-top:4px">
+          <span class="chain-ex-pill neutral">window="cd"</span>
+          <span class="chain-ex-arrow">→</span>
+          <span class="chain-ex-pill bad">4 mismatched slots (a,b,c,d) → diff=4 ✗</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // §1 animation — sliding window: s1="ab", s2="eidbaooo" (returns true, match at index 3)
+  const SI_S1 = "ab";
+  const SI_S2 = "eidbaooo";
+  let siSteps = siGenSteps(SI_S1, SI_S2);
+  let siCur = 0;
+  let siTimer = null;
+
+  function siGenSteps(s1, s2) {
+    const steps = [];
+    const k = s1.length;
+    const targetFreq = {};
+    for (const c of s1) targetFreq[c] = (targetFreq[c] || 0) + 1;
+    let matchedAt = -1;
+    for (let i = 0; i + k <= s2.length; i++) {
+      const win = s2.slice(i, i + k);
+      const winFreq = {};
+      for (const c of win) winFreq[c] = (winFreq[c] || 0) + 1;
+      const allKeys = new Set([...Object.keys(targetFreq), ...Object.keys(winFreq)]);
+      let diff = 0;
+      for (const c of allKeys) if ((targetFreq[c] || 0) !== (winFreq[c] || 0)) diff++;
+      const newMatch = diff === 0 && matchedAt < 0;
+      if (newMatch) matchedAt = i;
+      steps.push({
+        start: i, end: i + k - 1, win, winFreq, diff, newMatch, matchedAt,
+        caption: diff === 0
+          ? `Window "${win}" at index ${i}: freq matches s1 — permutation found ★`
+          : `Window "${win}" at index ${i}: ${diff} slot${diff === 1 ? '' : 's'} differ from s1's freq. ${i + k < s2.length ? 'Slide right.' : 'No more windows.'}`,
+      });
+      if (newMatch) break;
+    }
+    steps.push({terminal: true, matchedAt,
+      caption: matchedAt >= 0
+        ? `Permutation of s1 found in s2 starting at index ${matchedAt}.`
+        : `Swept all ${s2.length - k + 1} windows; no permutation of s1 exists in s2.`});
+    return steps;
+  }
+
+  function siRender() {
+    const s = siSteps[siCur];
+    const strip = document.getElementById('si-strip');
+    strip.innerHTML = '';
+    for (let j = 0; j < SI_S2.length; j++) {
+      const inWin = !s.terminal && j >= s.start && j <= s.end;
+      const isMatchWin = s.matchedAt >= 0 && j >= s.matchedAt && j < s.matchedAt + SI_S1.length;
+      let bg, border, color;
+      if (inWin && s.diff === 0) { bg = 'var(--bg-success)'; border = 'var(--border-success)'; color = 'var(--text-success)'; }
+      else if (inWin) { bg = 'var(--bg-info)'; border = 'var(--border-info)'; color = 'var(--text-info)'; }
+      else if (isMatchWin && s.terminal) { bg = 'var(--bg-success)'; border = 'var(--border-success)'; color = 'var(--text-success)'; }
+      else { bg = 'var(--bg2)'; border = 'var(--border)'; color = 'var(--text2)'; }
+      strip.innerHTML += `<div style="width:32px;height:36px;border-radius:5px;border:0.5px solid ${border};background:${bg};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:15px;font-weight:600;color:${color}">${SI_S2[j]}</div>`;
+    }
+    if (s.terminal) {
+      document.getElementById('si-calc').innerHTML = s.matchedAt >= 0
+        ? `<div style="color:var(--text-success)">★ Match at index ${s.matchedAt}: window "${SI_S2.slice(s.matchedAt, s.matchedAt + SI_S1.length)}" is a permutation of "${SI_S1}".</div>`
+        : `<div style="color:var(--text-warn)">No window matched. Return false.</div>`;
+    } else {
+      document.getElementById('si-win').textContent = s.win;
+      const freqStr = Object.entries(s.winFreq).map(([c, n]) => `${c}:${n}`).join(', ');
+      document.getElementById('si-freq').textContent = freqStr;
+      document.getElementById('si-diff').textContent = s.diff;
+      const badge = document.getElementById('si-decision-badge');
+      if (s.newMatch) { badge.textContent = '★ permutation found'; badge.style.color = 'var(--text-success)'; }
+      else { badge.textContent = '→ slide window'; badge.style.color = 'var(--text-warn)'; }
+    }
+    document.getElementById('si-status').textContent = s.terminal
+      ? (s.matchedAt >= 0 ? `Done — match at index ${s.matchedAt}` : 'Done — no match')
+      : (s.diff === 0 ? `★ window matches s1` : `${s.diff} slot${s.diff === 1 ? '' : 's'} differ — keep sliding`);
+    document.getElementById('si-status').style.color = (s.diff === 0 || s.matchedAt >= 0) ? 'var(--text-success)' : 'var(--text2)';
+    document.getElementById('si-caption').textContent = s.caption;
+    document.getElementById('si-sctr').textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext() { siStopPlay(); siCur = Math.min(siCur + 1, siSteps.length - 1); siRender(); }
+  function siPrev() { siStopPlay(); siCur = Math.max(siCur - 1, 0); siRender(); }
+  function siReset() { siStopPlay(); siCur = 0; siRender(); }
+  function siStopPlay() { if (siTimer) { clearInterval(siTimer); siTimer = null; document.getElementById('si-bplay').textContent = '▶ Auto'; } }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur >= siSteps.length - 1) { siStopPlay(); return; }
+      siCur++; siRender();
+    }, 1400);
+  }
+  siRender();
+</script>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force: check every window</p>
+  <p class="body">For every starting position in s2, extract the window of size k and compare its character counts to s1's. If they match, return true.</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">s1="ab", s2="eidbaooo" → true</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">s1="ab", s2="eidboaoo" → false</button>
+  </div>
+  <div class="bf-strip" id="bf-strip"></div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">comparisons so far: <span id="bf-ops" style="font-weight:600;color:var(--text-danger)">0</span></div>
+  <div id="bf-verdict" style="display:none"></div>
+  <div style="margin-top:.75rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n · k) time</p>
+    <p class="infobox-d">For each of the n−k+1 starting positions, we scan k characters to build the window's frequency count. With large inputs this is too slow.</p>
+  </div>
+
+  <button class="reveal-btn" onclick="toggleEl('bf-code',this)">▶ Show brute force code</button>
+  <div class="code-block" id="bf-code">
+<pre class="cb"><span class="kw">bool</span> <span class="fn">checkInclusion_BF</span>(<span class="tp">string</span> s1, <span class="tp">string</span> s2) {
+    <span class="kw">int</span> k = s1.size(), n = s2.size();
+    <span class="kw">if</span> (k > n) { <span class="kw">return false</span>; }
+
+    <span class="kw">int</span> freq1[<span class="nu">26</span>] = {};
+    <span class="kw">for</span> (<span class="kw">char</span> c : s1) { freq1[c - <span class="nu">'a'</span>]++; } <span class="cm">// 'a'-'a'=0, 'b'-'a'=1 ... 'z'-'a'=25</span>
+
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i <= n - k; i++) {
+        <span class="kw">int</span> freq2[<span class="nu">26</span>] = {};
+        <span class="kw">for</span> (<span class="kw">int</span> j = i; j < i + k; j++) {
+            freq2[s2[j] - <span class="nu">'a'</span>]++;          <span class="cm">// rebuild window freq from scratch</span>
+        }
+        <span class="kw">if</span> (memcmp(freq1, freq2, <span class="kw">sizeof</span>(freq1)) == <span class="nu">0</span>) { <span class="kw">return true</span>; }
+    }
+    <span class="kw">return false</span>;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Four translations from idea to O(n)</p>
+  <p class="body">The brute force recomputes the window's frequency map from scratch at every position. Four independent optimizations eliminate that work. Understand all four before reading the final code.</p>
+
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 1 — Permutation → frequency map equality</p>
+        <p class="wt-desc">Two strings are permutations iff their character counts match exactly. No sorting needed. Already shown above.</p>
+        <p class="wt-gain">→ enables comparison without O(k log k) sort</p>
+      </div>
+    </div>
+
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 2 — Frequency map → int[26]</p>
+        <p class="wt-desc">Lowercase letters only. Use a fixed array of 26 integers. Index a character with <code>c - 'a'</code>: 'a' has ASCII value 97, so 'a'−'a'=0, 'b'−'a'=1, … 'z'−'a'=25. No hash map, no heap allocation.</p>
+        <div style="margin:.5rem 0">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:5px">'a'=97→0 &nbsp; 'b'=98→1 &nbsp; 'c'=99→2 &nbsp; … &nbsp; 'z'=122→25 &nbsp; (for s1="ab")</div>
+          <div class="az-grid" id="az-grid"></div>
+        </div>
+        <p class="wt-gain">→ O(1) lookup and update, no hash map overhead</p>
+      </div>
+    </div>
+
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 3 — Full array comparison → diff counter</p>
+        <p class="wt-desc">Instead of comparing all 26 slots after every slide (O(26) each time), maintain a single integer: <strong>diff = number of slots where the two frequency arrays disagree</strong>. When a character enters or leaves the window, at most one slot changes — update diff by ±1. When diff == 0, it's a permutation.</p>
+        <p class="wt-desc" style="margin-top:.5rem">Two examples below — one match (diff reaches 0), one mismatch (diff stays > 0):</p>
+
+        <!-- Two-column diff scanner -->
+        <div class="ds-ex-row" id="ds-container">
+          <!-- Example A: match -->
+          <div class="ds-ex-panel">
+            <p class="ds-ex-label">Example A — window matches s1</p>
+            <div class="ds-row"><span class="ds-label">s1 = "ab"</span></div>
+            <div class="ds-row"><span class="ds-label">window:</span><span style="font-family:var(--mono);font-size:13px;font-weight:600">"ba"</span></div>
+            <div style="height:8px"></div>
+            <div class="ds-row"><span class="ds-label">freq_s1</span><div class="ds-cells" id="dsA-f1"></div></div>
+            <div class="ds-row"><span class="ds-label">freq_win</span><div class="ds-cells" id="dsA-f2"></div></div>
+            <div class="ds-row"><span class="ds-label">letter</span><div class="ds-cells" id="dsA-ltr"></div></div>
+            <div class="ds-diff-display">
+              <span class="ds-diff-num" id="dsA-diff">—</span>
+              <span class="ds-diff-label">mismatched slots = diff</span>
+            </div>
+            <div style="margin-top:6px;display:flex;gap:6px">
+              <button class="ctrl-btn" onclick="dsScan('A')" id="dsA-btn">▶ Scan</button>
+              <button class="ctrl-btn" onclick="dsReset('A')">↺</button>
+            </div>
+          </div>
+          <!-- Example B: mismatch -->
+          <div class="ds-ex-panel">
+            <p class="ds-ex-label">Example B — window does not match</p>
+            <div class="ds-row"><span class="ds-label">s1 = "ab"</span></div>
+            <div class="ds-row"><span class="ds-label">window:</span><span style="font-family:var(--mono);font-size:13px;font-weight:600">"ei"</span></div>
+            <div style="height:8px"></div>
+            <div class="ds-row"><span class="ds-label">freq_s1</span><div class="ds-cells" id="dsB-f1"></div></div>
+            <div class="ds-row"><span class="ds-label">freq_win</span><div class="ds-cells" id="dsB-f2"></div></div>
+            <div class="ds-row"><span class="ds-label">letter</span><div class="ds-cells" id="dsB-ltr"></div></div>
+            <div class="ds-diff-display">
+              <span class="ds-diff-num" id="dsB-diff">—</span>
+              <span class="ds-diff-label">mismatched slots = diff</span>
+            </div>
+            <div style="margin-top:6px;display:flex;gap:6px">
+              <button class="ctrl-btn" onclick="dsScan('B')" id="dsB-btn">▶ Scan</button>
+              <button class="ctrl-btn" onclick="dsReset('B')">↺</button>
+            </div>
+          </div>
+        </div>
+        <p class="wt-gain" style="margin-top:.5rem">→ O(26) comparison per step → O(1) per step</p>
+      </div>
+    </div>
+
+    <div class="wt-item">
+      <div class="wt-num">4</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 4 — Slide → two cell updates per step</p>
+        <p class="wt-desc">Adjacent windows differ by exactly two characters: one enters on the right, one leaves on the left. Instead of rebuilding the frequency array, update only those two cells. diff changes by at most ±2 per slide.</p>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:12px;line-height:2;color:var(--text2);">
+          <div>s2 = "e<span style="background:var(--bg-warn);border-radius:3px;padding:0 3px">id</span>b…"  →  "ei<span style="background:var(--bg-success);border-radius:3px;padding:0 3px">db</span>…"</div>
+          <div><span style="color:var(--text-danger)">out: 'e' leaves</span>  freq['e'-'a']++  <span style="color:var(--text3)">// one update</span></div>
+          <div><span style="color:var(--text-success)">in:  'b' enters</span>  freq['b'-'a']--  <span style="color:var(--text3)">// one update</span></div>
+        </div>
+        <p class="wt-gain">→ O(k) rebuild per step → O(1) per step → O(n) total</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <p class="body">This is exactly what you say out loud in an interview before writing any code.</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t">Build <b>freq[26]</b> from s1 (s1 increments each slot). Count <b>diff</b> = number of non-zero slots.</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t">Prime the first window of size k over s2: for each char <code>c</code>, <code>freq[c-'a']--</code>. A slot that hits 0 means the two strings agree on that character — diff decrements.</span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t">If <b>diff == 0</b> after priming, return <b>true</b> — the first window is already a permutation.</span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t">Slide one step at a time. Add incoming char (<code>freq[in]--</code>, update diff). Remove outgoing char (<code>freq[out]++</code>, update diff). If <b>diff == 0</b>, return <b>true</b>.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t">If no window matched after all positions, return <b>false</b>.</span></div>
+  </div>
+  <div class="infobox info" style="margin-top:.875rem">
+    <p class="infobox-t">Why one array encodes both strings</p>
+    <p class="infobox-d">s1 increments (+), s2 decrements (−). A slot at zero means the two strings agree on that character's count. diff tracks how many slots are non-zero — the number of disagreements. Window is valid when diff == 0.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Canonical C++ solution</p>
+  <p class="body">Try writing this from the five steps above. Reveal only when ready to compare.</p>
+  <button class="reveal-btn" id="reveal-btn" onclick="toggleEl('code-block', document.getElementById('reveal-btn'))">▶ Reveal Code</button>
+  <div class="code-block" id="code-block">
+<pre class="cb"><span class="kw">bool</span> <span class="fn">checkInclusion</span>(<span class="tp">string</span> s1, <span class="tp">string</span> s2) {
+    <span class="kw">int</span> k = s1.size(), n = s2.size();
+    <span class="kw">if</span> (k > n) { <span class="kw">return false</span>; }
+
+    <span class="kw">int</span> freq[<span class="nu">26</span>] = {};
+    <span class="kw">for</span> (<span class="kw">char</span> c : s1) { freq[c - <span class="nu">'a'</span>]++; }  <span class="cm">// s1 increments</span>
+
+    <span class="kw">int</span> diff = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i < <span class="nu">26</span>; i++) {
+        <span class="kw">if</span> (freq[i] != <span class="nu">0</span>) { diff++; }
+    }
+
+    <span class="cm">// Prime: consume first window</span>
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i < k; i++) {
+        <span class="kw">int</span> c = s2[i] - <span class="nu">'a'</span>;
+        <span class="kw">if</span>      (freq[c] == <span class="nu">1</span>) { diff--; }  <span class="cm">// slot 1→0: mismatch resolved</span>
+        <span class="kw">else if</span> (freq[c] == <span class="nu">0</span>) { diff++; }  <span class="cm">// slot 0→-1: new mismatch</span>
+        freq[c]--;
+    }
+    <span class="kw">if</span> (diff == <span class="nu">0</span>) { <span class="kw">return true</span>; }
+
+    <span class="cm">// Slide</span>
+    <span class="kw">for</span> (<span class="kw">int</span> R = k; R < n; R++) {
+        <span class="kw">int</span> in  = s2[R]     - <span class="nu">'a'</span>;
+        <span class="kw">int</span> out = s2[R - k] - <span class="nu">'a'</span>;
+
+        <span class="kw">if</span>      (freq[in] == <span class="nu">1</span>)  { diff--; }
+        <span class="kw">else if</span> (freq[in] == <span class="nu">0</span>)  { diff++; }
+        freq[in]--;
+
+        <span class="kw">if</span>      (freq[out] == <span class="nu">-1</span>) { diff--; }
+        <span class="kw">else if</span> (freq[out] == <span class="nu">0</span>)  { diff++; }
+        freq[out]++;
+
+        <span class="kw">if</span> (diff == <span class="nu">0</span>) { <span class="kw">return true</span>; }
+    }
+    <span class="kw">return false</span>;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — watch every variable</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">Ex 1: s1="ab" s2="eidbaooo"</button>
+    <button class="ex-btn" id="cv-ex1" onclick="cvLoadEx(1)">Ex 2: s1="abcd" s2="xyzabcd"</button>
+    <button class="ex-btn" id="cv-ex2" onclick="cvLoadEx(2)">Ex 3: s1="ab" s2="eidboaoo"</button>
+  </div>
+
+  <div class="cv-split">
+    <div class="cv-code-panel" id="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px">s2 (search string)</p>
+        <div id="cv-s2-strip" style="display:flex;gap:2px;flex-wrap:wrap;"></div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin:5px 0 2px">s1 = <span id="cv-s1-lbl" style="color:var(--text2)"></span></p>
+      </div>
+
+      <div>
+        <p class="cv-freq-title">Variables</p>
+        <div class="cv-var-grid" id="cv-var-grid">
+          <div class="cv-var-card dim" id="cvv-k"><p class="cv-var-name">k</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-n"><p class="cv-var-name">n</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-diff"><p class="cv-var-name">diff</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-R"><p class="cv-var-name">R</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-i"><p class="cv-var-name">i (loop)</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-c"><p class="cv-var-name">c (char)</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-in"><p class="cv-var-name">in</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-out"><p class="cv-var-name">out</p><p class="cv-var-val">—</p></div>
+        </div>
+      </div>
+
+      <div>
+        <p class="cv-freq-title">freq[26] — one slot per letter a–z &nbsp;<span style="color:var(--text-info)">(blue=positive)</span> <span style="color:var(--text-danger)">(red=negative)</span> <span style="color:var(--text-success)">(green=zero)</span></p>
+        <div class="cv-freq-array" id="cv-freq-array"></div>
+      </div>
+
+      <div class="cv-narration" id="cv-narration">Select an example to begin.</div>
+    </div>
+  </div>
+
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="cv-bp" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="cv-bn" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn" onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Interactive dry run</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1: s1="ab" s2="eidbaooo"</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">Ex 2: s1="abcd" s2="xyzabcd"</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">Ex 3: s1="ab" s2="eidboaoo"</button>
+  </div>
+
+  <div id="str-con"></div>
+
+  <div class="panels-fixed">
+    <div class="formula-panel" id="dr-formula">
+      <div class="formula-grid">
+        <div><p class="fitem-label">window</p><p class="fitem-val" id="f-win" style="font-size:15px">—</p><p class="fitem-sub">current</p></div>
+        <div><p class="fitem-label">L</p><p class="fitem-val" id="f-L">—</p><p class="fitem-sub">left idx</p></div>
+        <div><p class="fitem-label">R</p><p class="fitem-val" id="f-R">—</p><p class="fitem-sub">right idx</p></div>
+        <div><p class="fitem-label">diff</p><p class="fitem-val" id="f-diff">—</p><p class="fitem-sub">mismatches</p></div>
+        <div><p class="fitem-label">in / out</p><p class="fitem-val" id="f-inout" style="font-size:14px">—</p><p class="fitem-sub">chars</p></div>
+      </div>
+      <div class="formula-eq" id="dr-formula-eq">Select an example to begin.</div>
+    </div>
+    <div class="step-panel" id="dr-step">
+      <p class="step-what" id="dr-what">—</p>
+      <p class="step-why" id="dr-why">Use the controls below to step through.</p>
+    </div>
+  </div>
+
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+  <div style="margin-top:.875rem">
+    <p style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-bottom:4px">Result</p>
+    <p id="dr-result" style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--text)">—</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner"><div class="cnum">1</div><div>
+    <p class="corner-title">|s1| > |s2|</p>
+    <p class="corner-body">No window of size k fits inside s2. Return false immediately before any allocation. The check <code>if (k > n) return false</code> handles this.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">2</div><div>
+    <p class="corner-title">s1 has duplicate characters — s1="aab"</p>
+    <p class="corner-body">freq starts with freq['a']=2, freq['b']=1. The window needs exactly 2 a's to bring the 'a' slot to zero. A window with only 1 'a' leaves freq['a']=1 (non-zero), so diff > 0. Correctly not a match.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">3</div><div>
+    <p class="corner-title">s1 == s2 (perfect match)</p>
+    <p class="corner-body">After priming the first (and only) window covers the entire string. diff == 0. Return true immediately — the slide loop never runs.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">4</div><div>
+    <p class="corner-title">Characters in s2 not in s1</p>
+    <p class="corner-body">freq for those characters starts at 0. When they enter the window, freq goes negative (non-zero), increasing diff. They prevent a false match. When they leave, diff drops back. They never cause a spurious true.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">5</div><div>
+    <p class="corner-title">s1 is a single character</p>
+    <p class="corner-body">k=1. Every slide is one character. Any occurrence of that character in s2 produces diff==0. Essentially a linear scan.</p>
+  </div></div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <p class="body">Run through this before calling it done in an interview.</p>
+  <div class="checklist">
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>k > n:</b> early return — no undefined loop bounds.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>All same character:</b> s1="aaa", s2="aaaa" — freq['a']=3, priming subtracts 3 → slot hits 0 → diff==0. Returns true correctly.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>No match at all:</b> diff never reaches 0, loop exhausts all n−k positions, returns false.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Integer overflow:</b> freq values bounded by |s1| ≤ 10⁴. int is safe.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>ASCII arithmetic:</b> <code>c - 'a'</code> always in [0,25] for lowercase input. No out-of-bounds access.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">diff counter (optimal)</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Two separate arrays</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Brute force</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body" style="margin-top:.5rem">Single int[26] encoding both strings. diff counter avoids per-step array comparison. Priming + sliding. The approach in Step 4 above.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body" style="margin-top:.5rem">Keep two separate int[26] arrays — one for s1, one for the current window. After each slide, compare with <code>memcmp</code> or a 26-element loop. Same asymptotic complexity but O(26) comparison per step instead of O(1). Easier to reason about; slightly slower in practice.</p>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">Time O(n·k)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body" style="margin-top:.5rem">Rebuild window frequency from scratch for each position. Fine for small inputs; TLE on LeetCode for large ones.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard"><p class="ccard-l">Time</p><p class="ccard-v">O(n)</p><p class="ccard-n">n=|s2|. Build freq: O(k). Prime: O(k). Slide: O(n−k). Each character in s2 visited exactly once.</p></div>
+    <div class="ccard"><p class="ccard-l">Space</p><p class="ccard-v">O(1)</p><p class="ccard-n">Single int[26] — fixed size regardless of input. No dynamic allocation in the hot path.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">What to remember for similar problems</p>
+  <div class="takehome">
+    <p class="body">The <strong>diff counter pattern</strong> is the signature move for fixed-window anagram problems. Whenever you need "does the window match this target distribution," maintain a mismatch count instead of comparing arrays each step.</p>
+    <p class="body">The <strong>single-array encoding</strong> (s1 increments, s2 decrements, zero = agreement) is reusable in any problem comparing two character distributions incrementally.</p>
+    <p class="body">Related: LC 242 (Valid Anagram — no sliding, just the diff idea), LC 438 (Find All Anagrams — collect all match positions), LC 76 (Minimum Window Substring — variable window, richer validity condition).</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+function bfTogglePlay(){if(bfTimer){bfStopPlay();}else{document.getElementById('bf-play').textContent='⏸ Pause';bfTimer=setInterval(()=>{if(bfCur<bfSteps.length-1)bfNext();else bfStopPlay();},800);}}
+function cvTogglePlay(){if(cvTimer){cvStopPlay();}else{document.getElementById('cv-bplay').textContent='⏸ Pause';cvTimer=setInterval(()=>{if(cvCur<cvSteps.length-1)cvNext();else cvStopPlay();},950);}}
+/* ══════════════════════════════
+   SHARED DATA
+══════════════════════════════ */
+const EXAMPLES=[
+  {s1:'ab',   s2:'eidbaooo'},
+  {s1:'abcd', s2:'xyzabcd'},
+  {s1:'ab',   s2:'eidboaoo'},
+];
+
+/* ══════════════════════════════
+   AZ GRID
+══════════════════════════════ */
+(function(){
+  const g=document.getElementById('az-grid');
+  const freq={}; for(const c of 'ab') freq[c]=(freq[c]||0)+1;
+  for(let i=0;i<26;i++){
+    const c=String.fromCharCode(97+i);
+    const cell=document.createElement('div');
+    cell.className='az-cell'+(freq[c]?' lit':'');
+    const vspan=document.createElement('div'); vspan.className='az-val';
+    vspan.textContent=freq[c]||'';
+    const lspan=document.createElement('div'); lspan.className='az-letter';
+    lspan.textContent=c;
+    cell.appendChild(vspan); cell.appendChild(lspan);
+    g.appendChild(cell);
+  }
+})();
+
+/* ══════════════════════════════
+   DIFF SCANNER
+══════════════════════════════ */
+const DS_CONFIG={
+  A:{s1:'ab', win:'ba', f1id:'dsA-f1', f2id:'dsA-f2', ltrid:'dsA-ltr', diffid:'dsA-diff', btnid:'dsA-btn'},
+  B:{s1:'ab', win:'ei', f1id:'dsB-f1', f2id:'dsB-f2', ltrid:'dsB-ltr', diffid:'dsB-diff', btnid:'dsB-btn'},
+};
+const DS_LETTERS=['a','b','c','d','e','i'];
+const dsState={};
+
+function dsBuild(key){
+  const cfg=DS_CONFIG[key];
+  const f1={}, f2={};
+  for(const c of cfg.s1) f1[c]=(f1[c]||0)+1;
+  for(const c of cfg.win) f2[c]=(f2[c]||0)+1;
+  const letters=DS_LETTERS;
+
+  [cfg.f1id,cfg.f2id,cfg.ltrid].forEach(id=>document.getElementById(id).innerHTML='');
+
+  const cells1=[], cells2=[];
+  letters.forEach(c=>{
+    const mk=(val,muted)=>{
+      const el=document.createElement('div'); el.className='ds-cell';
+      el.textContent=val; if(muted) el.style.opacity='.4';
+      return el;
+    };
+    const c1=mk(f1[c]||0,!(f1[c]||f2[c])); document.getElementById(cfg.f1id).appendChild(c1); cells1.push({el:c1,c});
+    const c2=mk(f2[c]||0,!(f1[c]||f2[c])); document.getElementById(cfg.f2id).appendChild(c2); cells2.push({el:c2,c});
+    const cl=mk(c,!(f1[c]||f2[c])); cl.style.background='transparent'; cl.style.border='none'; cl.style.color='var(--text3)';
+    document.getElementById(cfg.ltrid).appendChild(cl);
+  });
+
+  dsState[key]={cfg,f1,f2,cells1,cells2,letters,scanIdx:-1,diffCount:0,timer:null};
+  document.getElementById(cfg.diffid).textContent='—';
+  document.getElementById(cfg.diffid).className='ds-diff-num';
+}
+
+window.dsScan=function(key){
+  const st=dsState[key]; if(!st||st.timer) return;
+  st.scanIdx=0; st.diffCount=0;
+  document.getElementById(st.cfg.btnid).disabled=true;
+  st.timer=setInterval(()=>{
+    if(st.scanIdx>0){
+      st.cells1[st.scanIdx-1].el.classList.remove('scanning');
+      st.cells2[st.scanIdx-1].el.classList.remove('scanning');
+    }
+    if(st.scanIdx>=st.letters.length){clearInterval(st.timer);st.timer=null;document.getElementById(st.cfg.btnid).disabled=false;return;}
+    const c=st.letters[st.scanIdx];
+    st.cells1[st.scanIdx].el.classList.add('scanning');
+    st.cells2[st.scanIdx].el.classList.add('scanning');
+    const v1=st.f1[c]||0, v2=st.f2[c]||0;
+    const match=(v1===v2);
+    st.cells1[st.scanIdx].el.classList.remove('scanning'); st.cells1[st.scanIdx].el.classList.add(match?'same':'diff');
+    st.cells2[st.scanIdx].el.classList.remove('scanning'); st.cells2[st.scanIdx].el.classList.add(match?'same':'diff');
+    if(!match) st.diffCount++;
+    const dv=document.getElementById(st.cfg.diffid);
+    dv.textContent=st.diffCount;
+    dv.className='ds-diff-num '+(st.diffCount===0?'zero':'nonzero');
+    st.scanIdx++;
+  },450);
+};
+
+window.dsReset=function(key){
+  const st=dsState[key]; if(!st) return;
+  if(st.timer){clearInterval(st.timer);st.timer=null;}
+  dsBuild(key);
+};
+
+dsBuild('A'); dsBuild('B');
+
+/* ══════════════════════════════
+   BRUTE FORCE
+══════════════════════════════ */
+let bfSteps=[],bfCur=0,bfTimer=null;
+
+function bfGenSteps({s1,s2}){
+  const out=[], k=s1.length, n=s2.length;
+  const f1=new Array(26).fill(0);
+  for(const c of s1) f1[c.charCodeAt(0)-97]++;
+  let ops=0;
+  for(let i=0;i<=n-k;i++){
+    const f2=new Array(26).fill(0);
+    for(let j=i;j<i+k;j++) f2[s2[j].charCodeAt(0)-97]++;
+    ops+=k;
+    const match=f1.every((v,idx)=>v===f2[idx]);
+    out.push({s2,k,wS:i,wE:i+k-1,ops,match,done:match,found:match});
+    if(match) return out;
+  }
+  out.push({s2,k,wS:-1,wE:-1,ops,match:false,done:true,found:false});
+  return out;
+}
+
+function bfRender(st){
+  const strip=document.getElementById('bf-strip'); strip.innerHTML='';
+  st.s2.split('').forEach((c,i)=>{
+    const cell=document.createElement('div'); cell.className='bf-cell';
+    if(i>=st.wS&&i<=st.wE&&st.wS>=0) cell.classList.add(st.match?'bf-match':'bf-win');
+    cell.textContent=c; strip.appendChild(cell);
+  });
+  document.getElementById('bf-ops').textContent=st.ops;
+  const vd=document.getElementById('bf-verdict');
+  if(st.done){
+    vd.style.display='inline-block'; vd.className='bf-verdict '+(st.found?'ok':'no');
+    vd.textContent=st.found?'✓ Permutation found — return true':'✗ No permutation found — return false';
+  } else { vd.style.display='none'; }
+  document.getElementById('bf-sctr').textContent=`Window ${bfCur+1}/${bfSteps.length}`;
+  document.getElementById('bf-prev').disabled=bfCur===0;
+  document.getElementById('bf-next').disabled=bfCur===bfSteps.length-1;
+}
+function bfNext(){if(bfCur<bfSteps.length-1){bfCur++;bfRender(bfSteps[bfCur]);}else bfStopPlay();}
+function bfPrev(){if(bfCur>0){bfCur--;bfRender(bfSteps[bfCur]);}}
+function bfReset(){bfStopPlay();bfCur=0;bfRender(bfSteps[0]);}
+function bfLoadEx(idx){
+  bfStopPlay(); bfCur=0;
+  [0,1].forEach(i=>document.getElementById('bf-ex'+i).classList.toggle('active',i===idx));
+  bfSteps=bfGenSteps(EXAMPLES[idx]); bfRender(bfSteps[0]);
+}
+
+/* ══════════════════════════════
+   CODE VISUALIZATION
+══════════════════════════════ */
+const CV_LINES=[
+  {n:1, c:'bool checkInclusion(string s1, string s2) {'},
+  {n:2, c:'    int k = s1.size(), n = s2.size();'},
+  {n:3, c:'    if (k > n) { return false; }'},
+  {n:4, c:'    int freq[26] = {};'},
+  {n:5, c:'    for (char c : s1) { freq[c-\'a\']++; }'},
+  {n:6, c:'    int diff = 0;'},
+  {n:7, c:'    for (int i = 0; i < 26; i++) {'},
+  {n:8, c:'        if (freq[i] != 0) { diff++; }'},
+  {n:9, c:'    }'},
+  {n:10,c:'    // Prime: consume first window'},
+  {n:11,c:'    for (int i = 0; i < k; i++) {'},
+  {n:12,c:'        int c = s2[i] - \'a\';'},
+  {n:13,c:'        if (freq[c]==1)      { diff--; }'},
+  {n:14,c:'        else if (freq[c]==0) { diff++; }'},
+  {n:15,c:'        freq[c]--;'},
+  {n:16,c:'    }'},
+  {n:17,c:'    if (diff == 0) { return true; }'},
+  {n:18,c:'    // Slide'},
+  {n:19,c:'    for (int R = k; R < n; R++) {'},
+  {n:20,c:'        int in  = s2[R]   - \'a\';'},
+  {n:21,c:'        int out = s2[R-k] - \'a\';'},
+  {n:22,c:'        if (freq[in]==1)      { diff--; }'},
+  {n:23,c:'        else if (freq[in]==0) { diff++; }'},
+  {n:24,c:'        freq[in]--;'},
+  {n:25,c:'        if (freq[out]==-1)    { diff--; }'},
+  {n:26,c:'        else if (freq[out]==0){ diff++; }'},
+  {n:27,c:'        freq[out]++;'},
+  {n:28,c:'        if (diff == 0) { return true; }'},
+  {n:29,c:'    }'},
+  {n:30,c:'    return false;'},
+  {n:31,c:'}'},
+];
+
+
+function cvBuildFreqArray(){
+  const arr=document.getElementById('cv-freq-array'); arr.innerHTML='';
+  for(let i=0;i<26;i++){
+    const slot=document.createElement('div'); slot.className='cv-freq-slot';
+    const val=document.createElement('div'); val.className='cv-freq-slot-val'; val.id='cvfq'+i; val.textContent='—';
+    const ltr=document.createElement('div'); ltr.className='cv-freq-slot-ltr'; ltr.textContent=String.fromCharCode(97+i);
+    slot.appendChild(val); slot.appendChild(ltr); arr.appendChild(slot);
+  }
+}
+
+let cvSteps=[],cvCur=0,cvTimer=null;
+
+/* vars that are "live" at each phase — dim the rest */
+const CV_LIVE={
+  init:[],
+  k_n:['k','n'],
+  freq_build:['k','n','c'],
+  diff_init:['k','n','diff'],
+  diff_count:['k','n','diff','i'],
+  prime:['k','n','diff','i','c'],
+  prime_check:['k','n','diff','i','c'],
+  check17:['k','n','diff'],
+  slide:['k','n','diff','R','in','out'],
+  match:['k','n','diff','R'],
+  done:['k','n','diff'],
+};
+
+function cvGenSteps({s1,s2}){
+  const out=[];
+  const k=s1.length, n=s2.length;
+  const freq=new Array(26).fill(0);
+  let diff=0;
+
+  // snapshot helper — records full state
+  const snap=(line,narr,phase,vars,activeFreqSlot)=>{
+    out.push({
+      line, narr, phase,
+      vars:{...vars},          // which vars are live/highlighted
+      s1, s2, k, n, diff,
+      freq:[...freq],
+      activeFreqSlot: activeFreqSlot!=null ? activeFreqSlot : -1,
+      winL: vars.winL!=null?vars.winL:-1,
+      winR: vars.winR!=null?vars.winR:-1,
+    });
+  };
+
+  snap(1,'Enter checkInclusion.','init',{});
+  snap(2,`k = ${k} (length of s1 = "${s1}"), n = ${n} (length of s2 = "${s2}").`,'k_n',{k,n});
+  if(k>n){snap(3,'k > n — no window fits. Return false immediately.','done',{k,n});return out;}
+  snap(3,'k ≤ n — proceed.','k_n',{k,n});
+  snap(4,'Declare freq[26], all zeros. One slot per letter a–z.','freq_build',{k,n});
+
+  // build freq from s1 — one snap per char
+  for(const c of s1){
+    const idx=c.charCodeAt(0)-97;
+    freq[idx]++;
+    snap(5,`s1 char '${c}': freq['${c}'-'a'] = freq[${idx}]++ → ${freq[idx]}`,'freq_build',{k,n,c:"'"+c+"'"},idx);
+  }
+
+  snap(6,`Initialize diff = 0.`,'diff_init',{k,n,diff:0});
+  diff=0;
+
+  // count non-zero slots
+  for(let i=0;i<26;i++){
+    if(freq[i]!==0){
+      diff++;
+      snap(8,`i=${i} ('${String.fromCharCode(97+i)}'): freq[${i}]=${freq[i]} ≠ 0 → diff++ = ${diff}`,'diff_count',{k,n,diff,i},i);
+    } else {
+      snap(7,`i=${i} ('${String.fromCharCode(97+i)}'): freq[${i}]=0, skip.`,'diff_count',{k,n,diff,i},i);
+    }
+  }
+  snap(9,`Done counting. diff = ${diff} (${diff} letter(s) from s1 not yet matched).`,'diff_init',{k,n,diff});
+
+  // prime
+  snap(10,`Prime: consume the first k=${k} characters of s2.`,'prime',{k,n,diff});
+  for(let i=0;i<k;i++){
+    const c=s2[i]; const idx=c.charCodeAt(0)-97;
+    snap(11,`Prime loop i=${i}: s2[${i}] = '${c}' (index ${idx}).`,'prime',{k,n,diff,i,c:"'"+c+"'",winL:0,winR:i},idx);
+    snap(12,`int c = s2[${i}] - 'a' = '${c}' - 'a' = ${idx}. freq[${idx}] is currently ${freq[idx]}.`,'prime',{k,n,diff,i,c:"'"+c+"'",winL:0,winR:i},idx);
+    const old=freq[idx];
+    if(old===1){
+      diff--;
+      snap(13,`freq[${idx}] was 1 → going to 0: slot resolved → diff-- = ${diff}.`,'prime_check',{k,n,diff,i,c:"'"+c+"'",winL:0,winR:i},idx);
+    } else if(old===0){
+      diff++;
+      snap(14,`freq[${idx}] was 0 → going to -1: new mismatch → diff++ = ${diff}.`,'prime_check',{k,n,diff,i,c:"'"+c+"'",winL:0,winR:i},idx);
+    } else {
+      snap(13,`freq[${idx}] = ${old} (no boundary crossed). diff stays ${diff}.`,'prime',{k,n,diff,i,c:"'"+c+"'",winL:0,winR:i},idx);
+    }
+    freq[idx]--;
+    snap(15,`freq[${idx}]-- → ${freq[idx]}.`,'prime',{k,n,diff,i,c:"'"+c+"'",winL:0,winR:i},idx);
+  }
+
+  snap(17,diff===0?`diff == 0 after priming! Window "${s2.slice(0,k)}" is a permutation. Return true.`:`diff = ${diff} after priming. Not a match. Begin sliding.`,diff===0?'match':'check17',{k,n,diff,winL:0,winR:k-1});
+  if(diff===0) return out;
+
+  // slide
+  snap(18,`Start sliding window across s2.`,'slide',{k,n,diff,winL:0,winR:k-1});
+  for(let R=k;R<n;R++){
+    const wL=R-k+1;
+    const inC=s2[R], outC=s2[R-k];
+    const inIdx=inC.charCodeAt(0)-97, outIdx=outC.charCodeAt(0)-97;
+
+    snap(19,`R=${R}: slide window to [${wL}..${R}] = "${s2.slice(wL,R+1)}".`,'slide',{k,n,diff,R,winL:wL,winR:R});
+    snap(20,`in  = s2[${R}] - 'a' = '${inC}' - 'a' = ${inIdx}.`,'slide',{k,n,diff,R,in:inIdx,out:'—',winL:wL,winR:R},inIdx);
+    snap(21,`out = s2[${R-k}] - 'a' = '${outC}' - 'a' = ${outIdx}.`,'slide',{k,n,diff,R,in:inIdx,out:outIdx,winL:wL,winR:R},outIdx);
+
+    // process incoming
+    let old=freq[inIdx];
+    if(old===1){diff--;snap(22,`freq[in=${inIdx}] was 1 → goes to 0: slot resolved → diff-- = ${diff}.`,'slide',{k,n,diff,R,in:inIdx,out:outIdx,winL:wL,winR:R},inIdx);}
+    else if(old===0){diff++;snap(23,`freq[in=${inIdx}] was 0 → goes to -1: new mismatch → diff++ = ${diff}.`,'slide',{k,n,diff,R,in:inIdx,out:outIdx,winL:wL,winR:R},inIdx);}
+    else{snap(22,`freq[in=${inIdx}] = ${old} → no boundary crossed. diff = ${diff}.`,'slide',{k,n,diff,R,in:inIdx,out:outIdx,winL:wL,winR:R},inIdx);}
+    freq[inIdx]--;
+    snap(24,`freq[${inIdx}]-- → ${freq[inIdx]}.`,'slide',{k,n,diff,R,in:inIdx,out:outIdx,winL:wL,winR:R},inIdx);
+
+    // process outgoing
+    old=freq[outIdx];
+    if(old===-1){diff--;snap(25,`freq[out=${outIdx}] was -1 → goes to 0: slot resolved → diff-- = ${diff}.`,'slide',{k,n,diff,R,in:inIdx,out:outIdx,winL:wL,winR:R},outIdx);}
+    else if(old===0){diff++;snap(26,`freq[out=${outIdx}] was 0 → goes to 1: new mismatch → diff++ = ${diff}.`,'slide',{k,n,diff,R,in:inIdx,out:outIdx,winL:wL,winR:R},outIdx);}
+    else{snap(25,`freq[out=${outIdx}] = ${old} → no boundary crossed. diff = ${diff}.`,'slide',{k,n,diff,R,in:inIdx,out:outIdx,winL:wL,winR:R},outIdx);}
+    freq[outIdx]++;
+    snap(27,`freq[${outIdx}]++ → ${freq[outIdx]}.`,'slide',{k,n,diff,R,in:inIdx,out:outIdx,winL:wL,winR:R},outIdx);
+
+    if(diff===0){
+      snap(28,`diff == 0! Window "${s2.slice(wL,R+1)}" at [${wL}..${R}] is a permutation. Return true.`,'match',{k,n,diff,R,winL:wL,winR:R});
+      return out;
+    }
+    snap(28,`diff = ${diff} ≠ 0. No match. Continue.`,'slide',{k,n,diff,R,winL:wL,winR:R});
+  }
+  snap(30,'All windows exhausted. No permutation found. Return false.','done',{k,n,diff});
+  return out;
+}
+
+function cvRenderFreq(freq,activeSlot){
+  for(let i=0;i<26;i++){
+    const el=document.getElementById('cvfq'+i);
+    if(!el) continue;
+    el.classList.remove('pos','neg','zero','active');
+    if(freq[i]>0){el.textContent=freq[i];el.classList.add('pos');}
+    else if(freq[i]<0){el.textContent=freq[i];el.classList.add('neg');}
+    else{el.textContent='0';el.classList.add('zero');}
+    if(i===activeSlot) el.classList.add('active');
+  }
+}
+
+function cvRenderVars(st){
+  const VAR_IDS=['k','n','diff','R','i','c','in','out'];
+  // determine which are live based on phase
+  const live=CV_LIVE[st.phase]||[];
+  VAR_IDS.forEach(id=>{
+    const card=document.getElementById('cvv-'+id); if(!card) return;
+    card.classList.remove('hl','hl-match','dim');
+    const val=st.vars[id];
+    if(val==null||val==='—'){
+      card.querySelector('.cv-var-val').textContent='—';
+      card.classList.add('dim');
+    } else {
+      card.querySelector('.cv-var-val').textContent=val;
+      if(!live.includes(id)) card.classList.add('dim');
+    }
+  });
+}
+
+function cvRenderStrip(st){
+  const strip=document.getElementById('cv-s2-strip'); strip.innerHTML='';
+  st.s2.split('').forEach((c,i)=>{
+    const wrap=document.createElement('div'); wrap.style.cssText='display:flex;flex-direction:column;align-items:center;';
+    const idx=document.createElement('div'); idx.style.cssText='font-size:9px;color:var(--text3);font-family:var(--mono);text-align:center;width:20px;'; idx.textContent=i;
+    const cell=document.createElement('div');
+    cell.style.cssText='width:20px;height:24px;border-radius:3px;border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text);background:var(--bg);transition:all .2s;';
+    cell.textContent=c;
+    const inWin=st.winL>=0&&i>=st.winL&&i<=st.winR;
+    if(st.phase==='match'&&inWin){cell.style.background='var(--bg-success)';cell.style.borderColor='var(--border-success)';cell.style.color='var(--text-success)';}
+    else if(inWin){cell.style.background='#e0f2fe';cell.style.borderColor='#7dd3fc';cell.style.color='#0369a1';}
+    wrap.appendChild(idx); wrap.appendChild(cell); strip.appendChild(wrap);
+  });
+}
+
+function cvRender(st){
+  // highlight line
+  document.querySelectorAll('.cv-line').forEach(el=>el.classList.remove('active','active-match'));
+  const al=document.getElementById('cvL'+st.line);
+  if(al){al.classList.add(st.phase==='match'?'active-match':'active');if(visPx(document.querySelector('.cv-section'))>0)al.scrollIntoView({block:'nearest',behavior:'smooth'});}
+
+  cvRenderStrip(st);
+  document.getElementById('cv-s1-lbl').textContent='"'+st.s1+'"';
+  cvRenderVars(st);
+  cvRenderFreq(st.freq, st.activeFreqSlot);
+
+  const narr=document.getElementById('cv-narration');
+  narr.textContent=st.narr;
+  narr.className='cv-narration'+(st.phase==='match'?' is-match':st.phase!=='done'?' is-active':'');
+
+  document.getElementById('cv-sctr').textContent=`Step ${cvCur+1} / ${cvSteps.length}`;
+  document.getElementById('cv-bp').disabled=cvCur===0;
+  document.getElementById('cv-bn').disabled=cvCur===cvSteps.length-1;
+}
+
+function cvNext(){if(cvCur<cvSteps.length-1){cvCur++;cvRender(cvSteps[cvCur]);}else cvStopPlay();}
+function cvPrev(){if(cvCur>0){cvCur--;cvRender(cvSteps[cvCur]);}}
+function cvReset(){cvStopPlay();cvCur=0;cvRender(cvSteps[0]);}
+function cvLoadEx(idx){
+  cvStopPlay(); cvCur=0;
+  [0,1,2].forEach(i=>document.getElementById('cv-ex'+i).classList.toggle('active',i===idx));
+  cvSteps=cvGenSteps(EXAMPLES[idx]);
+  cvBuildCode(CV_LINES); cvBuildFreqArray(); cvRender(cvSteps[0]);
+}
+
+/* ══════════════════════════════
+   DRY RUN
+══════════════════════════════ */
+let drSteps=[],drCur=0,drTimer=null;
+
+function drGenSteps({s1,s2}){
+  const out=[];
+  const k=s1.length, n=s2.length;
+
+  if(k>n){
+    out.push({s1,s2,k,wL:-1,wR:-1,diff:0,inC:'',outC:'',
+      what:'|s1| > |s2| — no window possible.',why:'Return false immediately.',phase:'done',found:false});
+    return out;
+  }
+
+  const freq=new Array(26).fill(0);
+  for(const c of s1) freq[c.charCodeAt(0)-97]++;
+  let diff=0;
+  for(let i=0;i<26;i++) if(freq[i]!==0) diff++;
+
+  const snap=(wL,wR,inC,outC,what,why,phase)=>
+    out.push({s1,s2,k,wL,wR,diff,inC,outC,what,why,phase,found:phase==='match'});
+
+  snap(0,k-1,'','',
+    `Prime window [0..${k-1}] = "${s2.slice(0,k)}"`,
+    `Build freq from s1="${s1}", subtract first ${k} chars of s2. diff starts at ${diff} then adjusts.`,
+    'prime');
+
+  // prime each character
+  for(let i=0;i<k;i++){
+    const c=s2[i]; const idx=c.charCodeAt(0)-97;
+    const old=freq[idx];
+    if(old===1) diff--;
+    else if(old===0) diff++;
+    freq[idx]--;
+    snap(0,i,c,'',
+      `Prime i=${i}: '${c}' enters. freq[${idx}] ${old}→${freq[idx]}. diff=${diff}.`,
+      old===1?`freq was 1 → goes to 0: slot resolved → diff--`:
+      old===0?`freq was 0 → goes to -1: new mismatch → diff++`:
+      `freq went ${old}→${freq[idx]}, no boundary crossed.`,
+      'prime');
+  }
+
+  if(diff===0){
+    snap(0,k-1,'','',
+      `Window "${s2.slice(0,k)}" — diff = 0 ✓`,
+      `First window is a permutation of s1. Return true.`,'match');
+    return out;
+  }
+  snap(0,k-1,'','',
+    `After priming: diff = ${diff}.`,
+    `Not a match. Start sliding.`,'slide');
+
+  for(let R=k;R<n;R++){
+    const wL=R-k+1;
+    const inC=s2[R], outC=s2[R-k];
+    const inIdx=inC.charCodeAt(0)-97, outIdx=outC.charCodeAt(0)-97;
+
+    const oldIn=freq[inIdx];
+    if(oldIn===1) diff--;
+    else if(oldIn===0) diff++;
+    freq[inIdx]--;
+
+    const oldOut=freq[outIdx];
+    if(oldOut===-1) diff--;
+    else if(oldOut===0) diff++;
+    freq[outIdx]++;
+
+    const phase=diff===0?'match':'slide';
+    snap(wL,R,inC,outC,
+      `Window [${wL}..${R}] = "${s2.slice(wL,R+1)}" — diff = ${diff}${diff===0?' ✓':''}`,
+      diff===0?`'${inC}' entered, '${outC}' left → diff hit 0. Return true.`:
+        `'${inC}' entered, '${outC}' left → diff = ${diff}. Keep sliding.`,
+      phase);
+    if(diff===0) return out;
+  }
+  snap(n-k,n-1,'','',
+    'All windows exhausted. No permutation found.',
+    'diff never reached 0. Return false.','done');
+  return out;
+}
+
+function drRender(st){
+  // string strip
+  const con=document.getElementById('str-con'); con.innerHTML='';
+  st.s2.split('').forEach((c,i)=>{
+    const wrap=document.createElement('div'); wrap.className='ch-wrap';
+    const idx=document.createElement('div'); idx.className='ch-idx'; idx.textContent=i;
+    const cell=document.createElement('div'); cell.className='ch-cell'; cell.textContent=c;
+    const inWin=st.wL>=0&&i>=st.wL&&i<=st.wR;
+    if(st.phase==='match'&&inWin) cell.classList.add('cmatch');
+    else if(inWin) cell.classList.add('cwin');
+    const lbl=document.createElement('div'); lbl.className='ch-lbl';
+    if(inWin&&i===st.wL){lbl.classList.add('L');lbl.textContent='L';}
+    if(inWin&&i===st.wR){lbl.classList.add('R');lbl.textContent='R';}
+    wrap.appendChild(idx); wrap.appendChild(cell); wrap.appendChild(lbl); con.appendChild(wrap);
+  });
+
+  // formula panel
+  const fp=document.getElementById('dr-formula');
+  document.getElementById('f-win').textContent=st.wL>=0?`"${st.s2.slice(st.wL,st.wR+1)}"`:'—';
+  document.getElementById('f-L').textContent=st.wL>=0?st.wL:'—';
+  document.getElementById('f-R').textContent=st.wR>=0?st.wR:'—';
+  document.getElementById('f-diff').textContent=st.diff;
+  document.getElementById('f-inout').textContent=(st.inC||st.outC)?`'${st.inC||'?'}' / '${st.outC||'?'}'`:'—';
+
+  const eqStr=st.phase==='match'?`<span class="eq-hl">diff == 0 → MATCH! "${st.s2.slice(st.wL,st.wR+1)}"</span>`:
+    st.phase==='done'?`No window matched — return false`:
+    `diff = ${st.diff}${st.diff===0?' — match!':' — keep sliding'}`;
+  document.getElementById('dr-formula-eq').innerHTML=eqStr;
+  fp.className='formula-panel'+(st.phase==='match'?' is-match':['slide','prime'].includes(st.phase)?' is-slide':'');
+
+  // step panel
+  const sp=document.getElementById('dr-step');
+  sp.className='step-panel'+(st.phase==='match'?' match':['slide','prime'].includes(st.phase)?' slide':'');
+  document.getElementById('dr-what').textContent=st.what;
+  document.getElementById('dr-why').textContent=st.why;
+
+  // result
+  const rl=document.getElementById('dr-result');
+  if(st.phase==='match'){rl.textContent='true';rl.style.color='var(--text-success)';}
+  else if(st.phase==='done'&&!st.found){rl.textContent='false';rl.style.color='var(--text-danger)';}
+  else{rl.textContent='…';rl.style.color='var(--text3)';}
+
+  document.getElementById('dr-sctr').textContent=`Step ${drCur+1} / ${drSteps.length}`;
+  document.getElementById('dr-bp').disabled=drCur===0;
+  document.getElementById('dr-bn').disabled=drCur===drSteps.length-1;
+}
+
+function drNext(){if(drCur<drSteps.length-1){drCur++;drRender(drSteps[drCur]);}else drStopPlay();}
+function drPrev(){if(drCur>0){drCur--;drRender(drSteps[drCur]);}}
+function drReset(){drStopPlay();drCur=0;drRender(drSteps[0]);}
+function drLoadEx(idx){
+  drStopPlay(); drCur=0;
+  [0,1,2].forEach(i=>document.getElementById('dr-ex'+i).classList.toggle('active',i===idx));
+  drSteps=drGenSteps(EXAMPLES[idx]); drRender(drSteps[0]);
+}
+
+
+
+/* ══════════════════════════════
+   INIT
+══════════════════════════════ */
+bfLoadEx(0);
+cvLoadEx(0);
+drLoadEx(0);
+</script>
+</body>
+</html>

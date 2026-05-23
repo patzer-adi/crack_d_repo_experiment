@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Count Permutations — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+.badge-hard{background:var(--bg-danger);color:var(--text-danger);border:0.5px solid var(--border-danger);}
+.badge-dp{background:var(--bg-info);color:var(--text-info);border:0.5px solid var(--border-info);}
+/* Inversion visual */
+.inv-strip{display:flex;gap:4px;flex-wrap:wrap;margin:.5rem 0;}
+.inv-cell{width:36px;height:36px;border-radius:6px;border:0.5px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);}
+.inv-cell.inv{background:var(--bg-danger);border-color:var(--border-danger);color:var(--text-danger);}
+.inv-cell.ok{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);}
+.inv-arrow{display:flex;align-items:center;gap:3px;margin:.25rem 0;font-family:var(--mono);font-size:12px;color:var(--text3);}
+/* Static DP table (insight section) */
+.dp-table{border-collapse:collapse;margin:.75rem 0;font-family:var(--mono);font-size:13px;}
+.dp-table th{background:var(--bg3);padding:6px 12px;border:0.5px solid var(--border2);font-weight:600;color:var(--text2);text-align:center;}
+.dp-table td{padding:6px 12px;border:0.5px solid var(--border2);text-align:center;color:var(--text2);}
+.dp-table td.active-cell{background:var(--bg-info);color:var(--text-info);font-weight:600;}
+.dp-table td.req-cell{background:var(--bg-success);color:var(--text-success);font-weight:600;}
+.dp-table td.zeroed{background:var(--bg-danger);color:var(--text-danger);opacity:.5;}
+/* Insertion visual */
+.ins-row{display:flex;gap:4px;align-items:center;margin:.5rem 0;flex-wrap:wrap;}
+.ins-cell{width:32px;height:32px;border-radius:5px;border:0.5px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text);transition:all .2s;}
+.ins-cell.new-elem{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info);}
+.ins-cell.shifted{background:var(--bg-warn);border-color:var(--border-warn);color:var(--text-warn);}
+/* CV state variants */
+.cv-line.active-req{background:var(--bg-success);border-left-color:var(--text-success);}
+.cv-var-card.hl-req{background:var(--bg-success);border-color:var(--border-success);}
+.cv-var-val{font-size:13px;}
+.cv-narration.is-req{background:var(--bg-success);border-color:var(--border-success);}
+.cv-narration.is-active{background:var(--bg-info);border-color:var(--border-info);}
+/* DP row visualization widget (CV panel) */
+.dp-row-vis{display:flex;gap:3px;flex-wrap:wrap;}
+.dp-slot{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+.dp-slot-val{width:28px;height:28px;border-radius:4px;border:0.5px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text);transition:all .2s;}
+.dp-slot-val.nonzero{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info);}
+.dp-slot-val.req-match{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);}
+.dp-slot-val.active-slot{outline:2px solid var(--text-warn);}
+.dp-slot-idx{font-size:8px;color:var(--text3);font-family:var(--mono);margin-top:1px;}
+/* Dry run DP table */
+.dr-dp-wrap{overflow-x:auto;margin:.875rem 0;}
+.dr-dp-table{border-collapse:collapse;font-family:var(--mono);font-size:12px;min-width:100%;}
+.dr-dp-table th{background:var(--bg3);padding:5px 10px;border:0.5px solid var(--border2);font-weight:600;color:var(--text2);text-align:center;white-space:nowrap;}
+.dr-dp-table td{padding:5px 10px;border:0.5px solid var(--border2);text-align:center;color:var(--text2);transition:background .2s;}
+.dr-dp-table td.cur{background:var(--bg-info);color:var(--text-info);font-weight:600;}
+.dr-dp-table td.req{background:var(--bg-success);color:var(--text-success);font-weight:600;}
+.dr-dp-table td.dead{background:var(--bg-danger);color:var(--text-danger);opacity:.4;}
+/* Formula / step state variants */
+.formula-panel.is-req{background:var(--bg-success);border-color:var(--border-success);}
+.formula-panel.is-active{background:var(--bg-info);border-color:var(--border-info);}
+.step-panel.req{background:var(--bg-success);border-color:var(--border-success);}
+.step-panel.dp{background:var(--bg-info);border-color:var(--border-info);}
+@media(max-width:680px){
+  .cv-split,.asgrid,.cplx-grid{grid-template-columns:1fr;}
+  .formula-grid{grid-template-columns:repeat(2,1fr);}
+  .cv-var-grid{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Count Permutations With Inversion Requirements</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/count-permutations-with-inversion-requirement/" target="_blank">LC #3376</a>
+    <span class="badge badge-hard">Hard</span>
+    <span class="badge badge-dp">Dynamic Programming</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <div class="asgrid">
+    <div class="acard">
+      <p class="acard-q">What is an inversion?</p>
+      <p class="acard-a">A pair (i,j) where i &lt; j but perm[i] &gt; perm[j] — a larger value appears before a smaller one.</p>
+      <span class="acard-u">→ counting inversions is a classic DP sub-problem</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">What does a requirement [end, cnt] mean?</p>
+      <p class="acard-a">The prefix perm[0..end] must contain exactly cnt inversions. Multiple requirements may exist.</p>
+      <span class="acard-u">→ requirements act as hard constraints at specific prefix lengths</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can requirements conflict?</p>
+      <p class="acard-a">Yes — e.g. requiring 5 inversions at index 1 is impossible (max is 1). Return 0.</p>
+      <span class="acard-u">→ always check feasibility; impossible states get zeroed out</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">What do we return?</p>
+      <p class="acard-a">Count of valid permutations modulo 10⁹+7.</p>
+      <span class="acard-u">→ apply mod at every addition step</span>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Permutation is of [0, 1, 2, …, n−1]. Requirements are guaranteed to reference valid end indices (0 ≤ end &lt; n). Multiple requirements may target the same end index — but the problem guarantees each end appears at most once. We count modulo 10⁹+7.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">What is an inversion — and why insertion builds them</p>
+
+  <p class="body">An inversion is any pair of positions where a larger value sits to the left of a smaller one. In the permutation [2, 0, 1]: the pair (2,0) and (2,1) are both inversions — two inversions total.</p>
+
+  <!-- Inversion visual -->
+  <div style="margin:1.25rem 0">
+    <p style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.5rem">perm = [2, 0, 1] — which pairs are inversions?</p>
+    <div class="inv-strip">
+      <div class="inv-cell inv">2</div>
+      <div class="inv-cell inv">0</div>
+      <div class="inv-cell">1</div>
+    </div>
+    <div class="inv-arrow">
+      <span style="color:var(--text-danger)">(2,0): pos 0 val 2 &gt; pos 1 val 0 → inversion ✗</span>
+    </div>
+    <div class="inv-arrow">
+      <span style="color:var(--text-danger)">(2,1): pos 0 val 2 &gt; pos 2 val 1 → inversion ✗</span>
+    </div>
+    <div class="inv-arrow">
+      <span style="color:var(--text-success)">(0,1): pos 1 val 0 &lt; pos 2 val 1 → not an inversion ✓</span>
+    </div>
+    <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin-top:.5rem">total inversions = <span style="color:var(--text-info);font-weight:600">2</span></div>
+  </div>
+
+  <p class="body">The counting insight: build the permutation one element at a time, inserting the next largest value. When inserting element <code>i</code> into a sequence of length <code>i</code>, you choose a position — rightmost (0 new inversions) to leftmost (i new inversions). The number of new inversions equals the count of already-placed elements after it.</p>
+
+  <!-- Insertion visual -->
+  <div style="background:var(--bg2);border-radius:var(--r2);padding:1rem 1.25rem;border:0.5px solid var(--border2);margin:.875rem 0">
+    <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem">Inserting element 2 into [0, 1]</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.375rem">Position 2 (rightmost) → 0 new inversions</p>
+        <div class="ins-row"><div class="ins-cell">0</div><div class="ins-cell">1</div><div class="ins-cell new-elem">2</div></div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--text-success);margin-top:.25rem">2 is after 0 and 1 → 0 elements after it</p>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.375rem">Position 1 (middle) → 1 new inversion</p>
+        <div class="ins-row"><div class="ins-cell">0</div><div class="ins-cell new-elem">2</div><div class="ins-cell shifted">1</div></div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--text-info);margin-top:.25rem">2 is before 1 → 1 element after it</p>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.375rem">Position 0 (leftmost) → 2 new inversions</p>
+        <div class="ins-row"><div class="ins-cell new-elem">2</div><div class="ins-cell shifted">0</div><div class="ins-cell shifted">1</div></div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--text-warn);margin-top:.25rem">2 is before 0 and 1 → 2 elements after it</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- §1 animation — DP table fill row by row: n=3, no requirements. Answer = 6.
+       Layers (PLAN-017): current cell being filled (info-blue), running window sum visualized (success-green),
+       row pivot when i advances (warn-orange ↹). -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);border:0.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>current cell dp[i][j]</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-success);border:0.5px solid var(--border-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>window summed from previous row</span>
+      <span><span style="color:var(--text-warn);font-weight:700;font-size:14px;vertical-align:middle">↹</span> advance row i</span>
+    </div>
+
+    <!-- Row 1: DP table -->
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.25rem">n = 3, no requirements. dp[i][j] = number of perms of first i+1 elements with exactly j inversions.</div>
+    <div id="si-strip" style="background:var(--bg);border-radius:var(--r);padding:.625rem;margin-bottom:.5rem"></div>
+
+    <!-- Row 2: recurrence -->
+    <div style="background:var(--bg);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:13px;line-height:1.9;color:var(--text2);min-height:60px">
+      <div id="si-calc">
+        <div>filling: dp[<span id="si-i" style="color:var(--text-info);font-weight:600">—</span>][<span id="si-j" style="color:var(--text-info);font-weight:600">—</span>]</div>
+        <div>= sum dp[i−1][j−k] for k = 0..min(i,j) = <span id="si-eq" style="color:var(--text);font-weight:700">—</span> &nbsp;<span id="si-decision-badge" class="decision-badge">—</span></div>
+      </div>
+    </div>
+
+    <!-- Row 3: running row sum -->
+    <div style="display:flex;gap:1.5rem;align-items:center;padding:.625rem .875rem;background:var(--bg);border-radius:var(--r);font-family:var(--mono);font-size:14px;margin:.5rem 0">
+      <div>row sum so far = <span id="si-rowsum" style="font-weight:700;color:var(--text-info);font-size:18px">—</span></div>
+      <div>final answer = <span id="si-ans" style="font-weight:700;color:var(--text-success);font-size:18px">—</span></div>
+    </div>
+
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Define <strong>dp[i][j]</strong> = number of permutations of the first i+1 elements with exactly j inversions that satisfy all requirements up to index i. When inserting element i, it can add 0 to i new inversions — so dp[i][j] = sum of dp[i−1][j−k] for k in 0..min(i,j). At each required index, zero out all states except the required inversion count. Use a prefix-sum sliding window to evaluate each row in O(max_inv) instead of O(i·max_inv).</p>
+  </div>
+</div>
+
+<script>
+  // §1 animation — DP table fill: n=3, no requirements. Answer = 6.
+  const SI_N = 3;
+  const SI_MAX = 3; // max inversions = n*(n-1)/2
+  let siSteps = siGenSteps(SI_N, SI_MAX);
+  let siCur = 0;
+  let siTimer = null;
+
+  function siGenSteps(n, maxInv) {
+    const steps = [];
+    const dp = [];
+    // Initial row dp[0]
+    dp.push(Array(maxInv + 1).fill(0));
+    dp[0][0] = 1;
+    steps.push({i: 0, j: -1, isInit: true, dpSnapshot: dp.map(r => [...r]),
+      caption: `Initialise dp[0][0] = 1 — the single permutation of one element has 0 inversions.`});
+    for (let i = 1; i < n; i++) {
+      dp.push(Array(maxInv + 1).fill(0));
+      steps.push({i, j: -1, isPivot: true, dpSnapshot: dp.map(r => [...r]),
+        caption: `↹ Advance to row i=${i}: insert element ${i} into each length-${i} arrangement.`});
+      for (let j = 0; j <= maxInv; j++) {
+        const window = [];
+        for (let k = 0; k <= Math.min(i, j); k++) window.push({jp: j - k, val: dp[i - 1][j - k]});
+        const sum = window.reduce((a, b) => a + b.val, 0);
+        dp[i][j] = sum;
+        steps.push({i, j, dpSnapshot: dp.map(r => [...r]), window, sum,
+          caption: `dp[${i}][${j}] = ${window.map(w => `dp[${i-1}][${w.jp}]=${w.val}`).join(' + ')} = ${sum}.`});
+      }
+    }
+    const rowSum = dp[n - 1].reduce((a, b) => a + b, 0);
+    steps.push({terminal: true, dpSnapshot: dp.map(r => [...r]), answer: rowSum,
+      caption: `Sum of dp[${n - 1}][*] = ${dp[n - 1].join(' + ')} = ${rowSum}. There are ${rowSum} permutations.`});
+    return steps;
+  }
+
+  function siRender() {
+    const s = siSteps[siCur];
+    const strip = document.getElementById('si-strip');
+    let html = '<table style="border-collapse:collapse;font-family:var(--mono);font-size:12px"><thead><tr><th style="padding:4px 8px;color:var(--text3);font-weight:400;text-align:right">i \\ j</th>';
+    for (let j = 0; j <= SI_MAX; j++) html += `<th style="padding:4px 8px;color:var(--text3);font-weight:400">${j}</th>`;
+    html += '</tr></thead><tbody>';
+    for (let i = 0; i < s.dpSnapshot.length; i++) {
+      html += `<tr><td style="padding:4px 8px;color:var(--text3);text-align:right;font-weight:600">${i}</td>`;
+      for (let j = 0; j <= SI_MAX; j++) {
+        const isCur = !s.terminal && s.i === i && s.j === j;
+        const isWindow = !s.terminal && s.window && s.i === i + 1 && s.window.some(w => w.jp === j);
+        let bg = 'transparent', color = 'var(--text2)', border = '1px solid var(--border)';
+        if (isCur) { bg = 'var(--bg-info)'; color = 'var(--text-info)'; border = '1px solid var(--border-info)'; }
+        else if (isWindow) { bg = 'var(--bg-success)'; color = 'var(--text-success)'; border = '1px solid var(--border-success)'; }
+        const val = s.dpSnapshot[i][j];
+        const txt = (val === 0 && i < s.i) || (val === 0 && i === s.i && (s.j < j)) ? '·' : val;
+        html += `<td style="padding:6px 12px;background:${bg};color:${color};border:${border};text-align:center;font-weight:${isCur || isWindow ? '600' : '400'}">${txt}</td>`;
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    strip.innerHTML = html;
+    if (s.terminal) {
+      document.getElementById('si-calc').innerHTML = `<div style="color:var(--text-success)">${s.caption}</div>`;
+    } else if (s.isInit || s.isPivot) {
+      document.getElementById('si-calc').innerHTML = `<div style="color:var(--text-warn)">${s.caption}</div>`;
+    } else {
+      document.getElementById('si-i').textContent = s.i;
+      document.getElementById('si-j').textContent = s.j;
+      document.getElementById('si-eq').textContent = s.sum;
+      const badge = document.getElementById('si-decision-badge');
+      badge.textContent = s.sum > 0 ? `= ${s.sum}` : '= 0';
+      badge.style.color = s.sum > 0 ? 'var(--text-info)' : 'var(--text3)';
+    }
+    const rowSum = !s.terminal && s.i !== undefined && s.dpSnapshot[s.i] ? s.dpSnapshot[s.i].reduce((a, b) => a + b, 0) : '—';
+    document.getElementById('si-rowsum').textContent = rowSum;
+    document.getElementById('si-ans').textContent = s.terminal ? s.answer : '—';
+    document.getElementById('si-caption').textContent = s.caption;
+    document.getElementById('si-sctr').textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext() { siStopPlay(); siCur = Math.min(siCur + 1, siSteps.length - 1); siRender(); }
+  function siPrev() { siStopPlay(); siCur = Math.max(siCur - 1, 0); siRender(); }
+  function siReset() { siStopPlay(); siCur = 0; siRender(); }
+  function siStopPlay() { if (siTimer) { clearInterval(siTimer); siTimer = null; document.getElementById('si-bplay').textContent = '▶ Auto'; } }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur >= siSteps.length - 1) { siStopPlay(); return; }
+      siCur++; siRender();
+    }, 1400);
+  }
+  siRender();
+</script>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force: generate all permutations and check each</p>
+  <p class="body">Generate every permutation of [0..n−1]. For each, check whether every prefix satisfies its requirement. Count those that pass all checks.</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">n=3, reqs=[[2,2],[0,0]]</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">n=3, reqs=[[2,2]]</button>
+  </div>
+
+  <div id="bf-output" style="font-family:var(--mono);font-size:12px;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem;max-height:180px;overflow-y:auto;margin:.75rem 0;line-height:1.9;"></div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    checked: <span id="bf-checked" style="font-weight:600;color:var(--text-danger)">0</span>
+    &nbsp;·&nbsp; valid: <span id="bf-valid" style="font-weight:600;color:var(--text-success)">0</span>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.625rem">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n! × n) time</p>
+    <p class="infobox-d">n! permutations, each taking O(n) to check inversions. For n=13: 13! ≈ 6×10⁹ — completely infeasible.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Three translations to O(n × max_inv)</p>
+  <p class="body">The brute force generates and checks. The DP approach counts directly — never enumerating individual permutations.</p>
+
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 1 — Count by building, not enumerating</p>
+        <p class="wt-desc">Instead of generating permutations and checking, build them incrementally. <code>dp[i][j]</code> = number of ways to arrange the first i+1 elements with exactly j inversions satisfying all requirements ≤ i. The DP recurrence comes from the insertion observation: inserting element i in position k from the right adds exactly k new inversions.</p>
+        <p class="wt-gain">→ O(n!) enumerate → O(n × max_inv) count</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 2 — Requirements zero out invalid states</p>
+        <p class="wt-desc">After computing dp[i], if index i has a requirement cnt: set every dp[i][j] to 0 where j ≠ cnt. Only the required inversion count survives. This propagates the constraint forward — future rows build only from valid states.</p>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:12px;line-height:1.9;color:var(--text2)">
+          <div>if req[i] exists: keep only dp[i][req[i]], zero the rest</div>
+          <div style="color:var(--text3)">// impossible requirement → dp[i][req[i]]==0 → all future rows = 0</div>
+        </div>
+        <p class="wt-gain">→ constraints enforced inline, no post-filtering needed</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 3 — Sliding window prefix sum for O(1) per cell</p>
+        <p class="wt-desc">The recurrence dp[i][j] = Σ dp[i−1][j−k] for k in 0..min(i,j) is a sliding window sum of at most i+1 consecutive cells of dp[i−1]. Build a prefix sum of dp[i−1] once per row. Each dp[i][j] = prefix[j+1] − prefix[max(0, j−i)]. One O(max_inv) pass replaces O(i × max_inv) per row.</p>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:12px;line-height:1.9;color:var(--text2)">
+          <div>prefix[j+1] = prefix[j] + dp[j]</div>
+          <div>dp_new[j] = prefix[j+1] - prefix[max(0, j-i)]</div>
+        </div>
+        <p class="wt-gain">→ O(n × max_inv²) naive DP → O(n × max_inv) with prefix sums</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <p class="body">Say this before writing any code.</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t">Build <b>req[]</b>: an array of length n, initialized to -1. For each [end, cnt] in requirements, set req[end] = cnt.</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t">Initialize <b>dp[0] = 1</b>, all others 0. If req[0] exists and is not 0, return 0 immediately (single element always has 0 inversions).</span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t">For i from 1 to n−1: build a prefix sum of the current dp array. Compute new_dp[j] = prefix[j+1] − prefix[max(0, j−i)] for each j. This is the sliding window sum.</span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t">If req[i] ≥ 0: keep only new_dp[req[i]], zero all other slots. Replace dp with new_dp.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t">Return <b>sum(dp) mod 10⁹+7</b>. If any requirement was impossible, dp will be all zeros and the sum is 0.</span></div>
+  </div>
+
+  <div class="infobox info" style="margin-top:.875rem">
+    <p class="infobox-t">Why the window size is exactly i+1</p>
+    <p class="infobox-d">When inserting element i into a sequence of i existing elements, you can place it in positions 0 through i — creating 0 to i new inversions. So dp[i][j] depends on dp[i−1][j], dp[i−1][j−1], …, dp[i−1][j−i]. That is a window of at most i+1 consecutive cells. The window never grows larger than i+1 regardless of j.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Canonical C++ solution</p>
+  <p class="body">Try writing from the five steps above before revealing.</p>
+  <button class="reveal-btn" id="reveal-btn" onclick="toggleEl('code-block', document.getElementById('reveal-btn'))">▶ Reveal Code</button>
+  <div class="code-block" id="code-block">
+<pre class="cb"><span class="kw">int</span> <span class="fn">countPermutations</span>(<span class="kw">int</span> n, <span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; requirements) {
+    <span class="kw">const int</span> MOD = <span class="nu">1e9</span> + <span class="nu">7</span>;
+    <span class="kw">int</span> maxInv = n * (n - <span class="nu">1</span>) / <span class="nu">2</span>;
+
+    <span class="cm">// Build req[] — inversion requirement at each index (-1 = no req)</span>
+    <span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; req(n, -<span class="nu">1</span>);
+    <span class="kw">for</span> (<span class="kw">auto</span>&amp; r : requirements) { req[r[<span class="nu">0</span>]] = r[<span class="nu">1</span>]; }
+
+    <span class="cm">// Base case: one element, always 0 inversions</span>
+    <span class="tp">vector</span>&lt;<span class="kw">long long</span>&gt; dp(maxInv + <span class="nu">1</span>, <span class="nu">0</span>);
+    dp[<span class="nu">0</span>] = <span class="nu">1</span>;
+    <span class="kw">if</span> (req[<span class="nu">0</span>] != -<span class="nu">1</span> &amp;&amp; req[<span class="nu">0</span>] != <span class="nu">0</span>) { <span class="kw">return</span> <span class="nu">0</span>; }
+
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">1</span>; i &lt; n; i++) {
+        <span class="cm">// Build prefix sum of current dp</span>
+        <span class="tp">vector</span>&lt;<span class="kw">long long</span>&gt; prefix(maxInv + <span class="nu">2</span>, <span class="nu">0</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> j = <span class="nu">0</span>; j &lt;= maxInv; j++) {
+            prefix[j + <span class="nu">1</span>] = (prefix[j] + dp[j]) % MOD;
+        }
+
+        <span class="cm">// Sliding window: new_dp[j] = sum of dp[j-i .. j]</span>
+        <span class="tp">vector</span>&lt;<span class="kw">long long</span>&gt; new_dp(maxInv + <span class="nu">1</span>, <span class="nu">0</span>);
+        <span class="kw">for</span> (<span class="kw">int</span> j = <span class="nu">0</span>; j &lt;= maxInv; j++) {
+            <span class="kw">int</span> lo = <span class="fn">max</span>(<span class="nu">0</span>, j - i);
+            new_dp[j] = (prefix[j + <span class="nu">1</span>] - prefix[lo] + MOD) % MOD;
+        }
+
+        <span class="cm">// Enforce requirement if present at index i</span>
+        <span class="kw">if</span> (req[i] != -<span class="nu">1</span>) {
+            <span class="kw">long long</span> keep = new_dp[req[i]];
+            <span class="fn">fill</span>(new_dp.<span class="fn">begin</span>(), new_dp.<span class="fn">end</span>(), <span class="nu">0</span>);
+            new_dp[req[i]] = keep;
+        }
+
+        dp = new_dp;
+    }
+
+    <span class="kw">long long</span> ans = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">auto</span> v : dp) { ans = (ans + v) % MOD; }
+    <span class="kw">return</span> (<span class="kw">int</span>)ans;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — watch every variable</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">Ex 1: n=3, reqs=[[2,2],[0,0]]</button>
+    <button class="ex-btn" id="cv-ex1" onclick="cvLoadEx(1)">Ex 2: n=3, reqs=[[2,2]]</button>
+    <button class="ex-btn" id="cv-ex2" onclick="cvLoadEx(2)">Ex 3: n=2, reqs=[[0,0],[1,0]]</button>
+  </div>
+
+  <div class="cv-split">
+    <div class="cv-code-panel" id="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:5px">Variables — dim until assigned</p>
+        <div class="cv-var-grid">
+          <div class="cv-var-card dim" id="cvv-n"><p class="cv-var-name">n</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-maxInv"><p class="cv-var-name">maxInv</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-i"><p class="cv-var-name">i</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-j"><p class="cv-var-name">j</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-lo"><p class="cv-var-name">lo</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-req_i"><p class="cv-var-name">req[i]</p><p class="cv-var-val">—</p></div>
+        </div>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:5px">dp[] — inversion counts (showing slots 0..6)</p>
+        <div class="dp-row-vis" id="cv-dp-vis"></div>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:5px">req[] — requirement at each index (-1 = none)</p>
+        <div class="dp-row-vis" id="cv-req-vis"></div>
+      </div>
+      <div class="cv-narration" id="cv-narration">Select an example to begin.</div>
+    </div>
+  </div>
+
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="cv-bp" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="cv-bn" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn" onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Interactive dry run — full DP table</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1: n=3, reqs=[[2,2],[0,0]]</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">Ex 2: n=3, reqs=[[2,2]]</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">Ex 3: n=2, reqs=[[0,0],[1,0]]</button>
+  </div>
+
+  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:var(--text3);margin-bottom:.5rem">dp[i][j] = ways to arrange first i+1 elements with j inversions &nbsp;·&nbsp; <span style="color:var(--text-info)">blue=current row being computed</span> &nbsp;·&nbsp; <span style="color:var(--text-success)">green=requirement met</span> &nbsp;·&nbsp; <span style="color:var(--text-danger)">red=zeroed by requirement</span></p>
+  <div class="dr-dp-wrap">
+    <table class="dr-dp-table" id="dr-table"></table>
+  </div>
+
+  <div class="panels-fixed" style="grid-template-rows:auto 110px">
+    <div class="formula-panel" id="dr-formula">
+      <div class="formula-grid">
+        <div><p class="fitem-label">i (row)</p><p class="fitem-val" id="f-i">—</p><p class="fitem-sub">prefix length</p></div>
+        <div><p class="fitem-label">req[i]</p><p class="fitem-val" id="f-req">—</p><p class="fitem-sub">−1 = no req</p></div>
+        <div><p class="fitem-label">window size</p><p class="fitem-val" id="f-win">—</p><p class="fitem-sub">0..i new inv</p></div>
+        <div><p class="fitem-label">sum(dp)</p><p class="fitem-val" id="f-sum">—</p><p class="fitem-sub">running total</p></div>
+      </div>
+      <div class="formula-eq" id="dr-feq">Select an example to begin.</div>
+    </div>
+    <div class="step-panel" id="dr-step">
+      <p class="step-what" id="dr-what">—</p>
+      <p class="step-why" id="dr-why">Use the controls below to step through.</p>
+    </div>
+  </div>
+
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+  <div style="margin-top:.875rem">
+    <p style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-bottom:4px">Answer</p>
+    <p id="dr-result" style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--text)">—</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner"><div class="cnum">1</div><div>
+    <p class="corner-title">Impossible requirement — req[end] > end*(end+1)/2</p>
+    <p class="corner-body">A prefix of length end+1 can have at most end*(end+1)/2 inversions. If the requirement exceeds this, new_dp[req[i]] is already 0 after the DP step. The zero propagates forward — final answer is 0.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">2</div><div>
+    <p class="corner-title">Requirement at index 0</p>
+    <p class="corner-body">A single-element prefix has exactly 0 inversions always. If req[0] exists and is not 0, return 0 immediately before any loop. If req[0] == 0, dp stays [1, 0, 0, …] and the loop proceeds normally.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">3</div><div>
+    <p class="corner-title">No requirements at all</p>
+    <p class="corner-body">req[] is all -1. The DP runs freely — no zeroing happens. The final sum(dp) equals n! (all permutations of n elements), which is the expected answer when there are no constraints.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">4</div><div>
+    <p class="corner-title">Requirement at the last index only</p>
+    <p class="corner-body">The DP builds freely until i = n−1. At the last step, only new_dp[req[n−1]] survives. The answer is exactly that one value — the number of full permutations with the required inversion count.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">5</div><div>
+    <p class="corner-title">Prefix subtraction goes negative (mod arithmetic)</p>
+    <p class="corner-body"><code>prefix[j+1] - prefix[lo]</code> can be negative before mod when values are large. Always add MOD before taking mod: <code>(prefix[j+1] - prefix[lo] + MOD) % MOD</code>.</p>
+  </div></div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>req[0] != 0:</b> early return 0 before allocating any arrays.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Negative mod:</b> <code>(prefix[j+1] - prefix[lo] + MOD) % MOD</code> — the +MOD prevents negative results.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>maxInv size:</b> dp array has maxInv+1 = n(n−1)/2+1 slots. For n=13: 79 slots — small and safe.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Impossible requirement propagates to 0:</b> if new_dp[req[i]]==0 after DP, the zero carries through all subsequent rows. Final sum is 0. No explicit zero-check needed.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Integer type:</b> use long long for dp and prefix arrays — intermediate products can exceed int range before mod.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">DP + prefix sum (optimal)</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Naive DP (no prefix sum)</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Brute force</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">Time O(n × maxInv)</span><span class="tag tag-space">Space O(maxInv)</span>
+    <p class="body" style="margin-top:.5rem">One dp array of size maxInv+1, updated n−1 times. Each update is O(maxInv) with prefix sum. maxInv = n(n−1)/2. Total: O(n³) which for typical constraints (n≤13) is instant.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">Time O(n² × maxInv)</span><span class="tag tag-space">Space O(maxInv)</span>
+    <p class="body" style="margin-top:.5rem">Same DP but compute each new_dp[j] by iterating k from 0 to min(i,j) explicitly. O(i) work per cell instead of O(1). Still correct, just slower. Fine for n≤13 but the prefix sum version is cleaner.</p>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">Time O(n! × n)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body" style="margin-top:.5rem">Generate all n! permutations, check each prefix against all requirements. Infeasible for n &gt; 10.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard"><p class="ccard-l">Time</p><p class="ccard-v">O(n × M)</p><p class="ccard-n">M = maxInv = n(n−1)/2. n−1 outer iterations, each O(M) with prefix sum. Total O(n × n²) = O(n³) — fast for n≤13.</p></div>
+    <div class="ccard"><p class="ccard-l">Space</p><p class="ccard-v">O(M)</p><p class="ccard-n">Two dp arrays of size M+1 (current and new), plus prefix array. No 2D table stored — one row at a time.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">What to remember for similar problems</p>
+  <div class="takehome">
+    <p class="body">The <strong>insertion DP for inversions</strong> is a classic pattern: inserting element i into a sequence of i elements can create 0 to i new inversions, so dp[i][j] = Σ dp[i−1][j−k] for k in 0..min(i,j). This sliding-window sum structure appears whenever the recurrence is "sum over a contiguous window of the previous row."</p>
+    <p class="body">The <strong>constraint zeroing</strong> technique — keeping only one cell of a DP row and zeroing the rest — is a clean way to enforce exact-value requirements mid-DP. It propagates forward automatically: if the required value is unreachable, the zero spreads through all future rows.</p>
+    <p class="body">Related: LC 629 (K Inverse Pairs Array — same insertion DP for counting permutations with exactly k inversions, no intermediate constraints), LC 315 (Count of Smaller Numbers After Self — counting inversions directly via merge sort or BIT), LC 493 (Reverse Pairs — harder inversion variant).</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+/* Per-lesson speed overrides */
+function bfTogglePlay(){if(bfTimer){bfStopPlay();}else{document.getElementById('bf-play').textContent='⏸ Pause';bfTimer=setInterval(()=>{if(bfCur<bfSteps.length-1)bfNext();else bfStopPlay();},200);}}
+function cvTogglePlay(){if(cvTimer){cvStopPlay();}else{document.getElementById('cv-bplay').textContent='⏸ Pause';cvTimer=setInterval(()=>{if(cvCur<cvSteps.length-1)cvNext();else cvStopPlay();},950);}}
+
+const MOD = 1000000007;
+
+/* ══ DATA ══ */
+const EXAMPLES = [
+  {n:3, reqs:[[2,2],[0,0]], expected:2},
+  {n:3, reqs:[[2,2]],       expected:2},
+  {n:2, reqs:[[0,0],[1,0]], expected:1},
+];
+const BF_EXAMPLES = [
+  {n:3, reqs:[[2,2],[0,0]]},
+  {n:3, reqs:[[2,2]]},
+];
+
+/* ══ HELPERS ══ */
+function buildReq(n, reqs) {
+  const req = new Array(n).fill(-1);
+  for (const [end, cnt] of reqs) { req[end] = cnt; }
+  return req;
+}
+function countInv(perm, end) {
+  let c = 0;
+  for (let i = 0; i <= end; i++) {
+    for (let j = i+1; j <= end; j++) {
+      if (perm[i] > perm[j]) c++;
+    }
+  }
+  return c;
+}
+function* permutations(arr) {
+  if (arr.length <= 1) { yield arr.slice(); return; }
+  for (let i = 0; i < arr.length; i++) {
+    const rest = arr.slice(0,i).concat(arr.slice(i+1));
+    for (const p of permutations(rest)) { yield [arr[i], ...p]; }
+  }
+}
+
+/* ══ BRUTE FORCE ══ */
+let bfSteps=[], bfCur=0, bfTimer=null;
+function bfGen({n, reqs}) {
+  const out = [];
+  const req = buildReq(n, reqs);
+  const all = [...permutations([...Array(n).keys()])];
+  let checked=0, valid=0, lines=[];
+  out.push({checked:0,valid:0,lines:[],phase:'init'});
+  for (const p of all) {
+    checked++;
+    let ok = true;
+    for (let i=0;i<n;i++) {
+      if (req[i] !== -1 && countInv(p, i) !== req[i]) { ok=false; break; }
+    }
+    if (ok) valid++;
+    lines = lines.slice(-8);
+    lines.push({perm:p, ok});
+    out.push({checked, valid, lines:[...lines], phase: ok?'valid':'invalid'});
+  }
+  out.push({checked,valid,lines:[...lines],phase:'done'});
+  return out;
+}
+function bfRender(st) {
+  const out = document.getElementById('bf-output');
+  out.innerHTML = st.lines.map(l =>
+    `<div style="color:${l.ok?'var(--text-success)':'var(--text3)'}">${l.ok?'✓':'✗'} [${l.perm.join(',')}]</div>`
+  ).join('');
+  out.scrollTop = out.scrollHeight;
+  document.getElementById('bf-checked').textContent = st.checked;
+  document.getElementById('bf-valid').textContent = st.valid;
+  document.getElementById('bf-sctr').textContent = `Step ${bfCur+1}/${bfSteps.length}`;
+  document.getElementById('bf-prev').disabled = bfCur===0;
+  document.getElementById('bf-next').disabled = bfCur===bfSteps.length-1;
+}
+function bfNext(){if(bfCur<bfSteps.length-1){bfCur++;bfRender(bfSteps[bfCur]);}else bfStopPlay();}
+function bfPrev(){if(bfCur>0){bfCur--;bfRender(bfSteps[bfCur]);}}
+function bfReset(){bfStopPlay();bfCur=0;bfRender(bfSteps[0]);}
+function bfLoadEx(idx){
+  bfStopPlay();bfCur=0;
+  [0,1].forEach(i=>document.getElementById('bf-ex'+i).classList.toggle('active',i===idx));
+  bfSteps=bfGen(BF_EXAMPLES[idx]);bfRender(bfSteps[0]);
+}
+
+/* ══ CODE VISUALIZATION ══ */
+const CV_LINES=[
+  {n:1, c:'int countPermutations(int n, vector<vector<int>>& req) {'},
+  {n:2, c:'    const int MOD = 1e9 + 7;'},
+  {n:3, c:'    int maxInv = n * (n - 1) / 2;'},
+  {n:4, c:'    vector<int> req(n, -1);'},
+  {n:5, c:'    for (auto& r : requirements) { req[r[0]] = r[1]; }'},
+  {n:6, c:'    vector<long long> dp(maxInv + 1, 0);'},
+  {n:7, c:'    dp[0] = 1;'},
+  {n:8, c:'    if (req[0] != -1 && req[0] != 0) { return 0; }'},
+  {n:9, c:'    for (int i = 1; i < n; i++) {'},
+  {n:10,c:'        vector<long long> prefix(maxInv + 2, 0);'},
+  {n:11,c:'        for (int j = 0; j <= maxInv; j++) {'},
+  {n:12,c:'            prefix[j+1] = (prefix[j] + dp[j]) % MOD;'},
+  {n:13,c:'        }'},
+  {n:14,c:'        vector<long long> new_dp(maxInv + 1, 0);'},
+  {n:15,c:'        for (int j = 0; j <= maxInv; j++) {'},
+  {n:16,c:'            int lo = max(0, j - i);'},
+  {n:17,c:'            new_dp[j] = (prefix[j+1] - prefix[lo] + MOD) % MOD;'},
+  {n:18,c:'        }'},
+  {n:19,c:'        if (req[i] != -1) {'},
+  {n:20,c:'            long long keep = new_dp[req[i]];'},
+  {n:21,c:'            fill(new_dp.begin(), new_dp.end(), 0);'},
+  {n:22,c:'            new_dp[req[i]] = keep;'},
+  {n:23,c:'        }'},
+  {n:24,c:'        dp = new_dp;'},
+  {n:25,c:'    }'},
+  {n:26,c:'    long long ans = 0;'},
+  {n:27,c:'    for (auto v : dp) { ans = (ans + v) % MOD; }'},
+  {n:28,c:'    return (int)ans;'},
+  {n:29,c:'}'},
+];
+
+let cvSteps=[],cvCur=0,cvTimer=null;
+function cvGen({n, reqs}) {
+  const out=[];
+  const maxInv=n*(n-1)/2;
+  const req=buildReq(n,reqs);
+  let dp=new Array(maxInv+1).fill(0); dp[0]=1;
+  let curI=-1,curJ=-1,curLo=-1;
+
+  const snap=(line,narr,phase,changed,dpSnap,reqSnap,activeSlot)=>out.push({
+    line,narr,phase,changed:changed||[],
+    dp:[...dpSnap],req:[...reqSnap],
+    n,maxInv,i:curI,j:curJ,lo:curLo,
+    reqI:curI>=0?req[curI]:-2,
+    activeSlot: activeSlot!=null?activeSlot:-1
+  });
+
+  snap(1,'Enter countPermutations.','init',[],dp,req);
+  snap(3,`maxInv = n*(n-1)/2 = ${maxInv}.`,'active',['maxInv'],dp,req);
+  snap(5,`Build req[]: ${req.map((v,i)=>i+':'+v).join(' ')}`,'active',['req_i'],dp,req);
+  snap(7,'dp[0]=1. Base case: one element, 0 inversions.','active',[],dp,req);
+  if(req[0]!==-1&&req[0]!==0){snap(8,'req[0]≠0 — impossible. Return 0.','active',[],dp,req);return out;}
+  snap(8,req[0]===0?'req[0]=0 matches. Continue.':'No req at index 0. Continue.','active',[],dp,req);
+
+  for(let i=1;i<n;i++){
+    curI=i;
+    snap(9,`Outer loop i=${i}. Inserting element ${i} — can add 0..${i} new inversions.`,'active',['i'],dp,req);
+    const prefix=new Array(maxInv+2).fill(0);
+    for(let j=0;j<=maxInv;j++) prefix[j+1]=(prefix[j]+dp[j])%MOD;
+    snap(12,`Built prefix sum of dp.`,'active',[],dp,req);
+    const new_dp=new Array(maxInv+1).fill(0);
+    for(let j=0;j<=maxInv;j++){
+      curJ=j; curLo=Math.max(0,j-i);
+      new_dp[j]=(prefix[j+1]-prefix[curLo]+MOD)%MOD;
+      if(j<=4){
+        snap(17,`j=${j}: lo=${curLo}, new_dp[${j}]=prefix[${j+1}]-prefix[${curLo}]=${new_dp[j]}`,'active',['j','lo'],new_dp,req,j);
+      }
+    }
+    if(req[i]!==-1){
+      snap(19,`req[${i}]=${req[i]} — zero all except new_dp[${req[i]}]=${new_dp[req[i]]}.`,'req',['req_i'],new_dp,req,req[i]);
+      const keep=new_dp[req[i]];
+      new_dp.fill(0); new_dp[req[i]]=keep;
+      snap(22,`After filter: only dp[${req[i]}]=${keep} survives.`,'req',[],new_dp,req,req[i]);
+    }
+    dp=[...new_dp];
+    snap(24,`dp updated for i=${i}: [${dp.slice(0,6).join(', ')}${dp.length>6?'…':''}]`,'active',[],dp,req);
+  }
+  const ans=dp.reduce((a,v)=>(a+v)%MOD,0);
+  snap(27,`sum(dp) = ${ans}. Answer = ${ans}.`,'done',[],dp,req);
+  return out;
+}
+function cvRenderDpVis(dp, maxInv, activeSlot, reqAtI, phase) {
+  const vis=document.getElementById('cv-dp-vis'); vis.innerHTML='';
+  const show=Math.min(maxInv+1,8);
+  for(let j=0;j<show;j++){
+    const slot=document.createElement('div'); slot.className='dp-slot';
+    const val=document.createElement('div'); val.className='dp-slot-val';
+    val.textContent=dp[j];
+    if(dp[j]>0) val.classList.add('nonzero');
+    if(reqAtI!==undefined&&reqAtI>=0&&j===reqAtI&&phase==='req') val.classList.add('req-match');
+    if(j===activeSlot) val.classList.add('active-slot');
+    const idx=document.createElement('div'); idx.className='dp-slot-idx'; idx.textContent=j;
+    slot.appendChild(val); slot.appendChild(idx); vis.appendChild(slot);
+  }
+}
+function cvRenderReqVis(req, n, curI) {
+  const vis=document.getElementById('cv-req-vis'); vis.innerHTML='';
+  for(let j=0;j<n;j++){
+    const slot=document.createElement('div'); slot.className='dp-slot';
+    const val=document.createElement('div'); val.className='dp-slot-val';
+    val.textContent=req[j]===-1?'–':req[j];
+    if(req[j]>=0) val.classList.add('nonzero');
+    if(j===curI) val.classList.add('active-slot');
+    const idx=document.createElement('div'); idx.className='dp-slot-idx'; idx.textContent='i'+j;
+    slot.appendChild(val); slot.appendChild(idx); vis.appendChild(slot);
+  }
+}
+function cvRender(st){
+  document.querySelectorAll('.cv-line').forEach(el=>el.classList.remove('active','active-req'));
+  const al=document.getElementById('cvL'+st.line);
+  if(al){al.classList.add(st.phase==='req'?'active-req':'active');if(visPx(document.querySelector('.cv-section'))>0)al.scrollIntoView({block:'nearest',behavior:'smooth'});}
+
+  const varMap={n:st.n, maxInv:st.maxInv, i:st.i>=0?st.i:'—', j:st.j>=0?st.j:'—',
+    lo:st.lo>=0?st.lo:'—', req_i:st.reqI>=-1?st.reqI:'—'};
+  ['n','maxInv','i','j','lo','req_i'].forEach(id=>{
+    const card=document.getElementById('cvv-'+id); if(!card)return;
+    card.classList.remove('hl','hl-req','dim');
+    const val=varMap[id];
+    card.querySelector('.cv-var-val').textContent=val!=null?val:'—';
+    if(st.changed.includes(id)) card.classList.add(st.phase==='req'?'hl-req':'hl');
+    else if(val==='—') card.classList.add('dim');
+  });
+
+  cvRenderDpVis(st.dp, st.maxInv, st.activeSlot, st.reqI, st.phase);
+  cvRenderReqVis(st.req, st.n, st.i);
+
+  const narr=document.getElementById('cv-narration');
+  narr.textContent=st.narr;
+  narr.className='cv-narration'+(st.phase==='req'?' is-req':st.phase!=='done'?' is-active':'');
+  document.getElementById('cv-sctr').textContent=`Step ${cvCur+1} / ${cvSteps.length}`;
+  document.getElementById('cv-bp').disabled=cvCur===0;
+  document.getElementById('cv-bn').disabled=cvCur===cvSteps.length-1;
+}
+function cvNext(){if(cvCur<cvSteps.length-1){cvCur++;cvRender(cvSteps[cvCur]);}else cvStopPlay();}
+function cvPrev(){if(cvCur>0){cvCur--;cvRender(cvSteps[cvCur]);}}
+function cvReset(){cvStopPlay();cvCur=0;cvRender(cvSteps[0]);}
+function cvLoadEx(idx){
+  cvStopPlay();cvCur=0;
+  [0,1,2].forEach(i=>document.getElementById('cv-ex'+i).classList.toggle('active',i===idx));
+  cvSteps=cvGen(EXAMPLES[idx]);cvBuildCode(CV_LINES);cvRender(cvSteps[0]);
+}
+
+/* ══ DRY RUN ══ */
+let drSteps=[],drCur=0,drTimer=null;
+function drGen({n, reqs, expected}) {
+  const out=[];
+  const maxInv=n*(n-1)/2;
+  const req=buildReq(n,reqs);
+  const table=[];
+  let dp=new Array(maxInv+1).fill(0); dp[0]=1;
+  if(req[0]!==-1&&req[0]!==0){
+    out.push({table:[[...dp]],req,n,maxInv,i:0,reqI:req[0],
+      what:'req[0] != 0 — impossible.',why:'Single element always has 0 inversions. Return 0.',phase:'req'});
+    return out;
+  }
+  table.push([...dp]);
+  out.push({table:table.map(r=>[...r]),req,n,maxInv,i:0,reqI:req[0],
+    what:`i=0: dp=[${dp.slice(0,maxInv+1).join(',')}]`,
+    why:'Base case. One element, always 0 inversions. '+(req[0]===0?'req[0]=0 satisfied.':'No requirement at index 0.'),
+    phase: req[0]===0?'req':'dp'});
+
+  for(let i=1;i<n;i++){
+    const prefix=new Array(maxInv+2).fill(0);
+    for(let j=0;j<=maxInv;j++) prefix[j+1]=(prefix[j]+dp[j]);
+    const new_dp=new Array(maxInv+1).fill(0);
+    for(let j=0;j<=maxInv;j++){
+      const lo=Math.max(0,j-i);
+      new_dp[j]=(prefix[j+1]-prefix[lo]+MOD)%MOD;
+    }
+    let phase='dp';
+    if(req[i]!==-1){
+      const keep=new_dp[req[i]];
+      new_dp.fill(0); new_dp[req[i]]=keep;
+      phase='req';
+    }
+    dp=[...new_dp];
+    table.push([...dp]);
+    const s=dp.reduce((a,v)=>a+v,0);
+    out.push({table:table.map(r=>[...r]),req,n,maxInv,i,reqI:req[i],
+      what:`i=${i}: inserted element ${i}, window size ${i+1}${req[i]>=0?' → requirement '+req[i]+' enforced':''}`,
+      why: req[i]>=0?`req[${i}]=${req[i]}: zeroed all dp slots except index ${req[i]}. Only ${dp[req[i]]} ways survive.`:
+        `No requirement at index ${i}. dp spread across all reachable inversion counts. Sum=${s}.`,
+      phase});
+  }
+  const ans=dp.reduce((a,v)=>(a+v)%MOD,0);
+  out.push({table:table.map(r=>[...r]),req,n,maxInv,i:n-1,reqI:req[n-1],
+    what:`Done. sum(dp) = ${ans}.`,why:`Answer = ${ans} (expected ${expected}).`,phase:'done',ans});
+  return out;
+}
+function drRenderTable(st){
+  const tbl=document.getElementById('dr-table');
+  tbl.innerHTML='';
+  const maxShow=Math.min(st.maxInv+1,8);
+  const htr=document.createElement('tr');
+  ['i \\ inv',...Array.from({length:maxShow},(_,j)=>j)].forEach(h=>{
+    const th=document.createElement('th');th.textContent=h;htr.appendChild(th);
+  });
+  tbl.appendChild(htr);
+  st.table.forEach((row,ri)=>{
+    const tr=document.createElement('tr');
+    const th=document.createElement('th');
+    th.textContent=`i=${ri}${st.req[ri]>=0?' ★':''}`;
+    tr.appendChild(th);
+    for(let j=0;j<maxShow;j++){
+      const td=document.createElement('td');
+      td.textContent=row[j];
+      if(ri===st.i){
+        if(st.phase==='req'&&st.reqI>=0&&j===st.reqI) td.classList.add('req');
+        else if(st.phase==='req'&&st.reqI>=0&&j!==st.reqI&&row[j]===0) td.classList.add('dead');
+        else td.classList.add('cur');
+      }
+      tr.appendChild(td);
+    }
+    tbl.appendChild(tr);
+  });
+}
+function drRender(st){
+  drRenderTable(st);
+  document.getElementById('f-i').textContent=st.i>=0?st.i:'—';
+  document.getElementById('f-req').textContent=st.reqI>=-1?st.reqI:'—';
+  document.getElementById('f-win').textContent=st.i>=0?'0..'+st.i:'—';
+  const s=st.table[st.table.length-1].reduce((a,v)=>a+v,0);
+  document.getElementById('f-sum').textContent=s;
+  const fp=document.getElementById('dr-formula');
+  let feqStr;
+  if(st.phase==='done') feqStr=`<span class="eq-hl">Answer = ${st.ans}</span>`;
+  else if(st.phase==='req') feqStr=`req[${st.i}]=${st.reqI} → keep only dp[${st.reqI}], zero rest`;
+  else feqStr=`dp_new[j] = prefix[j+1] − prefix[max(0, j−${st.i})] &nbsp; window size = ${st.i>=0?st.i+1:'—'}`;
+  document.getElementById('dr-feq').innerHTML=feqStr;
+  fp.className='formula-panel'+(st.phase==='req'?' is-req':st.phase!=='done'?' is-active':'');
+  const sp=document.getElementById('dr-step');
+  sp.className='step-panel'+(st.phase==='req'?' req':st.phase!=='done'?' dp':'');
+  document.getElementById('dr-what').textContent=st.what;
+  document.getElementById('dr-why').textContent=st.why;
+  const rl=document.getElementById('dr-result');
+  if(st.phase==='done'){rl.textContent=st.ans;rl.style.color='var(--text-success)';}
+  else{rl.textContent='…';rl.style.color='var(--text3)';}
+  document.getElementById('dr-sctr').textContent=`Step ${drCur+1} / ${drSteps.length}`;
+  document.getElementById('dr-bp').disabled=drCur===0;
+  document.getElementById('dr-bn').disabled=drCur===drSteps.length-1;
+}
+function drNext(){if(drCur<drSteps.length-1){drCur++;drRender(drSteps[drCur]);}else drStopPlay();}
+function drPrev(){if(drCur>0){drCur--;drRender(drSteps[drCur]);}}
+function drReset(){drStopPlay();drCur=0;drRender(drSteps[0]);}
+function drLoadEx(idx){
+  drStopPlay();drCur=0;
+  [0,1,2].forEach(i=>document.getElementById('dr-ex'+i).classList.toggle('active',i===idx));
+  drSteps=drGen(EXAMPLES[idx]);drRender(drSteps[0]);
+}
+
+/* ══ INIT ══ */
+bfLoadEx(0);
+cvLoadEx(0);
+drLoadEx(0);
+</script>
+</body>
+</html>

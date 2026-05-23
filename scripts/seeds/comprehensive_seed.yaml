@@ -1,0 +1,499 @@
+# PLAN-012 — Comprehensive Problem List Seed
+#
+# Single source of truth for the merge into data/problems.json.
+# Each section is a difficulty ramp (PLAN-012 §4.5): each problem after the
+# first introduces ONE new twist over its predecessor. Sorting by
+# ramp_pos within a section yields the intended study order.
+#
+# Schema per problem:
+#   lc_num   : LeetCode number
+#   name     : Problem name
+#   slug     : LeetCode URL slug ("" if NeetCode-only)
+#   url      : Problem URL
+#   difficulty: Easy | Medium | Hard
+#   tier     : 1=foundational primer, 2=core interview-shaped, 3=advanced/capstone
+#   ramp_pos : 1-indexed position in this section's ramp
+#   twist    : ≤120 chars — the ONE new concept this problem introduces vs the prior step
+#   tracks   : list, includes "google_focused" if listed in the original google sheet
+#
+# Sections in canonical order (per PLAN-012 §4.3):
+#   1.  Arrays & Hashing
+#   2.  Two Pointers
+#   3.  Sliding Window
+#   4.  Prefix Sum
+#   5.  Binary Search
+#   6.  Stack & Monotonic Stack
+#   7.  Linked Lists
+#   8.  Trees
+#   9.  BST
+#   10. Heaps / Priority Queue
+#   11. Graphs — BFS / DFS
+#   12. Graphs — Advanced
+#   13. Dynamic Programming
+#   14. Backtracking
+#   15. Greedy / Intervals
+#   16. Tries
+#   17. Bit Manipulation
+#   18. Math
+#   19. String Matching
+#   20. Design
+#
+# Note: there is no "Ad-hoc / Signature" section. Per checkpoint-1 decision,
+# Google signature problems (489, 715, 1146, 681, 359, 904, 388) are distributed
+# into their natural pattern sections.
+
+# =============================================================================
+# 1. ARRAYS & HASHING
+# =============================================================================
+# Pedagogical arc:
+#   set-membership → hash-for-complement → hash-with-computed-key
+#   → set + skip-non-starts → counting/voting → prefix/suffix accumulators
+#   → in-place tricks → matrix in-place → cycle-on-indices → index-as-hash
+arrays_and_hashing:
+  section_order: 1
+  problems:
+    - { lc_num: 217, name: "Contains Duplicate",                slug: "contains-duplicate",                url: "https://leetcode.com/problems/contains-duplicate/",                difficulty: Easy,   tier: 1, ramp_pos: 1,  twist: "set membership — the primer for using a hash structure", tracks: ["google_focused"] }
+    - { lc_num: 1,   name: "Two Sum",                            slug: "two-sum",                            url: "https://leetcode.com/problems/two-sum/",                            difficulty: Easy,   tier: 1, ramp_pos: 2,  twist: "store complement → O(n) lookup instead of O(n²) pair check", tracks: ["google_focused"] }
+    - { lc_num: 49,  name: "Group Anagrams",                     slug: "group-anagrams",                     url: "https://leetcode.com/problems/group-anagrams/",                     difficulty: Medium, tier: 1, ramp_pos: 3,  twist: "hash key is a *computed* canonical form (sorted str or count tuple)", tracks: [] }
+    - { lc_num: 128, name: "Longest Consecutive Sequence",       slug: "longest-consecutive-sequence",       url: "https://leetcode.com/problems/longest-consecutive-sequence/",       difficulty: Medium, tier: 2, ramp_pos: 4,  twist: "skip non-start elements (n-1 ∈ set) to keep total work O(n)", tracks: ["google_focused"] }
+    - { lc_num: 169, name: "Majority Element",                   slug: "majority-element",                   url: "https://leetcode.com/problems/majority-element/",                   difficulty: Easy,   tier: 2, ramp_pos: 5,  twist: "Boyer-Moore voting — O(1) space alternative to counting", tracks: ["google_focused"] }
+    - { lc_num: 229, name: "Majority Element II",                slug: "majority-element-ii",                url: "https://leetcode.com/problems/majority-element-ii/",                difficulty: Medium, tier: 2, ramp_pos: 6,  twist: "generalise voting to k=2 candidates for n/3 threshold", tracks: ["google_focused"] }
+    - { lc_num: 238, name: "Product of Array Except Self",       slug: "product-of-array-except-self",       url: "https://leetcode.com/problems/product-of-array-except-self/",       difficulty: Medium, tier: 2, ramp_pos: 7,  twist: "two passes carrying prefix and suffix accumulators — no division", tracks: ["google_focused"] }
+    - { lc_num: 75,  name: "Sort Colors",                        slug: "sort-colors",                        url: "https://leetcode.com/problems/sort-colors/",                        difficulty: Medium, tier: 2, ramp_pos: 8,  twist: "Dutch National Flag — 3-way in-place partition", tracks: [] }
+    - { lc_num: 48,  name: "Rotate Image",                       slug: "rotate-image",                       url: "https://leetcode.com/problems/rotate-image/",                       difficulty: Medium, tier: 2, ramp_pos: 9,  twist: "in-place matrix transform via transpose + row-reverse", tracks: [] }
+    - { lc_num: 54,  name: "Spiral Matrix",                      slug: "spiral-matrix",                      url: "https://leetcode.com/problems/spiral-matrix/",                      difficulty: Medium, tier: 2, ramp_pos: 10, twist: "boundary-shrinking traversal with 4 walls", tracks: [] }
+    - { lc_num: 73,  name: "Set Matrix Zeroes",                  slug: "set-matrix-zeroes",                  url: "https://leetcode.com/problems/set-matrix-zeroes/",                  difficulty: Medium, tier: 2, ramp_pos: 11, twist: "use the first row/col as O(1) marker storage", tracks: [] }
+    - { lc_num: 287, name: "Find the Duplicate Number",          slug: "find-the-duplicate-number",          url: "https://leetcode.com/problems/find-the-duplicate-number/",          difficulty: Medium, tier: 3, ramp_pos: 12, twist: "Floyd's cycle detection — treat array as a function i → nums[i]", tracks: [] }
+    - { lc_num: 41,  name: "First Missing Positive",             slug: "first-missing-positive",             url: "https://leetcode.com/problems/first-missing-positive/",             difficulty: Hard,   tier: 3, ramp_pos: 13, twist: "index-as-hash: in-place sign marking to encode presence", tracks: ["google_focused"] }
+
+# =============================================================================
+# 2. TWO POINTERS
+# =============================================================================
+# Pedagogical arc:
+#   converging pointers with skip → read/write (fast/slow)
+#   → converge to target → decision rule for which side to move
+#   → outer-fix + inner-2ptr + dedup → state-carrying pointers
+two_pointers:
+  section_order: 2
+  problems:
+    - { lc_num: 125, name: "Valid Palindrome",                   slug: "valid-palindrome",                   url: "https://leetcode.com/problems/valid-palindrome/",                   difficulty: Easy,   tier: 1, ramp_pos: 1, twist: "primer: two ends converge; skip non-alphanumeric chars", tracks: ["google_focused"] }
+    - { lc_num: 283, name: "Move Zeroes",                        slug: "move-zeroes",                        url: "https://leetcode.com/problems/move-zeroes/",                        difficulty: Easy,   tier: 1, ramp_pos: 2, twist: "read pointer + write pointer (fast/slow) for in-place filter", tracks: ["google_focused"] }
+    - { lc_num: 167, name: "Two Sum II — Input Array Is Sorted", slug: "two-sum-ii-input-array-is-sorted",   url: "https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/",   difficulty: Medium, tier: 1, ramp_pos: 3, twist: "converge to a target sum using sortedness", tracks: ["google_focused"] }
+    - { lc_num: 11,  name: "Container With Most Water",          slug: "container-with-most-water",          url: "https://leetcode.com/problems/container-with-most-water/",          difficulty: Medium, tier: 2, ramp_pos: 4, twist: "decision rule: always move the *shorter* pointer inward", tracks: ["google_focused"] }
+    - { lc_num: 15,  name: "3Sum",                                slug: "3sum",                                url: "https://leetcode.com/problems/3sum/",                                difficulty: Medium, tier: 2, ramp_pos: 5, twist: "outer fix + inner two-pointer; dedup at both levels", tracks: ["google_focused"] }
+    - { lc_num: 42,  name: "Trapping Rain Water",                 slug: "trapping-rain-water",                 url: "https://leetcode.com/problems/trapping-rain-water/",                 difficulty: Hard,   tier: 3, ramp_pos: 6, twist: "carry max-so-far state on each pointer; smaller side dictates fill", tracks: ["google_focused"] }
+
+# =============================================================================
+# 3. SLIDING WINDOW
+# =============================================================================
+# Pedagogical arc:
+#   shrink-when-exceeds → set/map state inside window
+#   → count-budget invariant → same-budget variant
+#   → fixed-size + freq equality → all-positions variant
+#   → invariant len − max_freq ≤ k → k-distinct generalisation
+#   → full state shrink/grow → monotonic deque inside window
+sliding_window:
+  section_order: 3
+  problems:
+    - { lc_num: 209,  name: "Minimum Size Subarray Sum",                            slug: "minimum-size-subarray-sum",                            url: "https://leetcode.com/problems/minimum-size-subarray-sum/",                            difficulty: Medium, tier: 1, ramp_pos: 1,  twist: "primer: shrink window from the left while constraint still met", tracks: [] }
+    - { lc_num: 3,    name: "Longest Substring Without Repeating Characters",       slug: "longest-substring-without-repeating-characters",       url: "https://leetcode.com/problems/longest-substring-without-repeating-characters/",       difficulty: Medium, tier: 1, ramp_pos: 2,  twist: "maintain set/map of chars inside the window", tracks: ["google_focused"] }
+    - { lc_num: 1004, name: "Max Consecutive Ones III",                              slug: "max-consecutive-ones-iii",                              url: "https://leetcode.com/problems/max-consecutive-ones-iii/",                              difficulty: Medium, tier: 2, ramp_pos: 3,  twist: "window invariant is a *count budget* (zero count ≤ k)", tracks: [] }
+    - { lc_num: 1493, name: "Longest Subarray of 1s After Deleting One Element",    slug: "longest-subarray-of-1s-after-deleting-one-element",    url: "https://leetcode.com/problems/longest-subarray-of-1s-after-deleting-one-element/",    difficulty: Medium, tier: 2, ramp_pos: 4,  twist: "same budget shape with k=1; must-delete-one edge case", tracks: [] }
+    - { lc_num: 567,  name: "Permutation in String",                                  slug: "permutation-in-string",                                  url: "https://leetcode.com/problems/permutation-in-string/",                                  difficulty: Medium, tier: 2, ramp_pos: 5,  twist: "fixed-size window + frequency-map equality check", tracks: ["google_focused"] }
+    - { lc_num: 438,  name: "Find All Anagrams in a String",                          slug: "find-all-anagrams-in-a-string",                          url: "https://leetcode.com/problems/find-all-anagrams-in-a-string/",                          difficulty: Medium, tier: 2, ramp_pos: 6,  twist: "same comparison; report *every* matching start position", tracks: ["google_focused"] }
+    - { lc_num: 424,  name: "Longest Repeating Character Replacement",                slug: "longest-repeating-character-replacement",                url: "https://leetcode.com/problems/longest-repeating-character-replacement/",                difficulty: Medium, tier: 2, ramp_pos: 7,  twist: "invariant: (window length − max char freq) ≤ k", tracks: ["google_focused"] }
+    - { lc_num: 904,  name: "Fruit Into Baskets",                                     slug: "fruit-into-baskets",                                     url: "https://leetcode.com/problems/fruit-into-baskets/",                                     difficulty: Medium, tier: 2, ramp_pos: 8,  twist: "k-distinct generalisation with k=2", tracks: [] }
+    - { lc_num: 76,   name: "Minimum Window Substring",                               slug: "minimum-window-substring",                               url: "https://leetcode.com/problems/minimum-window-substring/",                               difficulty: Hard,   tier: 3, ramp_pos: 9,  twist: "full state-driven shrink/grow with target-satisfaction counter", tracks: ["google_focused"] }
+    - { lc_num: 239,  name: "Sliding Window Maximum",                                 slug: "sliding-window-maximum",                                 url: "https://leetcode.com/problems/sliding-window-maximum/",                                 difficulty: Hard,   tier: 3, ramp_pos: 10, twist: "monotonic deque INSIDE the window — composite pattern", tracks: ["google_focused"] }
+
+# =============================================================================
+# 4. PREFIX SUM
+# =============================================================================
+# Pedagogical arc:
+#   prefix balance + first-seen index → prefix sum + count map
+#   → modular variant → reframe odd-count as prefix sum → 2D prefix
+prefix_sum:
+  section_order: 4
+  problems:
+    - { lc_num: 525,  name: "Contiguous Array",                       slug: "contiguous-array",                       url: "https://leetcode.com/problems/contiguous-array/",                       difficulty: Medium, tier: 1, ramp_pos: 1, twist: "map prefix balance (+1/-1) to first-seen index", tracks: ["google_focused"] }
+    - { lc_num: 560,  name: "Subarray Sum Equals K",                  slug: "subarray-sum-equals-k",                  url: "https://leetcode.com/problems/subarray-sum-equals-k/",                  difficulty: Medium, tier: 1, ramp_pos: 2, twist: "prefix sum + count map of prior prefixes", tracks: ["google_focused"] }
+    - { lc_num: 974,  name: "Subarray Sums Divisible by K",           slug: "subarray-sums-divisible-by-k",           url: "https://leetcode.com/problems/subarray-sums-divisible-by-k/",           difficulty: Medium, tier: 2, ramp_pos: 3, twist: "modular variant — bucket prefixes by (sum mod k)", tracks: [] }
+    - { lc_num: 1248, name: "Count Number of Nice Subarrays",         slug: "count-number-of-nice-subarrays",         url: "https://leetcode.com/problems/count-number-of-nice-subarrays/",         difficulty: Medium, tier: 2, ramp_pos: 4, twist: "reframe 'exactly k odd' as a prefix-count problem", tracks: [] }
+    - { lc_num: 304,  name: "Range Sum Query 2D — Immutable",          slug: "range-sum-query-2d-immutable",            url: "https://leetcode.com/problems/range-sum-query-2d-immutable/",          difficulty: Medium, tier: 2, ramp_pos: 5, twist: "2D prefix sum with inclusion–exclusion at query time", tracks: [] }
+
+# =============================================================================
+# 5. BINARY SEARCH
+# =============================================================================
+# Pedagogical arc:
+#   plain BS → 2D as flat → rotated discontinuity → which-half-sorted
+#   → neighbour-compare → BS for largest ≤ x
+#   → BS on answer (intro / variant / hard) → partition-based BS
+binary_search:
+  section_order: 5
+  problems:
+    - { lc_num: 704,  name: "Binary Search",                                      slug: "binary-search",                                      url: "https://leetcode.com/problems/binary-search/",                                      difficulty: Easy,   tier: 1, ramp_pos: 1,  twist: "primer: half-the-range invariant", tracks: ["google_focused"] }
+    - { lc_num: 74,   name: "Search a 2D Matrix",                                  slug: "search-a-2d-matrix",                                  url: "https://leetcode.com/problems/search-a-2d-matrix/",                                  difficulty: Medium, tier: 1, ramp_pos: 2,  twist: "treat 2D as a flat sorted array via index arithmetic", tracks: [] }
+    - { lc_num: 153,  name: "Find Minimum in Rotated Sorted Array",                slug: "find-minimum-in-rotated-sorted-array",                url: "https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/",                difficulty: Medium, tier: 2, ramp_pos: 3,  twist: "compare to right end to locate the discontinuity", tracks: ["google_focused"] }
+    - { lc_num: 33,   name: "Search in Rotated Sorted Array",                       slug: "search-in-rotated-sorted-array",                      url: "https://leetcode.com/problems/search-in-rotated-sorted-array/",                      difficulty: Medium, tier: 2, ramp_pos: 4,  twist: "decide which half is sorted, then check if target lies there", tracks: ["google_focused"] }
+    - { lc_num: 162,  name: "Find Peak Element",                                    slug: "find-peak-element",                                    url: "https://leetcode.com/problems/find-peak-element/",                                    difficulty: Medium, tier: 2, ramp_pos: 5,  twist: "no target value — neighbour comparison drives the BS", tracks: [] }
+    - { lc_num: 981,  name: "Time Based Key-Value Store",                            slug: "time-based-key-value-store",                            url: "https://leetcode.com/problems/time-based-key-value-store/",                            difficulty: Medium, tier: 2, ramp_pos: 6,  twist: "BS for the largest value ≤ x (lower_bound minus 1)", tracks: [] }
+    - { lc_num: 875,  name: "Koko Eating Bananas",                                   slug: "koko-eating-bananas",                                   url: "https://leetcode.com/problems/koko-eating-bananas/",                                   difficulty: Medium, tier: 2, ramp_pos: 7,  twist: "BS on the *answer space* using a monotone feasibility check", tracks: ["google_focused"] }
+    - { lc_num: 1011, name: "Capacity To Ship Packages Within D Days",                slug: "capacity-to-ship-packages-within-d-days",                url: "https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/",                difficulty: Medium, tier: 2, ramp_pos: 8,  twist: "same answer-space BS with a different feasibility predicate", tracks: ["google_focused"] }
+    - { lc_num: 410,  name: "Split Array Largest Sum",                                slug: "split-array-largest-sum",                                url: "https://leetcode.com/problems/split-array-largest-sum/",                                difficulty: Hard,   tier: 3, ramp_pos: 9,  twist: "hard answer-space BS; feasibility is a greedy partition", tracks: [] }
+    - { lc_num: 4,    name: "Median of Two Sorted Arrays",                            slug: "median-of-two-sorted-arrays",                            url: "https://leetcode.com/problems/median-of-two-sorted-arrays/",                            difficulty: Hard,   tier: 3, ramp_pos: 10, twist: "partition-based BS on the smaller array — not search-for-value", tracks: ["google_focused"] }
+
+# =============================================================================
+# 6. STACK & MONOTONIC STACK
+# =============================================================================
+# Pedagogical arc:
+#   matched pairs → auxiliary state per push → stack as evaluator
+#   → nested stack of (count, str) → push-time collision resolution
+#   → monotonic stack primer → standard NGE pattern → sort + monotonic
+#   → histogram capstone
+stack_and_monotonic:
+  section_order: 6
+  problems:
+    - { lc_num: 20,  name: "Valid Parentheses",                       slug: "valid-parentheses",                       url: "https://leetcode.com/problems/valid-parentheses/",                       difficulty: Easy,   tier: 1, ramp_pos: 1, twist: "primer: LIFO matched-pairs check", tracks: ["google_focused"] }
+    - { lc_num: 155, name: "Min Stack",                                slug: "min-stack",                                url: "https://leetcode.com/problems/min-stack/",                                difficulty: Medium, tier: 1, ramp_pos: 2, twist: "augment each push with auxiliary state (running min)", tracks: ["google_focused"] }
+    - { lc_num: 150, name: "Evaluate Reverse Polish Notation",         slug: "evaluate-reverse-polish-notation",         url: "https://leetcode.com/problems/evaluate-reverse-polish-notation/",         difficulty: Medium, tier: 1, ramp_pos: 3, twist: "stack as an expression evaluator", tracks: [] }
+    - { lc_num: 394, name: "Decode String",                            slug: "decode-string",                            url: "https://leetcode.com/problems/decode-string/",                            difficulty: Medium, tier: 2, ramp_pos: 4, twist: "nested stack of (multiplier, accumulated-string) frames", tracks: ["google_focused"] }
+    - { lc_num: 735, name: "Asteroid Collision",                       slug: "asteroid-collision",                       url: "https://leetcode.com/problems/asteroid-collision/",                       difficulty: Medium, tier: 2, ramp_pos: 5, twist: "resolve collisions at push time via while-pop loop", tracks: [] }
+    - { lc_num: 496, name: "Next Greater Element I",                    slug: "next-greater-element-i",                    url: "https://leetcode.com/problems/next-greater-element-i/",                    difficulty: Easy,   tier: 2, ramp_pos: 6, twist: "primer for monotonic stack — pop while top ≤ current", tracks: ["google_focused"] }
+    - { lc_num: 739, name: "Daily Temperatures",                        slug: "daily-temperatures",                        url: "https://leetcode.com/problems/daily-temperatures/",                        difficulty: Medium, tier: 2, ramp_pos: 7, twist: "monotonic stack storing *indices* to compute waiting days", tracks: ["google_focused"] }
+    - { lc_num: 853, name: "Car Fleet",                                 slug: "car-fleet",                                 url: "https://leetcode.com/problems/car-fleet/",                                 difficulty: Medium, tier: 2, ramp_pos: 8, twist: "sort by position, then monotonic stack on arrival times", tracks: [] }
+    - { lc_num: 84,  name: "Largest Rectangle in Histogram",            slug: "largest-rectangle-in-histogram",            url: "https://leetcode.com/problems/largest-rectangle-in-histogram/",            difficulty: Hard,   tier: 3, ramp_pos: 9, twist: "monotonic stack capstone — width derived from popped neighbours", tracks: ["google_focused"] }
+
+# =============================================================================
+# 7. LINKED LISTS
+# =============================================================================
+# Pedagogical arc:
+#   pointer rewiring → dummy-head merge → Floyd's primer → Floyd's + math
+#   → two pointers with gap → composite (find-mid + reverse + merge)
+#   → random-pointer copy → LRU design → k-way merge with heap
+linked_lists:
+  section_order: 7
+  problems:
+    - { lc_num: 206, name: "Reverse Linked List",                       slug: "reverse-linked-list",                       url: "https://leetcode.com/problems/reverse-linked-list/",                       difficulty: Easy,   tier: 1, ramp_pos: 1, twist: "primer: 3-pointer rewiring (prev, curr, next)", tracks: ["google_focused"] }
+    - { lc_num: 21,  name: "Merge Two Sorted Lists",                     slug: "merge-two-sorted-lists",                     url: "https://leetcode.com/problems/merge-two-sorted-lists/",                     difficulty: Easy,   tier: 1, ramp_pos: 2, twist: "dummy-head trick to simplify tail-append loops", tracks: ["google_focused"] }
+    - { lc_num: 141, name: "Linked List Cycle",                          slug: "linked-list-cycle",                          url: "https://leetcode.com/problems/linked-list-cycle/",                          difficulty: Easy,   tier: 1, ramp_pos: 3, twist: "Floyd's tortoise-and-hare primer for cycle detection", tracks: ["google_focused"] }
+    - { lc_num: 142, name: "Linked List Cycle II",                       slug: "linked-list-cycle-ii",                       url: "https://leetcode.com/problems/linked-list-cycle-ii/",                       difficulty: Medium, tier: 2, ramp_pos: 4, twist: "extend Floyd's with the meeting-point → start-of-cycle math", tracks: [] }
+    - { lc_num: 19,  name: "Remove Nth Node From End of List",            slug: "remove-nth-node-from-end-of-list",            url: "https://leetcode.com/problems/remove-nth-node-from-end-of-list/",            difficulty: Medium, tier: 2, ramp_pos: 5, twist: "two pointers separated by a fixed gap of N", tracks: [] }
+    - { lc_num: 143, name: "Reorder List",                                slug: "reorder-list",                                url: "https://leetcode.com/problems/reorder-list/",                                difficulty: Medium, tier: 2, ramp_pos: 6, twist: "composite: find-mid + reverse-second-half + interleave-merge", tracks: ["google_focused"] }
+    - { lc_num: 138, name: "Copy List with Random Pointer",                slug: "copy-list-with-random-pointer",                url: "https://leetcode.com/problems/copy-list-with-random-pointer/",                difficulty: Medium, tier: 2, ramp_pos: 7, twist: "old→new node map (or interleave trick) to resolve random refs", tracks: [] }
+    - { lc_num: 146, name: "LRU Cache",                                   slug: "lru-cache",                                   url: "https://leetcode.com/problems/lru-cache/",                                   difficulty: Medium, tier: 3, ramp_pos: 8, twist: "design: hashmap + doubly-linked list for O(1) get and put", tracks: ["google_focused"] }
+    - { lc_num: 23,  name: "Merge K Sorted Lists",                         slug: "merge-k-sorted-lists",                         url: "https://leetcode.com/problems/merge-k-sorted-lists/",                         difficulty: Hard,   tier: 3, ramp_pos: 9, twist: "min-heap over k head pointers (or divide-and-conquer pairwise merge)", tracks: ["google_focused"] }
+
+# =============================================================================
+# 8. TREES (binary tree DFS/BFS; BST has its own section)
+# =============================================================================
+# Pedagogical arc:
+#   recursion primer → mutating recursion → augmented return
+#   → augmented return (compute one, return another) → BFS primer
+#   → BFS variant → DFS + backtracking on tree → "found" recursion
+#   → reconstruction → in-place restructure → tree DP intro → tree DP capstone
+#   → serialisation with null markers
+trees:
+  section_order: 8
+  problems:
+    - { lc_num: 104, name: "Maximum Depth of Binary Tree",                                          slug: "maximum-depth-of-binary-tree",                                          url: "https://leetcode.com/problems/maximum-depth-of-binary-tree/",                                          difficulty: Easy,   tier: 1, ramp_pos: 1,  twist: "primer: tree recursion returning a value from children", tracks: ["google_focused"] }
+    - { lc_num: 226, name: "Invert Binary Tree",                                                     slug: "invert-binary-tree",                                                     url: "https://leetcode.com/problems/invert-binary-tree/",                                                     difficulty: Easy,   tier: 1, ramp_pos: 2,  twist: "recursion that *mutates* the tree in place", tracks: ["google_focused"] }
+    - { lc_num: 110, name: "Balanced Binary Tree",                                                   slug: "balanced-binary-tree",                                                   url: "https://leetcode.com/problems/balanced-binary-tree/",                                                   difficulty: Easy,   tier: 1, ramp_pos: 3,  twist: "augmented return: -1 sentinel encodes 'unbalanced'", tracks: [] }
+    - { lc_num: 543, name: "Diameter of Binary Tree",                                                slug: "diameter-of-binary-tree",                                                url: "https://leetcode.com/problems/diameter-of-binary-tree/",                                                difficulty: Easy,   tier: 2, ramp_pos: 4,  twist: "return one thing (height) but *update* another via closure (best diameter)", tracks: ["google_focused"] }
+    - { lc_num: 102, name: "Binary Tree Level Order Traversal",                                      slug: "binary-tree-level-order-traversal",                                      url: "https://leetcode.com/problems/binary-tree-level-order-traversal/",                                      difficulty: Medium, tier: 1, ramp_pos: 5,  twist: "BFS primer on a tree — queue + per-level snapshot", tracks: ["google_focused"] }
+    - { lc_num: 199, name: "Binary Tree Right Side View",                                            slug: "binary-tree-right-side-view",                                            url: "https://leetcode.com/problems/binary-tree-right-side-view/",                                            difficulty: Medium, tier: 2, ramp_pos: 6,  twist: "BFS variant: emit the last node visited at each level", tracks: [] }
+    - { lc_num: 113, name: "Path Sum II",                                                            slug: "path-sum-ii",                                                            url: "https://leetcode.com/problems/path-sum-ii/",                                                            difficulty: Medium, tier: 2, ramp_pos: 7,  twist: "DFS with backtracking — push/pop along the recursion stack", tracks: [] }
+    - { lc_num: 236, name: "Lowest Common Ancestor of a Binary Tree",                                slug: "lowest-common-ancestor-of-a-binary-tree",                                url: "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/",                                difficulty: Medium, tier: 2, ramp_pos: 8,  twist: "recursion returning 'subtree contains target' bubbles the answer up", tracks: ["google_focused"] }
+    - { lc_num: 105, name: "Construct Binary Tree from Preorder and Inorder",                        slug: "construct-binary-tree-from-preorder-and-inorder-traversal",              url: "https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/",                        difficulty: Medium, tier: 2, ramp_pos: 9,  twist: "recursive build using inorder index map for O(n) split", tracks: [] }
+    - { lc_num: 114, name: "Flatten Binary Tree to Linked List",                                     slug: "flatten-binary-tree-to-linked-list",                                     url: "https://leetcode.com/problems/flatten-binary-tree-to-linked-list/",                                     difficulty: Medium, tier: 2, ramp_pos: 10, twist: "in-place restructure: reverse-preorder traversal rewires right pointers", tracks: [] }
+    - { lc_num: 337, name: "House Robber III",                                                       slug: "house-robber-iii",                                                       url: "https://leetcode.com/problems/house-robber-iii/",                                                       difficulty: Medium, tier: 3, ramp_pos: 11, twist: "Tree DP primer — return (rob, skip) pair from each subtree", tracks: [] }
+    - { lc_num: 124, name: "Binary Tree Maximum Path Sum",                                           slug: "binary-tree-maximum-path-sum",                                           url: "https://leetcode.com/problems/binary-tree-maximum-path-sum/",                                           difficulty: Hard,   tier: 3, ramp_pos: 12, twist: "Tree DP capstone — return 'single-arm gain', update global 'through-this-node' max", tracks: ["google_focused"] }
+    - { lc_num: 297, name: "Serialize and Deserialize Binary Tree",                                  slug: "serialize-and-deserialize-binary-tree",                                  url: "https://leetcode.com/problems/serialize-and-deserialize-binary-tree/",                                  difficulty: Hard,   tier: 3, ramp_pos: 13, twist: "preorder traversal with null markers makes the encoding bijective", tracks: ["google_focused"] }
+
+# =============================================================================
+# 9. BST (binary-search-tree-specific patterns; generic Trees has its own section)
+# =============================================================================
+# Pedagogical arc:
+#   exploit ordering for LCA → bounded-recursion validation
+#   → inorder yields sorted sequence → lazy inorder via stack
+#   → recursive delete with successor/predecessor
+bst:
+  section_order: 9
+  problems:
+    - { lc_num: 235, name: "Lowest Common Ancestor of a Binary Search Tree", slug: "lowest-common-ancestor-of-a-binary-search-tree", url: "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/", difficulty: Medium, tier: 1, ramp_pos: 1, twist: "primer: BST ordering lets you decide left/right in O(1) per node", tracks: ["google_focused"] }
+    - { lc_num: 98,  name: "Validate Binary Search Tree",                     slug: "validate-binary-search-tree",                     url: "https://leetcode.com/problems/validate-binary-search-tree/",                     difficulty: Medium, tier: 1, ramp_pos: 2, twist: "recursion carrying (min, max) bounds down each branch", tracks: ["google_focused"] }
+    - { lc_num: 230, name: "Kth Smallest Element in a BST",                   slug: "kth-smallest-element-in-a-bst",                   url: "https://leetcode.com/problems/kth-smallest-element-in-a-bst/",                   difficulty: Medium, tier: 2, ramp_pos: 3, twist: "inorder traversal produces sorted order — stop at k", tracks: ["google_focused"] }
+    - { lc_num: 173, name: "Binary Search Tree Iterator",                     slug: "binary-search-tree-iterator",                     url: "https://leetcode.com/problems/binary-search-tree-iterator/",                     difficulty: Medium, tier: 2, ramp_pos: 4, twist: "lazy inorder via an explicit stack — amortised O(1) next()", tracks: [] }
+    - { lc_num: 450, name: "Delete Node in a BST",                            slug: "delete-node-in-a-bst",                            url: "https://leetcode.com/problems/delete-node-in-a-bst/",                            difficulty: Medium, tier: 3, ramp_pos: 5, twist: "three-case recursive delete; two-children case uses inorder successor", tracks: [] }
+
+# =============================================================================
+# 10. HEAPS / PRIORITY QUEUE
+# =============================================================================
+# Pedagogical arc:
+#   heap primer → min-heap of size k → same with custom key
+#   → top-k frequencies → cooldown scheduling → greedy + freq heap
+#   → heap-merge of feeds → two heaps balanced → two heaps with eligibility shift
+heaps:
+  section_order: 10
+  problems:
+    - { lc_num: 1046, name: "Last Stone Weight",                       slug: "last-stone-weight",                       url: "https://leetcode.com/problems/last-stone-weight/",                       difficulty: Easy,   tier: 1, ramp_pos: 1, twist: "primer: pop top two, push their diff back", tracks: [] }
+    - { lc_num: 215,  name: "Kth Largest Element in an Array",         slug: "kth-largest-element-in-an-array",         url: "https://leetcode.com/problems/kth-largest-element-in-an-array/",         difficulty: Medium, tier: 1, ramp_pos: 2, twist: "maintain a min-heap of size k — top is the answer", tracks: ["google_focused"] }
+    - { lc_num: 973,  name: "K Closest Points to Origin",              slug: "k-closest-points-to-origin",              url: "https://leetcode.com/problems/k-closest-points-to-origin/",              difficulty: Medium, tier: 1, ramp_pos: 3, twist: "same min-heap-of-size-k shape with a custom comparator key", tracks: [] }
+    - { lc_num: 347,  name: "Top K Frequent Elements",                  slug: "top-k-frequent-elements",                  url: "https://leetcode.com/problems/top-k-frequent-elements/",                  difficulty: Medium, tier: 2, ramp_pos: 4, twist: "count frequencies first, then heap-of-size-k OR bucket sort", tracks: ["google_focused"] }
+    - { lc_num: 621,  name: "Task Scheduler",                            slug: "task-scheduler",                            url: "https://leetcode.com/problems/task-scheduler/",                            difficulty: Medium, tier: 2, ramp_pos: 5, twist: "max-heap + cooldown queue (or formula-based count)", tracks: ["google_focused"] }
+    - { lc_num: 767,  name: "Reorganize String",                         slug: "reorganize-string",                         url: "https://leetcode.com/problems/reorganize-string/",                         difficulty: Medium, tier: 2, ramp_pos: 6, twist: "greedy: always place the highest-remaining-freq char that isn't the previous", tracks: [] }
+    - { lc_num: 355,  name: "Design Twitter",                            slug: "design-twitter",                            url: "https://leetcode.com/problems/design-twitter/",                            difficulty: Medium, tier: 2, ramp_pos: 7, twist: "k-way merge via heap over each followee's tweet feed", tracks: [] }
+    - { lc_num: 295,  name: "Find Median from Data Stream",              slug: "find-median-from-data-stream",              url: "https://leetcode.com/problems/find-median-from-data-stream/",              difficulty: Hard,   tier: 3, ramp_pos: 8, twist: "two heaps (max on lower half, min on upper) balanced in size", tracks: ["google_focused"] }
+    - { lc_num: 502,  name: "IPO",                                       slug: "ipo",                                       url: "https://leetcode.com/problems/ipo/",                                       difficulty: Hard,   tier: 3, ramp_pos: 9, twist: "two heaps with eligibility shift: pop from capital-sorted, push into profit-max", tracks: [] }
+
+# =============================================================================
+# 11. GRAPHS — BFS / DFS (incl. multi-source BFS, implicit graphs)
+# =============================================================================
+# Pedagogical arc:
+#   grid component DFS → with size accumulation → border-anchored DFS
+#   → two-source BFS intersect → multi-source BFS primer → variant → in-place
+#   → max-min variant → adjacency DFS with clone-map → DAG path enumeration
+#   → BFS over implicit state space → word-graph BFS → robot API DFS
+graphs_bfs_dfs:
+  section_order: 11
+  problems:
+    - { lc_num: 200,  name: "Number of Islands",                       slug: "number-of-islands",                       url: "https://leetcode.com/problems/number-of-islands/",                       difficulty: Medium, tier: 1, ramp_pos: 1,  twist: "primer: grid DFS to mark connected components", tracks: ["google_focused"] }
+    - { lc_num: 695,  name: "Max Area of Island",                       slug: "max-area-of-island",                       url: "https://leetcode.com/problems/max-area-of-island/",                       difficulty: Medium, tier: 1, ramp_pos: 2,  twist: "same DFS but accumulate component size and track max", tracks: ["google_focused"] }
+    - { lc_num: 130,  name: "Surrounded Regions",                       slug: "surrounded-regions",                       url: "https://leetcode.com/problems/surrounded-regions/",                       difficulty: Medium, tier: 2, ramp_pos: 3,  twist: "DFS from the border to mark 'safe' cells; flip the rest", tracks: [] }
+    - { lc_num: 417,  name: "Pacific Atlantic Water Flow",              slug: "pacific-atlantic-water-flow",              url: "https://leetcode.com/problems/pacific-atlantic-water-flow/",              difficulty: Medium, tier: 2, ramp_pos: 4,  twist: "two reverse-BFS sources (each ocean); intersect reachable sets", tracks: [] }
+    - { lc_num: 994,  name: "Rotting Oranges",                          slug: "rotting-oranges",                          url: "https://leetcode.com/problems/rotting-oranges/",                          difficulty: Medium, tier: 2, ramp_pos: 5,  twist: "primer for multi-source BFS — all rotten cells start in queue together", tracks: ["google_focused"] }
+    - { lc_num: 542,  name: "01 Matrix",                                 slug: "01-matrix",                                 url: "https://leetcode.com/problems/01-matrix/",                                 difficulty: Medium, tier: 2, ramp_pos: 6,  twist: "multi-source BFS variant: every 0 is a source, write distances out", tracks: [] }
+    - { lc_num: 286,  name: "Walls and Gates",                           slug: "",                                            url: "https://neetcode.io/problems/walls-and-gates",                          difficulty: Medium, tier: 2, ramp_pos: 7,  twist: "same multi-source BFS, but mutates the grid in place (NeetCode-only)", tracks: [] }
+    - { lc_num: 1162, name: "As Far from Land as Possible",              slug: "as-far-from-land-as-possible",              url: "https://leetcode.com/problems/as-far-from-land-as-possible/",              difficulty: Medium, tier: 2, ramp_pos: 8,  twist: "multi-source BFS for the *max-min* (farthest water cell)", tracks: [] }
+    - { lc_num: 133,  name: "Clone Graph",                                slug: "clone-graph",                                url: "https://leetcode.com/problems/clone-graph/",                                difficulty: Medium, tier: 2, ramp_pos: 9,  twist: "DFS/BFS over adjacency with old→new node map for cycle-safe copy", tracks: ["google_focused"] }
+    - { lc_num: 797,  name: "All Paths From Source to Target",            slug: "all-paths-from-source-to-target",            url: "https://leetcode.com/problems/all-paths-from-source-to-target/",            difficulty: Medium, tier: 2, ramp_pos: 10, twist: "DFS in a DAG accumulating the current path on backtrack", tracks: [] }
+    - { lc_num: 752,  name: "Open the Lock",                              slug: "open-the-lock",                              url: "https://leetcode.com/problems/open-the-lock/",                              difficulty: Medium, tier: 2, ramp_pos: 11, twist: "BFS over an *implicit* graph (states are strings, neighbours generated on-the-fly)", tracks: [] }
+    - { lc_num: 127,  name: "Word Ladder",                                slug: "word-ladder",                                url: "https://leetcode.com/problems/word-ladder/",                                difficulty: Hard,   tier: 3, ramp_pos: 12, twist: "BFS over word-graph; pattern-bucket trick to enumerate neighbours efficiently", tracks: ["google_focused"] }
+    - { lc_num: 489,  name: "Robot Room Cleaner",                         slug: "robot-room-cleaner",                         url: "https://leetcode.com/problems/robot-room-cleaner/",                         difficulty: Hard,   tier: 3, ramp_pos: 13, twist: "DFS with manual backtracking through a robot API (no random access)", tracks: [] }
+
+# =============================================================================
+# 12. GRAPHS — ADVANCED (Topo, DSU, Dijkstra, MST, Bellman-Ford, Bipartite, Bitmask BFS)
+# =============================================================================
+# Pedagogical arc:
+#   topo primer → topo returning order → topo from constraint pairs
+#   → DSU primer → DSU on adjacency matrix → DSU detects cycle → DSU + invariants
+#   → DSU on string keys → DSU treating positions as nodes
+#   → 2-coloring → MST primer → Dijkstra primer → Dijkstra with custom weight
+#   → Bellman-Ford limited → Dijkstra over max-on-path → bitmask BFS capstone
+graphs_advanced:
+  section_order: 12
+  problems:
+    - { lc_num: 207,  name: "Course Schedule",                                       slug: "course-schedule",                                       url: "https://leetcode.com/problems/course-schedule/",                                       difficulty: Medium, tier: 1, ramp_pos: 1,  twist: "primer: topological sort (cycle ⇒ infeasible) via Kahn or DFS coloring", tracks: ["google_focused"] }
+    - { lc_num: 210,  name: "Course Schedule II",                                     slug: "course-schedule-ii",                                     url: "https://leetcode.com/problems/course-schedule-ii/",                                     difficulty: Medium, tier: 1, ramp_pos: 2,  twist: "same topo but emit the order, not just feasibility", tracks: ["google_focused"] }
+    - { lc_num: 269,  name: "Alien Dictionary",                                       slug: "",                                                      url: "https://neetcode.io/problems/foreign-dictionary",                                      difficulty: Hard,   tier: 2, ramp_pos: 3,  twist: "build the graph from pairwise word comparisons, then topo", tracks: [] }
+    - { lc_num: 323,  name: "Number of Connected Components in an Undirected Graph", slug: "",                                                      url: "https://neetcode.io/problems/count-connected-components",                              difficulty: Medium, tier: 1, ramp_pos: 4,  twist: "DSU primer — union edges, count distinct roots", tracks: [] }
+    - { lc_num: 547,  name: "Number of Provinces",                                    slug: "number-of-provinces",                                    url: "https://leetcode.com/problems/number-of-provinces/",                                    difficulty: Medium, tier: 2, ramp_pos: 5,  twist: "DSU on an adjacency matrix (no edge list)", tracks: [] }
+    - { lc_num: 684,  name: "Redundant Connection",                                   slug: "redundant-connection",                                   url: "https://leetcode.com/problems/redundant-connection/",                                   difficulty: Medium, tier: 2, ramp_pos: 6,  twist: "DSU detects the edge that closes a cycle", tracks: ["google_focused"] }
+    - { lc_num: 261,  name: "Graph Valid Tree",                                        slug: "",                                                      url: "https://neetcode.io/problems/valid-tree",                                              difficulty: Medium, tier: 2, ramp_pos: 7,  twist: "DSU + edge-count invariant (n-1 edges, no cycle)", tracks: [] }
+    - { lc_num: 1319, name: "Number of Operations to Make Network Connected",         slug: "number-of-operations-to-make-network-connected",         url: "https://leetcode.com/problems/number-of-operations-to-make-network-connected/",         difficulty: Medium, tier: 2, ramp_pos: 8,  twist: "DSU + count-extra-edges: feasible iff extras ≥ components − 1", tracks: [] }
+    - { lc_num: 721,  name: "Accounts Merge",                                          slug: "accounts-merge",                                          url: "https://leetcode.com/problems/accounts-merge/",                                          difficulty: Medium, tier: 2, ramp_pos: 9,  twist: "DSU over string keys (email→idx map) to merge accounts", tracks: [] }
+    - { lc_num: 947,  name: "Most Stones Removed with Same Row or Column",            slug: "most-stones-removed-with-same-row-or-column",            url: "https://leetcode.com/problems/most-stones-removed-with-same-row-or-column/",            difficulty: Medium, tier: 2, ramp_pos: 10, twist: "DSU treating rows and columns as nodes — answer = n − #components", tracks: [] }
+    - { lc_num: 785,  name: "Is Graph Bipartite?",                                     slug: "is-graph-bipartite",                                     url: "https://leetcode.com/problems/is-graph-bipartite/",                                     difficulty: Medium, tier: 2, ramp_pos: 11, twist: "2-coloring via BFS/DFS — conflict ⇒ not bipartite", tracks: [] }
+    - { lc_num: 1584, name: "Min Cost to Connect All Points",                          slug: "min-cost-to-connect-all-points",                          url: "https://leetcode.com/problems/min-cost-to-connect-all-points/",                          difficulty: Medium, tier: 2, ramp_pos: 12, twist: "MST primer — Prim's (heap) or Kruskal's (DSU)", tracks: ["google_focused"] }
+    - { lc_num: 743,  name: "Network Delay Time",                                      slug: "network-delay-time",                                      url: "https://leetcode.com/problems/network-delay-time/",                                      difficulty: Medium, tier: 2, ramp_pos: 13, twist: "Dijkstra primer — heap-based shortest path from single source", tracks: ["google_focused"] }
+    - { lc_num: 1631, name: "Path With Minimum Effort",                                slug: "path-with-minimum-effort",                                url: "https://leetcode.com/problems/path-with-minimum-effort/",                                difficulty: Medium, tier: 2, ramp_pos: 14, twist: "Dijkstra with custom edge cost = |height diff|; path metric = max edge", tracks: [] }
+    - { lc_num: 787,  name: "Cheapest Flights Within K Stops",                          slug: "cheapest-flights-within-k-stops",                          url: "https://leetcode.com/problems/cheapest-flights-within-k-stops/",                          difficulty: Medium, tier: 3, ramp_pos: 15, twist: "Bellman-Ford bounded to K+1 relaxation rounds", tracks: [] }
+    - { lc_num: 778,  name: "Swim in Rising Water",                                    slug: "swim-in-rising-water",                                    url: "https://leetcode.com/problems/swim-in-rising-water/",                                    difficulty: Hard,   tier: 3, ramp_pos: 16, twist: "Dijkstra where distance = max elevation seen on path (or BS + BFS)", tracks: [] }
+    - { lc_num: 847,  name: "Shortest Path Visiting All Nodes",                        slug: "shortest-path-visiting-all-nodes",                        url: "https://leetcode.com/problems/shortest-path-visiting-all-nodes/",                        difficulty: Hard,   tier: 3, ramp_pos: 17, twist: "BFS over (node, visited-bitmask) state space — bitmask BFS capstone", tracks: [] }
+
+# =============================================================================
+# 13. DYNAMIC PROGRAMMING
+# =============================================================================
+# Pedagogical arc (mini-clusters within the ramp):
+#   A. Linear / Kadane:    70 → 198 → 213 → 53 → 152 → 91
+#   B. Stock series:       121 → 309 → 714
+#   C. Grid:               64 → 120
+#   D. DP / greedy hybrid: 55 → 45
+#   E. Knapsack:           322 → 377 → 416 → 494 → 139
+#   F. Subsequence:        300 → 1143 → 72 → 115
+#   G. Palindrome:         647 → 5 → 516 → 312
+#   H. Bitmask DP:         698 → 526
+#   I. Game theory:        486 → 877
+#   J. Hard catch-all:     10 → 3376
+dynamic_programming:
+  section_order: 13
+  problems:
+    # A. Linear / Kadane
+    - { lc_num: 70,   name: "Climbing Stairs",                                  slug: "climbing-stairs",                                  url: "https://leetcode.com/problems/climbing-stairs/",                                  difficulty: Easy,   tier: 1, ramp_pos: 1,  twist: "primer: f(n) = f(n-1) + f(n-2); O(1) space rolling", tracks: ["google_focused"] }
+    - { lc_num: 198,  name: "House Robber",                                     slug: "house-robber",                                     url: "https://leetcode.com/problems/house-robber/",                                     difficulty: Medium, tier: 1, ramp_pos: 2,  twist: "pick-or-skip recurrence: max(dp[i-1], dp[i-2] + a[i])", tracks: ["google_focused"] }
+    - { lc_num: 213,  name: "House Robber II",                                   slug: "house-robber-ii",                                   url: "https://leetcode.com/problems/house-robber-ii/",                                   difficulty: Medium, tier: 2, ramp_pos: 3,  twist: "circular array — run House Robber twice (exclude first or last)", tracks: ["google_focused"] }
+    - { lc_num: 53,   name: "Maximum Subarray",                                  slug: "maximum-subarray",                                  url: "https://leetcode.com/problems/maximum-subarray/",                                  difficulty: Medium, tier: 1, ramp_pos: 4,  twist: "Kadane primer: 'best subarray ending at i' running max", tracks: ["google_focused"] }
+    - { lc_num: 152,  name: "Maximum Product Subarray",                          slug: "maximum-product-subarray",                          url: "https://leetcode.com/problems/maximum-product-subarray/",                          difficulty: Medium, tier: 2, ramp_pos: 5,  twist: "Kadane variant: track *both* min and max because of negatives", tracks: [] }
+    - { lc_num: 91,   name: "Decode Ways",                                       slug: "decode-ways",                                       url: "https://leetcode.com/problems/decode-ways/",                                       difficulty: Medium, tier: 2, ramp_pos: 6,  twist: "partition a string by valid 1- or 2-char splits", tracks: [] }
+    # B. Stock
+    - { lc_num: 121,  name: "Best Time to Buy and Sell Stock",                   slug: "best-time-to-buy-and-sell-stock",                   url: "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",                   difficulty: Easy,   tier: 1, ramp_pos: 7,  twist: "primer for stock DP: track running min and best profit", tracks: [] }
+    - { lc_num: 309,  name: "Best Time to Buy and Sell Stock with Cooldown",      slug: "best-time-to-buy-and-sell-stock-with-cooldown",      url: "https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/",      difficulty: Medium, tier: 2, ramp_pos: 8,  twist: "3-state machine: hold / sold-today / rest", tracks: [] }
+    - { lc_num: 714,  name: "Best Time to Buy and Sell Stock with Transaction Fee", slug: "best-time-to-buy-and-sell-stock-with-transaction-fee", url: "https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-transaction-fee/", difficulty: Medium, tier: 2, ramp_pos: 9,  twist: "2-state machine: hold / cash, with fee on sell", tracks: [] }
+    # C. Grid
+    - { lc_num: 64,   name: "Minimum Path Sum",                                  slug: "minimum-path-sum",                                  url: "https://leetcode.com/problems/minimum-path-sum/",                                  difficulty: Medium, tier: 1, ramp_pos: 10, twist: "grid DP primer: dp[i][j] = a[i][j] + min(dp[i-1][j], dp[i][j-1])", tracks: [] }
+    - { lc_num: 120,  name: "Triangle",                                          slug: "triangle",                                          url: "https://leetcode.com/problems/triangle/",                                          difficulty: Medium, tier: 2, ramp_pos: 11, twist: "bottom-up grid DP on a triangular shape — O(n) extra space", tracks: [] }
+    # D. DP / greedy hybrid
+    - { lc_num: 55,   name: "Jump Game",                                          slug: "jump-game",                                          url: "https://leetcode.com/problems/jump-game/",                                          difficulty: Medium, tier: 2, ramp_pos: 12, twist: "greedy max-reach — fail fast when i > max_reach", tracks: ["google_focused"] }
+    - { lc_num: 45,   name: "Jump Game II",                                       slug: "jump-game-ii",                                       url: "https://leetcode.com/problems/jump-game-ii/",                                       difficulty: Medium, tier: 2, ramp_pos: 13, twist: "BFS-on-array — track current-level end and next-level reach", tracks: ["google_focused"] }
+    # E. Knapsack family
+    - { lc_num: 322,  name: "Coin Change",                                        slug: "coin-change",                                        url: "https://leetcode.com/problems/coin-change/",                                        difficulty: Medium, tier: 1, ramp_pos: 14, twist: "unbounded knapsack primer: dp[amt] = 1 + min over coins", tracks: ["google_focused"] }
+    - { lc_num: 377,  name: "Combination Sum IV",                                  slug: "combination-sum-iv",                                  url: "https://leetcode.com/problems/combination-sum-iv/",                                  difficulty: Medium, tier: 2, ramp_pos: 15, twist: "unbounded where ORDER matters — loop targets outside, nums inside", tracks: [] }
+    - { lc_num: 416,  name: "Partition Equal Subset Sum",                          slug: "partition-equal-subset-sum",                          url: "https://leetcode.com/problems/partition-equal-subset-sum/",                          difficulty: Medium, tier: 2, ramp_pos: 16, twist: "0/1 knapsack primer: can we hit sum/2 exactly?", tracks: ["google_focused"] }
+    - { lc_num: 494,  name: "Target Sum",                                          slug: "target-sum",                                          url: "https://leetcode.com/problems/target-sum/",                                          difficulty: Medium, tier: 2, ramp_pos: 17, twist: "reduce ± signs to a subset-sum problem", tracks: [] }
+    - { lc_num: 139,  name: "Word Break",                                          slug: "word-break",                                          url: "https://leetcode.com/problems/word-break/",                                          difficulty: Medium, tier: 2, ramp_pos: 18, twist: "unbounded knapsack on strings: dp[i] = any j with dp[j] ∧ word[j..i] in dict", tracks: ["google_focused"] }
+    # F. Subsequence
+    - { lc_num: 300,  name: "Longest Increasing Subsequence",                       slug: "longest-increasing-subsequence",                      url: "https://leetcode.com/problems/longest-increasing-subsequence/",                      difficulty: Medium, tier: 2, ramp_pos: 19, twist: "O(n²) DP first, then patience-sort optimisation to O(n log n)", tracks: ["google_focused"] }
+    - { lc_num: 1143, name: "Longest Common Subsequence",                           slug: "longest-common-subsequence",                          url: "https://leetcode.com/problems/longest-common-subsequence/",                          difficulty: Medium, tier: 2, ramp_pos: 20, twist: "2D DP primer: dp[i][j] = dp[i-1][j-1]+1 if match else max(dp[i-1][j], dp[i][j-1])", tracks: ["google_focused"] }
+    - { lc_num: 72,   name: "Edit Distance",                                       slug: "edit-distance",                                      url: "https://leetcode.com/problems/edit-distance/",                                      difficulty: Hard,   tier: 3, ramp_pos: 21, twist: "2D DP with 3 transitions (insert/delete/replace) — Levenshtein", tracks: ["google_focused"] }
+    - { lc_num: 115,  name: "Distinct Subsequences",                                slug: "distinct-subsequences",                              url: "https://leetcode.com/problems/distinct-subsequences/",                              difficulty: Hard,   tier: 3, ramp_pos: 22, twist: "counting DP: number of ways s[..i] contains t[..j]", tracks: [] }
+    # G. Palindrome
+    - { lc_num: 647,  name: "Palindromic Substrings",                               slug: "palindromic-substrings",                              url: "https://leetcode.com/problems/palindromic-substrings/",                              difficulty: Medium, tier: 2, ramp_pos: 23, twist: "expand-around-center primer for palindrome problems", tracks: [] }
+    - { lc_num: 5,    name: "Longest Palindromic Substring",                         slug: "longest-palindromic-substring",                       url: "https://leetcode.com/problems/longest-palindromic-substring/",                      difficulty: Medium, tier: 2, ramp_pos: 24, twist: "same expand-around-center; track and return the substring", tracks: [] }
+    - { lc_num: 516,  name: "Longest Palindromic Subsequence",                       slug: "longest-palindromic-subsequence",                     url: "https://leetcode.com/problems/longest-palindromic-subsequence/",                    difficulty: Medium, tier: 2, ramp_pos: 25, twist: "2D DP over (l, r): dp[l][r] = dp[l+1][r-1]+2 if match else max of skip", tracks: [] }
+    - { lc_num: 312,  name: "Burst Balloons",                                        slug: "burst-balloons",                                     url: "https://leetcode.com/problems/burst-balloons/",                                     difficulty: Hard,   tier: 3, ramp_pos: 26, twist: "interval DP — fix the LAST balloon to burst in (l, r); decouples subproblems", tracks: ["google_focused"] }
+    # H. Bitmask DP
+    - { lc_num: 698,  name: "Partition to K Equal Sum Subsets",                       slug: "partition-to-k-equal-sum-subsets",                    url: "https://leetcode.com/problems/partition-to-k-equal-sum-subsets/",                   difficulty: Medium, tier: 3, ramp_pos: 27, twist: "bitmask DP primer: state = subset of nums already used", tracks: [] }
+    - { lc_num: 526,  name: "Beautiful Arrangement",                                  slug: "beautiful-arrangement",                              url: "https://leetcode.com/problems/beautiful-arrangement/",                              difficulty: Medium, tier: 3, ramp_pos: 28, twist: "bitmask DP variant: f(mask) counts arrangements; transition picks an i meeting the constraint", tracks: [] }
+    # I. Game theory
+    - { lc_num: 486,  name: "Predict the Winner",                                     slug: "predict-the-winner",                                 url: "https://leetcode.com/problems/predict-the-winner/",                                 difficulty: Medium, tier: 3, ramp_pos: 29, twist: "minimax DP: dp[l][r] = max over (take-left, take-right) of (val − opponent's best)", tracks: [] }
+    - { lc_num: 877,  name: "Stone Game",                                             slug: "stone-game",                                         url: "https://leetcode.com/problems/stone-game/",                                         difficulty: Medium, tier: 3, ramp_pos: 30, twist: "same minimax DP shape — even count + sortedness makes first player always win", tracks: [] }
+    # J. Hard catch-all
+    - { lc_num: 10,   name: "Regular Expression Matching",                             slug: "regular-expression-matching",                       url: "https://leetcode.com/problems/regular-expression-matching/",                        difficulty: Hard,   tier: 3, ramp_pos: 31, twist: "2D DP with '.' and '*' transitions — '*' uses dp[i][j-2] or dp[i-1][j]", tracks: [] }
+    - { lc_num: 3376, name: "Count Permutations With Inversion Requirements",          slug: "count-permutations-with-inversion-requirement",     url: "https://leetcode.com/problems/count-permutations-with-inversion-requirement/",      difficulty: Hard,   tier: 3, ramp_pos: 32, twist: "advanced counting DP — already in problems.json; kept as a stretch capstone", tracks: [] }
+
+# =============================================================================
+# 14. BACKTRACKING
+# =============================================================================
+# Pedagogical arc:
+#   subsets primer → subsets w/ dedup → permutations primer → perms w/ dedup
+#   → tree of choices (digit→letter) → constrained branching (parens)
+#   → reuse-allowed combinations → combinations w/ dedup → fixed-size combo
+#   → string partition into palindromes → grid backtracking → N-Queens capstone
+backtracking:
+  section_order: 14
+  problems:
+    - { lc_num: 78,  name: "Subsets",                                  slug: "subsets",                                  url: "https://leetcode.com/problems/subsets/",                                  difficulty: Medium, tier: 1, ramp_pos: 1,  twist: "primer: at each index, branch on (include, skip)", tracks: ["google_focused"] }
+    - { lc_num: 90,  name: "Subsets II",                                slug: "subsets-ii",                                url: "https://leetcode.com/problems/subsets-ii/",                                difficulty: Medium, tier: 2, ramp_pos: 2,  twist: "sort, then skip same-value siblings at the same depth to dedup", tracks: [] }
+    - { lc_num: 46,  name: "Permutations",                              slug: "permutations",                              url: "https://leetcode.com/problems/permutations/",                              difficulty: Medium, tier: 1, ramp_pos: 3,  twist: "permutations primer: swap-in-place OR used-marker array", tracks: ["google_focused"] }
+    - { lc_num: 47,  name: "Permutations II",                            slug: "permutations-ii",                            url: "https://leetcode.com/problems/permutations-ii/",                            difficulty: Medium, tier: 2, ramp_pos: 4,  twist: "permutations + dedup: skip if same value AND prior duplicate unused", tracks: [] }
+    - { lc_num: 17,  name: "Letter Combinations of a Phone Number",       slug: "letter-combinations-of-a-phone-number",       url: "https://leetcode.com/problems/letter-combinations-of-a-phone-number/",       difficulty: Medium, tier: 1, ramp_pos: 5,  twist: "tree of choices: digit-i contributes its letter alphabet at depth i", tracks: [] }
+    - { lc_num: 22,  name: "Generate Parentheses",                       slug: "generate-parentheses",                       url: "https://leetcode.com/problems/generate-parentheses/",                       difficulty: Medium, tier: 1, ramp_pos: 6,  twist: "constrained branching: only branch '(' if open<n, only ')' if close<open", tracks: [] }
+    - { lc_num: 39,  name: "Combination Sum",                            slug: "combination-sum",                            url: "https://leetcode.com/problems/combination-sum/",                            difficulty: Medium, tier: 2, ramp_pos: 7,  twist: "reuse allowed → recurse with same start index", tracks: ["google_focused"] }
+    - { lc_num: 40,  name: "Combination Sum II",                          slug: "combination-sum-ii",                          url: "https://leetcode.com/problems/combination-sum-ii/",                          difficulty: Medium, tier: 2, ramp_pos: 8,  twist: "no reuse + dedup: sort and skip same-value siblings at same depth", tracks: [] }
+    - { lc_num: 216, name: "Combination Sum III",                         slug: "combination-sum-iii",                         url: "https://leetcode.com/problems/combination-sum-iii/",                         difficulty: Medium, tier: 2, ramp_pos: 9,  twist: "fixed-size combo from a fixed alphabet (1..9)", tracks: [] }
+    - { lc_num: 131, name: "Palindrome Partitioning",                     slug: "palindrome-partitioning",                     url: "https://leetcode.com/problems/palindrome-partitioning/",                     difficulty: Medium, tier: 2, ramp_pos: 10, twist: "partition a string — branch on each valid palindrome prefix", tracks: ["google_focused"] }
+    - { lc_num: 79,  name: "Word Search",                                slug: "word-search",                                url: "https://leetcode.com/problems/word-search/",                                difficulty: Medium, tier: 2, ramp_pos: 11, twist: "grid backtracking with visited-mark / unmark on return", tracks: [] }
+    - { lc_num: 51,  name: "N-Queens",                                   slug: "n-queens",                                   url: "https://leetcode.com/problems/n-queens/",                                   difficulty: Hard,   tier: 3, ramp_pos: 12, twist: "classic capstone: column + 2 diagonal sets prune branches in O(1)", tracks: ["google_focused"] }
+
+# =============================================================================
+# 15. GREEDY / INTERVALS (incl. sweep line)
+# =============================================================================
+# Pedagogical arc:
+#   merge primer → single-insert → conflict check primer → counting concurrent intervals
+#   → greedy by end time → same with framing twist → last-occurrence partition
+#   → single-pass with reset → sorted bucket consumption → range tracking
+#   → sort + insert by index → filter + OR-merge → multi-list interval merge
+#   → sweep-line + heap capstone
+greedy_intervals:
+  section_order: 15
+  problems:
+    - { lc_num: 56,   name: "Merge Intervals",                                slug: "merge-intervals",                                url: "https://leetcode.com/problems/merge-intervals/",                                difficulty: Medium, tier: 1, ramp_pos: 1,  twist: "primer: sort by start, then merge overlaps in a single pass", tracks: ["google_focused"] }
+    - { lc_num: 57,   name: "Insert Interval",                                 slug: "insert-interval",                                 url: "https://leetcode.com/problems/insert-interval/",                                 difficulty: Medium, tier: 2, ramp_pos: 2,  twist: "no global sort — three phases: before, overlapping merge, after", tracks: ["google_focused"] }
+    - { lc_num: 252,  name: "Meeting Rooms",                                   slug: "",                                                url: "https://neetcode.io/problems/meeting-schedule",                                difficulty: Easy,   tier: 1, ramp_pos: 3,  twist: "sort by start, then a single pairwise conflict check", tracks: [] }
+    - { lc_num: 253,  name: "Meeting Rooms II",                                 slug: "",                                                url: "https://neetcode.io/problems/meeting-schedule-ii",                              difficulty: Medium, tier: 2, ramp_pos: 4,  twist: "min-heap of end times — peak heap size = rooms needed", tracks: [] }
+    - { lc_num: 435,  name: "Non-overlapping Intervals",                        slug: "non-overlapping-intervals",                        url: "https://leetcode.com/problems/non-overlapping-intervals/",                        difficulty: Medium, tier: 2, ramp_pos: 5,  twist: "greedy by *end time* — always keep the earliest-ending compatible interval", tracks: ["google_focused"] }
+    - { lc_num: 452,  name: "Minimum Number of Arrows to Burst Balloons",      slug: "minimum-number-of-arrows-to-burst-balloons",      url: "https://leetcode.com/problems/minimum-number-of-arrows-to-burst-balloons/",      difficulty: Medium, tier: 2, ramp_pos: 6,  twist: "same greedy-by-end framing — different problem statement, same insight", tracks: ["google_focused"] }
+    - { lc_num: 763,  name: "Partition Labels",                                slug: "partition-labels",                                url: "https://leetcode.com/problems/partition-labels/",                                difficulty: Medium, tier: 2, ramp_pos: 7,  twist: "precompute last-occurrence map, then sweep extending the end pointer", tracks: [] }
+    - { lc_num: 134,  name: "Gas Station",                                     slug: "gas-station",                                     url: "https://leetcode.com/problems/gas-station/",                                     difficulty: Medium, tier: 2, ramp_pos: 8,  twist: "single pass with running tank; reset start when tank goes negative", tracks: [] }
+    - { lc_num: 846,  name: "Hand of Straights",                               slug: "hand-of-straights",                               url: "https://leetcode.com/problems/hand-of-straights/",                               difficulty: Medium, tier: 2, ramp_pos: 9,  twist: "sorted counter + greedy: always start a run from the smallest available card", tracks: [] }
+    - { lc_num: 678,  name: "Valid Parenthesis String",                         slug: "valid-parenthesis-string",                         url: "https://leetcode.com/problems/valid-parenthesis-string/",                         difficulty: Medium, tier: 2, ramp_pos: 10, twist: "greedy: track [lo, hi] possible open-paren counts across the scan", tracks: [] }
+    - { lc_num: 406,  name: "Queue Reconstruction by Height",                   slug: "queue-reconstruction-by-height",                   url: "https://leetcode.com/problems/queue-reconstruction-by-height/",                   difficulty: Medium, tier: 2, ramp_pos: 11, twist: "sort by (height desc, k asc); insert each person at index k", tracks: [] }
+    - { lc_num: 1899, name: "Merge Triplets to Form Target Triplet",            slug: "merge-triplets-to-form-target-triplet",            url: "https://leetcode.com/problems/merge-triplets-to-form-target-triplet/",            difficulty: Medium, tier: 2, ramp_pos: 12, twist: "filter triplets that violate target, then check OR-coverage", tracks: [] }
+    - { lc_num: 759,  name: "Employee Free Time",                               slug: "employee-free-time",                               url: "https://leetcode.com/problems/employee-free-time/",                               difficulty: Hard,   tier: 3, ramp_pos: 13, twist: "k-way merge of sorted intervals via heap; gaps between merged outputs are free time", tracks: [] }
+    - { lc_num: 218,  name: "The Skyline Problem",                              slug: "the-skyline-problem",                              url: "https://leetcode.com/problems/the-skyline-problem/",                              difficulty: Hard,   tier: 3, ramp_pos: 14, twist: "sweep line + max-heap (with lazy deletion) — sweep-line capstone", tracks: [] }
+
+# =============================================================================
+# 16. TRIES
+# =============================================================================
+# Pedagogical arc:
+#   trie primer → prefix lookup → wildcard via DFS
+#   → grid + trie composite → trie of bits for XOR
+tries:
+  section_order: 16
+  problems:
+    - { lc_num: 208, name: "Implement Trie (Prefix Tree)",                slug: "implement-trie-prefix-tree",                url: "https://leetcode.com/problems/implement-trie-prefix-tree/",                difficulty: Medium, tier: 1, ramp_pos: 1, twist: "primer: node = (children map, is_end flag); insert/search/startsWith", tracks: ["google_focused"] }
+    - { lc_num: 648, name: "Replace Words",                                slug: "replace-words",                                url: "https://leetcode.com/problems/replace-words/",                                difficulty: Medium, tier: 2, ramp_pos: 2, twist: "walk the trie alongside each word; stop at the first is_end node = shortest root", tracks: [] }
+    - { lc_num: 211, name: "Design Add and Search Words Data Structure",    slug: "design-add-and-search-words-data-structure",    url: "https://leetcode.com/problems/design-add-and-search-words-data-structure/",    difficulty: Medium, tier: 2, ramp_pos: 3, twist: "wildcard '.': DFS branch over all children at that depth", tracks: ["google_focused"] }
+    - { lc_num: 212, name: "Word Search II",                                slug: "word-search-ii",                                url: "https://leetcode.com/problems/word-search-ii/",                                difficulty: Hard,   tier: 3, ramp_pos: 4, twist: "trie + grid DFS; prune branches not in trie; remove matched leaves to dedup", tracks: ["google_focused"] }
+    - { lc_num: 421, name: "Maximum XOR of Two Numbers in an Array",        slug: "maximum-xor-of-two-numbers-in-an-array",        url: "https://leetcode.com/problems/maximum-xor-of-two-numbers-in-an-array/",        difficulty: Medium, tier: 3, ramp_pos: 5, twist: "trie of BITS — greedy descend, prefer the opposite-bit child to max XOR", tracks: [] }
+
+# =============================================================================
+# 17. BIT MANIPULATION
+# =============================================================================
+# Pedagogical arc:
+#   XOR-cancels primer → XOR with indices → low-bit DP → bit-by-bit reverse
+#   → n & (n-1) trick → full adder from scratch
+bit_manipulation:
+  section_order: 17
+  problems:
+    - { lc_num: 136, name: "Single Number",                       slug: "single-number",                       url: "https://leetcode.com/problems/single-number/",                       difficulty: Easy,   tier: 1, ramp_pos: 1, twist: "primer: XOR cancels equal pairs; the survivor is the unique value", tracks: [] }
+    - { lc_num: 268, name: "Missing Number",                      slug: "missing-number",                      url: "https://leetcode.com/problems/missing-number/",                      difficulty: Easy,   tier: 1, ramp_pos: 2, twist: "XOR the array with 0..n; the missing index survives", tracks: [] }
+    - { lc_num: 338, name: "Counting Bits",                        slug: "counting-bits",                        url: "https://leetcode.com/problems/counting-bits/",                        difficulty: Easy,   tier: 1, ramp_pos: 3, twist: "DP: count[i] = count[i >> 1] + (i & 1) — drop the low bit", tracks: [] }
+    - { lc_num: 231, name: "Power of Two",                         slug: "power-of-two",                         url: "https://leetcode.com/problems/power-of-two/",                         difficulty: Easy,   tier: 1, ramp_pos: 4, twist: "n & (n-1) == 0 iff n is a power of two (and n > 0)", tracks: [] }
+    - { lc_num: 190, name: "Reverse Bits",                         slug: "reverse-bits",                         url: "https://leetcode.com/problems/reverse-bits/",                         difficulty: Easy,   tier: 2, ramp_pos: 5, twist: "32-iteration loop: shift result left, OR with low bit of n, shift n right", tracks: [] }
+    - { lc_num: 371, name: "Sum of Two Integers",                   slug: "sum-of-two-integers",                   url: "https://leetcode.com/problems/sum-of-two-integers/",                   difficulty: Medium, tier: 3, ramp_pos: 6, twist: "full adder without '+': sum = a^b, carry = (a&b)<<1; iterate until carry=0", tracks: [] }
+
+# =============================================================================
+# 18. MATH
+# =============================================================================
+# Pedagogical arc:
+#   fast power → integer sqrt → integer reverse w/ overflow
+#   → atoi state machine → sieve → bit-shift long division → signature time arithmetic
+math:
+  section_order: 18
+  problems:
+    - { lc_num: 50,  name: "Pow(x, n)",                                  slug: "powx-n",                              url: "https://leetcode.com/problems/powx-n/",                              difficulty: Medium, tier: 1, ramp_pos: 1, twist: "fast power: halve the exponent; handle negative n via reciprocal", tracks: [] }
+    - { lc_num: 69,  name: "Sqrt(x)",                                    slug: "sqrtx",                                url: "https://leetcode.com/problems/sqrtx/",                                difficulty: Easy,   tier: 1, ramp_pos: 2, twist: "integer sqrt — binary search for the largest m with m*m ≤ x", tracks: [] }
+    - { lc_num: 7,   name: "Reverse Integer",                            slug: "reverse-integer",                      url: "https://leetcode.com/problems/reverse-integer/",                      difficulty: Medium, tier: 2, ramp_pos: 3, twist: "digit-by-digit reverse with overflow check BEFORE the final shift", tracks: [] }
+    - { lc_num: 8,   name: "String to Integer (atoi)",                    slug: "string-to-integer-atoi",                url: "https://leetcode.com/problems/string-to-integer-atoi/",                difficulty: Medium, tier: 2, ramp_pos: 4, twist: "explicit state machine: skip-space → sign → digits → clamp", tracks: [] }
+    - { lc_num: 204, name: "Count Primes",                                slug: "count-primes",                          url: "https://leetcode.com/problems/count-primes/",                          difficulty: Medium, tier: 2, ramp_pos: 5, twist: "Sieve of Eratosthenes — mark multiples starting at p*p", tracks: [] }
+    - { lc_num: 29,  name: "Divide Two Integers",                          slug: "divide-two-integers",                  url: "https://leetcode.com/problems/divide-two-integers/",                  difficulty: Medium, tier: 2, ramp_pos: 6, twist: "bit-shift long division: double divisor while it still fits in dividend", tracks: [] }
+    - { lc_num: 681, name: "Next Closest Time",                            slug: "next-closest-time",                    url: "https://leetcode.com/problems/next-closest-time/",                    difficulty: Medium, tier: 2, ramp_pos: 7, twist: "signature problem: enumerate the 4-digit alphabet's 256 candidates; pick smallest > now", tracks: [] }
+
+# =============================================================================
+# 19. STRING MATCHING
+# =============================================================================
+# Pedagogical arc:
+#   substring search primer → KMP/concat dedup → bounded brute search
+string_matching:
+  section_order: 19
+  problems:
+    - { lc_num: 28,  name: "Find the Index of the First Occurrence in a String", slug: "find-the-index-of-the-first-occurrence-in-a-string", url: "https://leetcode.com/problems/find-the-index-of-the-first-occurrence-in-a-string/", difficulty: Easy,   tier: 1, ramp_pos: 1, twist: "primer: brute O(nm) is fine to start; KMP/Z reaches O(n+m)", tracks: [] }
+    - { lc_num: 459, name: "Repeated Substring Pattern",                         slug: "repeated-substring-pattern",                         url: "https://leetcode.com/problems/repeated-substring-pattern/",                         difficulty: Easy,   tier: 2, ramp_pos: 2, twist: "trick: s repeats iff s appears inside (s+s)[1:-1] — or use KMP failure function", tracks: [] }
+    - { lc_num: 686, name: "Repeated String Match",                              slug: "repeated-string-match",                              url: "https://leetcode.com/problems/repeated-string-match/",                              difficulty: Medium, tier: 2, ramp_pos: 3, twist: "bounded brute: only need to repeat a up to ⌈len(b)/len(a)⌉ + 1 times", tracks: [] }
+
+# =============================================================================
+# 20. DESIGN
+# =============================================================================
+# Pedagogical arc:
+#   rate-limit primer → 2-stack queue → fixed-buffer queue
+#   → array+index map for O(1) ops → reservoir sampling → prefix-sum + BS
+#   → indent stack → snapshot via per-cell BS → interval set → freq-bucket DLL
+#   → BIT primer → BIT/merge-sort capstone
+#
+# Note: 146 LRU Cache lives in Linked Lists (section 7); 355 Design Twitter
+# lives in Heaps (section 10). They are *not* duplicated here.
+design:
+  section_order: 20
+  problems:
+    - { lc_num: 359,  name: "Logger Rate Limiter",                                  slug: "logger-rate-limiter",                                  url: "https://leetcode.com/problems/logger-rate-limiter/",                                  difficulty: Easy,   tier: 1, ramp_pos: 1,  twist: "primer: hashmap of msg → last-seen-timestamp", tracks: [] }
+    - { lc_num: 232,  name: "Implement Queue using Stacks",                          slug: "implement-queue-using-stacks",                          url: "https://leetcode.com/problems/implement-queue-using-stacks/",                          difficulty: Easy,   tier: 1, ramp_pos: 2,  twist: "two-stack technique — amortised O(1) pop via lazy transfer", tracks: [] }
+    - { lc_num: 622,  name: "Design Circular Queue",                                 slug: "design-circular-queue",                                 url: "https://leetcode.com/problems/design-circular-queue/",                                 difficulty: Medium, tier: 1, ramp_pos: 3,  twist: "fixed-size buffer with head/tail wrap; size counter avoids ambiguity", tracks: [] }
+    - { lc_num: 380,  name: "Insert Delete GetRandom O(1)",                          slug: "insert-delete-getrandom-o1",                          url: "https://leetcode.com/problems/insert-delete-getrandom-o1/",                          difficulty: Medium, tier: 2, ramp_pos: 4,  twist: "list + value→index map; delete = swap-with-last + pop", tracks: [] }
+    - { lc_num: 382,  name: "Linked List Random Node",                                slug: "linked-list-random-node",                                url: "https://leetcode.com/problems/linked-list-random-node/",                                difficulty: Medium, tier: 2, ramp_pos: 5,  twist: "reservoir sampling (k=1): keep current with probability 1/i at step i", tracks: [] }
+    - { lc_num: 528,  name: "Random Pick with Weight",                                slug: "random-pick-with-weight",                                url: "https://leetcode.com/problems/random-pick-with-weight/",                                difficulty: Medium, tier: 2, ramp_pos: 6,  twist: "prefix sum + binary search for a uniform pick in [0, total)", tracks: [] }
+    - { lc_num: 388,  name: "Longest Absolute File Path",                             slug: "longest-absolute-file-path",                             url: "https://leetcode.com/problems/longest-absolute-file-path/",                             difficulty: Medium, tier: 2, ramp_pos: 7,  twist: "signature: split by '\\n'; stack/array of running lengths per indent depth", tracks: [] }
+    - { lc_num: 1146, name: "Snapshot Array",                                          slug: "snapshot-array",                                          url: "https://leetcode.com/problems/snapshot-array/",                                          difficulty: Medium, tier: 2, ramp_pos: 8,  twist: "signature: per-index list of (snap_id, value); get = BS by snap_id", tracks: [] }
+    - { lc_num: 715,  name: "Range Module",                                            slug: "range-module",                                            url: "https://leetcode.com/problems/range-module/",                                            difficulty: Hard,   tier: 3, ramp_pos: 9,  twist: "signature: sorted-set of disjoint intervals; bisect for add/remove/query", tracks: [] }
+    - { lc_num: 460,  name: "LFU Cache",                                                slug: "lfu-cache",                                                url: "https://leetcode.com/problems/lfu-cache/",                                                difficulty: Hard,   tier: 3, ramp_pos: 10, twist: "freq → DLL of nodes at that freq; key → node map; track min freq", tracks: [] }
+    - { lc_num: 307,  name: "Range Sum Query — Mutable",                                slug: "range-sum-query-mutable",                                url: "https://leetcode.com/problems/range-sum-query-mutable/",                                difficulty: Medium, tier: 3, ramp_pos: 11, twist: "Fenwick BIT primer — both update and prefix-sum query in O(log n)", tracks: [] }
+    - { lc_num: 315,  name: "Count of Smaller Numbers After Self",                      slug: "count-of-smaller-numbers-after-self",                      url: "https://leetcode.com/problems/count-of-smaller-numbers-after-self/",                      difficulty: Hard,   tier: 3, ramp_pos: 12, twist: "BIT (or merge-sort with index tracking) — capstone for ordered counts", tracks: [] }

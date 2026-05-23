@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Repeated Substring Pattern — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* problem-specific cells + strips */
+  .rsp-strip{display:flex;gap:3px;flex-wrap:wrap;align-items:flex-end;margin:.5rem 0}
+  .rsp-cellwrap{display:flex;flex-direction:column;align-items:center}
+  .rsp-idx{font-family:var(--mono);font-size:9px;color:var(--text3);width:26px;text-align:center;line-height:1.4}
+  .rsp-cell{width:26px;height:30px;border:1px solid var(--border);border-radius:4px;background:var(--bg);
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text);
+    transition:all .18s}
+  .rsp-cell.period{background:#fef3c7;border-color:#f59e0b;color:#78350f}
+  .rsp-cell.cmp-i{background:#dbeafe;border-color:#3b82f6;color:#1e3a8a}
+  .rsp-cell.cmp-j{background:#e9d5ff;border-color:#a855f7;color:#581c87}
+  .rsp-cell.matched{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success)}
+  .rsp-cell.mismatched{background:var(--bg-danger);border-color:var(--border-danger);color:var(--text-danger)}
+  .rsp-cell.done-period{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success)}
+  .rsp-cell.dim{opacity:.45}
+  .rsp-lbl{font-family:var(--mono);font-size:9px;color:var(--text3);height:12px;line-height:1.2;font-weight:600;text-align:center;width:26px}
+  .rsp-lbl.l-i{color:#1e40af}
+  .rsp-lbl.l-j{color:#7e22ce}
+
+  /* divisor pill row in §1 */
+  .rsp-div-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:.5rem 0;font-family:var(--mono);font-size:12px;color:var(--text2)}
+  .rsp-div-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;border:1px solid var(--border);background:var(--bg2);font-weight:600}
+  .rsp-div-pill.ok{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success)}
+  .rsp-div-pill.bad{background:var(--bg-danger);border-color:var(--border-danger);color:var(--text-danger);text-decoration:line-through;text-decoration-color:rgba(239,68,68,.6)}
+
+  /* tile visual for kernel: shows s split into k copies of t */
+  .rsp-tile-row{display:flex;gap:0;align-items:center;margin:.4rem 0;flex-wrap:wrap}
+  .rsp-tile{display:flex;border:1.5px dashed transparent;border-radius:4px;padding:2px}
+  .rsp-tile.lit{border-color:#10b981;background:rgba(16,185,129,.06)}
+  .rsp-tile .rsp-cell{margin:0 1px}
+  .rsp-tile-label{font-family:var(--mono);font-size:11px;color:var(--text-success);margin-right:8px;font-weight:600}
+
+  /* arrow / connector under the strip during inner check */
+  .rsp-conn{font-family:var(--mono);font-size:11px;color:var(--text2);margin:4px 0 0 0;min-height:18px}
+  .rsp-conn .hl{color:#1e40af;font-weight:600}
+  .rsp-conn .jl{color:#7e22ce;font-weight:600}
+
+  /* checklog (right of formula in §7) */
+  .rsp-log{font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--text2);
+    max-height:170px;overflow-y:auto;padding:.5rem .65rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r)}
+  .rsp-log .ok{color:var(--text-success)}
+  .rsp-log .no{color:var(--text-danger)}
+  .rsp-log .sk{color:var(--text3)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Repeated Substring Pattern</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/repeated-substring-pattern/" target="_blank">LC #459</a>
+    <span class="badge badge-med">Easy</span>
+    <span class="badge badge-arr">String</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <p class="acard-q">Q1. Does "one copy" count? Can the substring equal s itself?</p>
+      <p class="acard-a">A. No — the problem requires <em>multiple</em> copies. The pattern length d must be strictly less than n, and at least two copies must tile s.</p>
+      <p class="acard-u">→ unlocks: candidate period d is bounded to 1 ≤ d ≤ n/2.</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Q2. What are the input constraints?</p>
+      <p class="acard-a">A. 1 ≤ n ≤ 10⁴, lowercase English letters only.</p>
+      <p class="acard-u">→ unlocks: O(n·√n) is fine (~10⁶ ops worst case). No need for KMP unless you want to flex.</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Q3. What about n = 1?</p>
+      <p class="acard-a">A. Returns false. A single character is not "multiple copies" of anything.</p>
+      <p class="acard-u">→ unlocks: the loop body never runs when n/2 == 0; default-false fall-through handles it.</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Q4. Could the answer be true for a d that does <em>not</em> divide n?</p>
+      <p class="acard-a">A. Never. If k copies of length d tile s, then n = k·d, so d must divide n.</p>
+      <p class="acard-u">→ unlocks: only check the divisors of n — prunes the candidate set from n/2 down to ~√n.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">If s tiles, the tile length must divide s's length</p>
+
+  <p class="body">"Built from multiple copies of a substring t" means s is literally <em>k</em> copies of t glued together, with k ≥ 2. So |s| = k · |t|, which forces |t| to be a divisor of |s|. Nothing else can tile s exactly.</p>
+
+  <p class="body" style="margin-top:.875rem"><strong>Picture it.</strong> For s = "abcabcabcabc" (n = 12), the substring "abc" of length 3 tiles s into 4 copies. The substring "abcab" of length 5 cannot — 5 ∤ 12 leaves a partial tile at the end.</p>
+
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.75rem .875rem;margin:.5rem 0">
+    <div class="rsp-tile-row">
+      <span class="rsp-tile-label">d = 3 ✓ &nbsp;(3 | 12)</span>
+      <div class="rsp-tile lit"><div class="rsp-cell period">a</div><div class="rsp-cell period">b</div><div class="rsp-cell period">c</div></div>
+      <div class="rsp-tile lit"><div class="rsp-cell period">a</div><div class="rsp-cell period">b</div><div class="rsp-cell period">c</div></div>
+      <div class="rsp-tile lit"><div class="rsp-cell period">a</div><div class="rsp-cell period">b</div><div class="rsp-cell period">c</div></div>
+      <div class="rsp-tile lit"><div class="rsp-cell period">a</div><div class="rsp-cell period">b</div><div class="rsp-cell period">c</div></div>
+    </div>
+    <div class="rsp-tile-row" style="margin-top:.5rem">
+      <span class="rsp-tile-label" style="color:var(--text-danger)">d = 5 ✗ &nbsp;(5 ∤ 12)</span>
+      <div class="rsp-tile"><div class="rsp-cell">a</div><div class="rsp-cell">b</div><div class="rsp-cell">c</div><div class="rsp-cell">a</div><div class="rsp-cell">b</div></div>
+      <div class="rsp-tile"><div class="rsp-cell">c</div><div class="rsp-cell">a</div><div class="rsp-cell">b</div><div class="rsp-cell">c</div><div class="rsp-cell">a</div></div>
+      <div class="rsp-tile"><div class="rsp-cell mismatched">b</div><div class="rsp-cell mismatched">c</div></div>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--text-danger);margin-left:6px">2 chars left over → impossible</span>
+    </div>
+    <p class="body" style="font-size:12px;color:var(--text3);margin-top:.5rem">Candidate lengths d for n = 12, bounded by d ≤ n/2 = 6:</p>
+    <div class="rsp-div-row">
+      <span class="rsp-div-pill ok">d=1 (12 % 1 = 0)</span>
+      <span class="rsp-div-pill ok">d=2 (12 % 2 = 0)</span>
+      <span class="rsp-div-pill ok">d=3 (12 % 3 = 0)</span>
+      <span class="rsp-div-pill ok">d=4 (12 % 4 = 0)</span>
+      <span class="rsp-div-pill bad">d=5 (12 % 5 = 2)</span>
+      <span class="rsp-div-pill ok">d=6 (12 % 6 = 0)</span>
+    </div>
+    <p class="body" style="font-size:12px;color:var(--text3);margin-top:.25rem"><span style="color:var(--text-warn);font-weight:700">↹</span> Five real candidates out of six lengths. Pivot to each in turn and check whether s actually repeats with that period. <span style="background:var(--bg-warn);border:0.5px solid var(--border-warn);color:var(--text-warn);font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:3px;margin-left:2px">d-pivot</span></p>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">s of length n is tiled by some pattern of length d (with k ≥ 2 copies) <strong>iff</strong> there exists d with 1 ≤ d ≤ n/2, d divides n, and s[i] == s[i − d] for every i in [d, n). Two facts do the work: (1) only divisors of n can be tile lengths; (2) "s is d-periodic" is exactly the condition that every character at offset i equals the character d slots earlier. No string slicing, no concatenation.</p>
+  </div>
+
+  <div class="chain-box" style="margin-top:1rem">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">s is "multiple copies of a substring"</div>
+        <div class="chain-note">the problem statement</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">there exists d with d &lt; n and k ≥ 2 such that s = t·k where |t| = d</div>
+        <div class="chain-note">unpack "multiple copies"</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">⟹</span>
+      <div class="chain-content">
+        <div class="chain-text">n = k · d, so <span class="chain-hl">d divides n</span> and d ≤ n/2</div>
+        <div class="chain-note">k ≥ 2 forces d ≤ n/2; tiling forces d | n</div>
+        <div class="chain-example">
+          <span class="pill n">n = 12</span><span class="arrow">→</span>
+          <span class="pill ok">d ∈ {1, 2, 3, 4, 6}</span><span class="arrow">vs</span>
+          <span class="pill bad">d ∈ {5, 7, 8, 9, 10, 11} pruned</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">for that d: <span class="chain-hl">s[i] == s[i − d]</span> for every i ∈ [d, n)</div>
+        <div class="chain-note">"every copy looks the same" = each character matches the one one period back</div>
+        <div class="chain-example">
+          <span class="pill n">s = "abcabc", d = 3</span><span class="arrow">→</span>
+          <span class="pill ok">s[3]=a=s[0], s[4]=b=s[1], s[5]=c=s[2] ✓</span>
+        </div>
+        <div class="chain-example" style="margin-top:4px">
+          <span class="pill n">s = "abcabd", d = 3</span><span class="arrow">→</span>
+          <span class="pill bad">s[5]='d' ≠ s[2]='c' ✗</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Animated walkthrough: try candidate d values on s = "abcabcabcabc".
+       Pattern: current d being tested, divisor check (✓/✗), period check sweep, success marker. -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <!-- Legend -->
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);border:1.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>current period (length d)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-success);border:1.5px solid var(--border-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>period matched</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-danger);border:1.5px solid var(--border-danger);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>mismatch</span>
+    </div>
+
+    <!-- String cells -->
+    <div style="margin-bottom:.5rem">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:.25rem">s = "abcabcabcabc" (n = 12)</div>
+      <div id="si-strip" class="rsp-tile" style="gap:3px"></div>
+    </div>
+
+    <!-- Candidate display -->
+    <div style="display:flex;gap:1rem;align-items:center;margin:.625rem 0;font-family:var(--mono);font-size:13px;flex-wrap:wrap">
+      <span>trying d = <b id="si-d-val" style="color:var(--text-info)">—</b></span>
+      <span id="si-divcheck">—</span>
+      <span id="si-result-pill" style="display:none;padding:3px 10px;border-radius:6px;background:var(--bg-success);border:0.5px solid var(--border-success);color:var(--text-success);font-weight:700">return <span id="si-result-val">—</span></span>
+    </div>
+
+    <!-- Caption -->
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <!-- Controls -->
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+  // §1 animation — try candidate d values on s = "abcabcabcabc"
+  const SI_STR = 'abcabcabcabc';
+  let siSteps = siGenSteps(SI_STR);
+  let siCur = 0;
+  let siTimer = null;
+
+  function siGenSteps(s) {
+    const n = s.length;
+    const steps = [];
+    steps.push({
+      d: null, divides: null, periodPos: null, firstMismatch: null, result: null,
+      caption: `s = "${s}", n = ${n}. We test each candidate divisor d from 1 to n/2; for d that divides n, check whether s is d-periodic.`,
+    });
+
+    for (let d = 1; d <= Math.floor(n / 2); d++) {
+      if (n % d !== 0) {
+        steps.push({
+          d, divides: false, periodPos: null, firstMismatch: null, result: null,
+          caption: `d=${d}: ${n} mod ${d} = ${n % d} ≠ 0 → d does not divide n. Skip.`,
+        });
+        continue;
+      }
+      // Find first mismatch (if any) when checking s[i] vs s[i-d] for i in [d, n)
+      let firstMismatch = null;
+      for (let i = d; i < n; i++) {
+        if (s[i] !== s[i - d]) { firstMismatch = i; break; }
+      }
+      if (firstMismatch === null) {
+        steps.push({
+          d, divides: true, periodPos: null, firstMismatch: null, result: true,
+          caption: `d=${d}: ${d} | ${n} ✓. Period check passes: s[i] == s[i−${d}] for every i ∈ [${d}, ${n}). s tiles → return true.`,
+        });
+        return steps;
+      } else {
+        steps.push({
+          d, divides: true, periodPos: null, firstMismatch, result: null,
+          caption: `d=${d}: ${d} | ${n} ✓. Period check fails at i=${firstMismatch}: s[${firstMismatch}]='${s[firstMismatch]}' ≠ s[${firstMismatch - d}]='${s[firstMismatch - d]}'. Try next d.`,
+        });
+      }
+    }
+
+    steps.push({
+      d: null, divides: null, periodPos: null, firstMismatch: null, result: false,
+      caption: `No divisor d worked → return false.`,
+    });
+    return steps;
+  }
+
+  function siRender(st) {
+    const strip = document.getElementById('si-strip');
+    strip.innerHTML = '';
+    [...SI_STR].forEach((ch, idx) => {
+      const cell = document.createElement('div');
+      cell.className = 'rsp-cell';
+      if (st.firstMismatch !== null && (idx === st.firstMismatch || idx === st.firstMismatch - st.d)) {
+        cell.classList.add('mismatched');
+      } else if (st.d !== null && st.divides) {
+        // Highlight period boundaries with alternating tile background
+        if (st.result === true) cell.style.cssText = 'background:var(--bg-success);border-color:var(--border-success);color:var(--text-success)';
+        else cell.classList.add('period');
+        // Within first tile, mark as info-blue (the "current period")
+        if (idx < st.d) cell.style.cssText = 'background:var(--bg-info);border-color:var(--border-info);color:var(--text-info);font-weight:700';
+      }
+      cell.textContent = ch;
+      strip.appendChild(cell);
+    });
+
+    document.getElementById('si-d-val').textContent = st.d !== null ? st.d : '—';
+    const dc = document.getElementById('si-divcheck');
+    if (st.d === null) dc.textContent = '';
+    else if (st.divides === false) dc.innerHTML = `<span style="color:var(--text-danger)">✗ ${SI_STR.length} mod ${st.d} ≠ 0</span>`;
+    else if (st.divides === true && st.result === true) dc.innerHTML = `<span style="color:var(--text-success)">✓ period match</span>`;
+    else if (st.divides === true && st.firstMismatch !== null) dc.innerHTML = `<span style="color:var(--text-danger)">✗ mismatch at i=${st.firstMismatch}</span>`;
+    else dc.innerHTML = `<span style="color:var(--text-info)">checking period…</span>`;
+
+    const resultPill = document.getElementById('si-result-pill');
+    if (st.result === true || st.result === false) {
+      resultPill.style.display = 'inline-block';
+      resultPill.style.background = st.result ? 'var(--bg-success)' : 'var(--bg-danger)';
+      resultPill.style.borderColor = st.result ? 'var(--border-success)' : 'var(--border-danger)';
+      resultPill.style.color = st.result ? 'var(--text-success)' : 'var(--text-danger)';
+      document.getElementById('si-result-val').textContent = st.result ? 'true' : 'false';
+    } else {
+      resultPill.style.display = 'none';
+    }
+
+    document.getElementById('si-caption').textContent = st.caption;
+    const ctr = document.getElementById('si-sctr');
+    if (ctr) ctr.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() {
+    clearInterval(siTimer); siTimer = null;
+    const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto';
+  }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur < siSteps.length - 1) siNext(); else siStopPlay();
+    }, 1400);
+  }
+
+  siRender(siSteps[0]);
+</script>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — try every length, rebuild and compare</p>
+  <p class="body">The most literal reading: for each candidate length d from 1 to n/2, build the string <code>s[0:d]</code> repeated <code>n/d</code> times (when d divides n) and check if it equals s.</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">"abab" → true</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">"abcdabcdabcd" → true</button>
+    <button class="ex-btn" id="bf-ex2" onclick="bfLoadEx(2)">"abcabcabd" → false</button>
+  </div>
+
+  <div id="bf-strip" class="rsp-strip"></div>
+  <div id="bf-built" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin:.25rem 0">built: —</div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    candidate d: <span id="bf-d" style="font-weight:600;color:var(--text)">—</span> &nbsp; · &nbsp;
+    char comparisons so far: <span id="bf-ops" style="font-weight:600;color:var(--text-danger)">0</span>
+  </div>
+  <div id="bf-verdict" style="display:none;font-family:var(--mono);font-size:13px;font-weight:600;padding:6px 10px;border-radius:4px;margin:.5rem 0"></div>
+  <div id="bf-msg" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin:.25rem 0;min-height:18px">—</div>
+
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n²) time</p>
+    <p class="infobox-d">For each of the ≤ n/2 candidate lengths, we build a fresh n-character string and compare. Worst case ≈ n²/2 character operations, plus allocation churn. We also can't tell a candidate is bogus until <em>after</em> we've built the full string.</p>
+  </div>
+
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+<pre class="cb"><span class="kw">bool</span> <span class="fn">repeatedSubstringPattern_BF</span>(<span class="tp">string</span> s) {
+    <span class="kw">int</span> n = s.size();
+    <span class="kw">for</span> (<span class="kw">int</span> d = <span class="nu">1</span>; d <= n / <span class="nu">2</span>; d++) {
+        <span class="kw">if</span> (n % d != <span class="nu">0</span>) { <span class="kw">continue</span>; }  <span class="cm">// lengths won't match — can't tile</span>
+        <span class="tp">string</span> built = <span class="tp">""</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> k = <span class="nu">0</span>; k < n / d; k++) {
+            built += s.substr(<span class="nu">0</span>, d);            <span class="cm">// rebuild full n-char string</span>
+        }
+        <span class="kw">if</span> (built == s) { <span class="kw">return true</span>; }
+    }
+    <span class="kw">return false</span>;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Two translations from idea to O(n·√n)</p>
+  <p class="body">Two independent optimisations sit between the brute force above and the optimal version. Read both before reading the code — they are easy to merge in your head and then hard to debug separately.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 1 — Build-and-compare → in-place periodicity check</p>
+        <p class="wt-desc">Naively, for each candidate d we build <code>s[0:d] * (n/d)</code> and string-compare to s. That allocates a fresh n-char string per try, and only tells us "match / no match" at the end. Instead, observe that "s equals s[0:d] repeated" iff <code>s[i] == s[i − d]</code> for every i ≥ d. No new string — just <code>n − d</code> single-character comparisons with an early exit on the first mismatch.</p>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--text2)">
+          <div>s = "abcabc", d = 3</div>
+          <div>i=3: s[3]='a' vs s[0]='a' <span style="color:var(--text-success)">✓</span></div>
+          <div>i=4: s[4]='b' vs s[1]='b' <span style="color:var(--text-success)">✓</span></div>
+          <div>i=5: s[5]='c' vs s[2]='c' <span style="color:var(--text-success)">✓</span> &nbsp; → d=3 works, no string built</div>
+        </div>
+        <p class="wt-gain">→ O(n) memory per candidate → O(1) memory; early-exit on first mismatch</p>
+      </div>
+    </div>
+
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 2 — All lengths → divisors of n only</p>
+        <p class="wt-desc">A blind search tries every d from 1 to n/2 — that's n/2 candidates, each costing up to n work, so O(n²). But if k copies of length d tile s, then k·d = n, so d must divide n. We skip every d with <code>n % d != 0</code> in O(1) — for n = 12, that prunes d = 5, 7, 8, 9, 10, 11 instantly. The number of divisors of n is on average O(√n).</p>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--text2)">
+          <div>n = 12. Candidates 1..6.</div>
+          <div>d=1: 12 % 1 = 0  → check</div>
+          <div>d=2: 12 % 2 = 0  → check</div>
+          <div>d=3: 12 % 3 = 0  → check</div>
+          <div>d=4: 12 % 4 = 0  → check</div>
+          <div><span style="color:var(--text3)">d=5: 12 % 5 = 2  → skip (cheap)</span></div>
+          <div>d=6: 12 % 6 = 0  → check</div>
+        </div>
+        <p class="wt-gain">→ O(n²) trials → O(n · d(n)) ≈ O(n·√n) where d(n) is the divisor count of n</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t">Let <b>n = len(s)</b>. If n &lt; 2, return false — single chars can't be "multiple copies."</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t"><b>For each d</b> from 1 to n/2 (inclusive):</span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t">&nbsp;&nbsp;&nbsp;If <code>n % d != 0</code>, <b>skip</b> — d cannot tile s.</span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t">&nbsp;&nbsp;&nbsp;Otherwise scan <b>i = d, d+1, …, n−1</b>. If any <code>s[i] != s[i − d]</code>, abandon this d.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t">&nbsp;&nbsp;&nbsp;If the inner scan finished cleanly, <b>return true</b> — s is n/d copies of s[0:d].</span></div>
+    <div class="algo-step"><span class="algo-n">6.</span><span class="algo-t">No d worked → <b>return false</b>.</span></div>
+  </div>
+  <div class="infobox info" style="margin-top:.875rem">
+    <p class="infobox-t">Why <code>s[i] == s[i − d]</code> is the whole condition</p>
+    <p class="infobox-d">If every character matches the one d slots back, then by induction s[i] = s[i − d] = s[i − 2d] = … = s[i mod d]. That's exactly the statement "s is n/d copies of s[0:d]."</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <p class="body">Try writing it from the six steps above. Reveal when ready to compare.</p>
+  <button class="reveal-btn" id="reveal-main" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+<pre class="cb"><span class="kw">bool</span> <span class="fn">repeatedSubstringPattern</span>(<span class="tp">string</span> s) {
+    <span class="kw">int</span> n = s.size();
+    <span class="kw">if</span> (n < <span class="nu">2</span>) { <span class="kw">return false</span>; }
+
+    <span class="kw">for</span> (<span class="kw">int</span> d = <span class="nu">1</span>; d <= n / <span class="nu">2</span>; d++) {
+        <span class="kw">if</span> (n % d != <span class="nu">0</span>) { <span class="kw">continue</span>; }   <span class="cm">// only divisors of n can tile s</span>
+
+        <span class="kw">bool</span> ok = <span class="kw">true</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> i = d; i < n; i++) {
+            <span class="kw">if</span> (s[i] != s[i - d]) {        <span class="cm">// periodicity check</span>
+                ok = <span class="kw">false</span>;
+                <span class="kw">break</span>;
+            }
+        }
+        <span class="kw">if</span> (ok) { <span class="kw">return true</span>; }            <span class="cm">// s is n/d copies of s[0:d]</span>
+    }
+    <span class="kw">return false</span>;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">Ex 1: "abab" → true</button>
+    <button class="ex-btn" id="cv-ex1" onclick="cvLoadEx(1)">Ex 2: "abcdabcdabcd" → true</button>
+    <button class="ex-btn" id="cv-ex2" onclick="cvLoadEx(2)">Ex 3: "abcabcabd" → false</button>
+  </div>
+
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px">s</p>
+        <div id="cv-s-strip" class="rsp-strip" style="margin:0"></div>
+      </div>
+
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin:.4rem 0 .25rem">Variables</p>
+        <div class="cv-var-grid" id="cv-var-grid">
+          <div class="cv-var-card dim" id="cvv-n"><p class="cv-var-name">n</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-d"><p class="cv-var-name">d</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-nmodd"><p class="cv-var-name">n % d</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-i"><p class="cv-var-name">i</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-si"><p class="cv-var-name">s[i]</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-sid"><p class="cv-var-name">s[i−d]</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-ok"><p class="cv-var-name">ok</p><p class="cv-var-val">—</p></div>
+        </div>
+      </div>
+
+      <div id="cv-narration" class="cv-narration">Select an example to begin.</div>
+    </div>
+  </div>
+
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="cv-bp" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="cv-bn" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn" onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1: "abab" → true</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">Ex 2: "abcdabcdabcd" → true</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">Ex 3: "abcabcabd" → false</button>
+  </div>
+
+  <div id="dr-strip" class="rsp-strip"></div>
+  <div id="dr-conn" class="rsp-conn">&nbsp;</div>
+
+  <div class="panels-fixed">
+    <div class="formula-panel" id="dr-formula">
+      <div class="formula-grid">
+        <div><p class="fitem-label">n</p><p class="fitem-val" id="f-n">—</p><p class="fitem-sub">len(s)</p></div>
+        <div><p class="fitem-label">d</p><p class="fitem-val" id="f-d">—</p><p class="fitem-sub">candidate period</p></div>
+        <div><p class="fitem-label">n % d</p><p class="fitem-val" id="f-mod">—</p><p class="fitem-sub">0 ⇒ divides</p></div>
+        <div><p class="fitem-label">i</p><p class="fitem-val" id="f-i">—</p><p class="fitem-sub">inner scan</p></div>
+        <div><p class="fitem-label">s[i] vs s[i−d]</p><p class="fitem-val" id="f-cmp" style="font-size:14px">—</p><p class="fitem-sub">match?</p></div>
+      </div>
+      <div class="formula-eq" id="dr-formula-eq">Select an example to begin.</div>
+    </div>
+    <div class="step-panel" id="dr-step">
+      <p class="step-what" id="dr-what">—</p>
+      <p class="step-why" id="dr-why">Use the controls below to step through.</p>
+    </div>
+  </div>
+
+  <div style="margin-top:.875rem">
+    <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px">Trial log</p>
+    <div id="dr-log" class="rsp-log">—</div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+  <div style="margin-top:.875rem">
+    <p style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-bottom:4px">Result</p>
+    <p id="dr-result" style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--text)">—</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner"><div class="cnum">1</div><div>
+    <p class="corner-title">n = 1 (e.g. "a")</p>
+    <p class="corner-body">n/2 = 0, so the outer loop body never runs. Function falls through to <code>return false</code>. A single character cannot be "multiple copies" of anything shorter.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">2</div><div>
+    <p class="corner-title">All identical (e.g. "aaaa")</p>
+    <p class="corner-body">Returns true immediately at d = 1: every <code>s[i] == s[i − 1]</code> holds. The smallest period always wins because the outer loop scans d in increasing order.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">3</div><div>
+    <p class="corner-title">Prime length, no repetition (e.g. "abc")</p>
+    <p class="corner-body">The only divisor of 3 with d ≤ 1 is d = 1, which fails (b ≠ a). Returns false. Highlights why most lengths get skipped via the modulo check.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">4</div><div>
+    <p class="corner-title">Late inner-loop mismatch (e.g. "abcabcabd")</p>
+    <p class="corner-body">At d = 3, the inner scan matches at i = 3, 4, 5, 6, 7 and only fails at i = 8 ('d' ≠ 'c'). We can't short-circuit on a partial-prefix match — the inner loop must keep going until either a mismatch or the end.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">5</div><div>
+    <p class="corner-title">Largest valid period (e.g. "abcabc", d = 3 = n/2)</p>
+    <p class="corner-body">Boundary of the search range. The loop condition is <code>d &lt;= n/2</code>, not <code>d &lt; n/2</code> — we must include d = n/2 (exactly two copies).</p>
+  </div></div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>n &lt; 2 early return:</b> avoids running the loop with n/2 = 0; documents the "multiple copies" requirement.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Modulo gate before inner scan:</b> <code>if (n % d != 0) continue;</code> — keeps the inner loop only on lengths that could possibly work, the whole point of Translation 2.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Inclusive upper bound <code>d &lt;= n/2</code>:</b> off-by-one matters — d = n/2 gives exactly two copies, which is valid.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Inner break on first mismatch:</b> abandons the bad d in O(1) extra work after the failing comparison.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Index safety:</b> <code>i</code> starts at d, so <code>i − d</code> is always in [0, n − d) — no out-of-bounds read.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>No allocations in the hot path:</b> compare characters in place; no <code>substr</code>, no temporary strings.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Divisors + periodicity (taught)</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">String doubling trick</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">KMP failure function</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">Time O(n · √n)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body" style="margin-top:.5rem">For each divisor d of n with d ≤ n/2, verify <code>s[i] == s[i − d]</code> for i ∈ [d, n). Easy to derive from first principles, easy to debug — no library calls, no special algorithms. The version above.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body" style="margin-top:.5rem">A famous one-liner: <code>return (s + s).substr(1, 2*n − 2).find(s) != string::npos;</code>. If s has a proper period p, then s appears in s+s at offset p; stripping the first and last characters removes the trivial occurrences at offsets 0 and n, so any remaining hit proves periodicity. Stunning, but the correctness argument leans on the periodicity lemma — write only if you can explain it.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-doubling',this)">▶ Reveal code</button>
+    <div class="code-block" id="code-doubling">
+<pre class="cb"><span class="kw">bool</span> <span class="fn">repeatedSubstringPattern</span>(<span class="tp">string</span> s) {
+    <span class="kw">int</span> n = s.size();
+    <span class="kw">if</span> (n < <span class="nu">2</span>) { <span class="kw">return false</span>; }
+    <span class="tp">string</span> t = (s + s).substr(<span class="nu">1</span>, <span class="nu">2</span> * n - <span class="nu">2</span>);
+    <span class="kw">return</span> t.find(s) != <span class="tp">string</span>::npos;
+}</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body" style="margin-top:.5rem">Compute the KMP <code>lps</code> array (longest proper prefix that is also a suffix). Let <code>L = lps[n − 1]</code>. Then s is periodic iff <code>L &gt; 0</code> <em>and</em> <code>(n − L)</code> divides n; the period is <code>n − L</code>. Algorithmically clean — but KMP machinery is overkill for an Easy problem.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-kmp',this)">▶ Reveal code</button>
+    <div class="code-block" id="code-kmp">
+<pre class="cb"><span class="kw">bool</span> <span class="fn">repeatedSubstringPattern</span>(<span class="tp">string</span> s) {
+    <span class="kw">int</span> n = s.size();
+    <span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; lps(n, <span class="nu">0</span>);
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">1</span>, k = <span class="nu">0</span>; i < n; i++) {
+        <span class="kw">while</span> (k > <span class="nu">0</span> && s[i] != s[k]) { k = lps[k - <span class="nu">1</span>]; }
+        <span class="kw">if</span> (s[i] == s[k]) { k++; }
+        lps[i] = k;
+    }
+    <span class="kw">int</span> L = lps[n - <span class="nu">1</span>];
+    <span class="kw">return</span> L > <span class="nu">0</span> && n % (n - L) == <span class="nu">0</span>;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <p class="ccard-l">Time</p>
+      <p class="ccard-v">O(n · √n)</p>
+      <p class="ccard-n">n has at most O(√n) divisors on average; each divisor check costs O(n) in the worst case (when the candidate period almost works). Worst observed cases are highly-composite n like 12, 24, 60.</p>
+    </div>
+    <div class="ccard">
+      <p class="ccard-l">Space</p>
+      <p class="ccard-v">O(1)</p>
+      <p class="ccard-n">Two integers (d, i) and a bool. No allocations — the in-place periodicity check is the whole point of Translation 1.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p class="body"><strong>The periodicity move</strong> — "if a string is built from k copies of a substring, the substring's length divides the whole length" — is the entire engine of this problem. Whenever you see "is X built by repeating Y" or "what's the smallest repeating unit," reach for divisor enumeration + <code>s[i] == s[i − d]</code>.</p>
+    <p class="body"><strong>LC 686 — Repeated String Match.</strong> Given a and b, fewest copies of a so that b is a substring of the concatenation. Same "concatenate copies" intuition, but the periodicity check is replaced by a substring search.</p>
+    <p class="body"><strong>LC 28 — Find the Index of the First Occurrence in a String.</strong> The natural place to introduce KMP for real, after meeting the failure function casually here in Approach 3.</p>
+    <p class="body"><strong>LC 796 — Rotate String.</strong> Uses the same s + s doubling trick from Approach 2: s is a rotation of goal iff <code>goal in s + s</code> and lengths match.</p>
+    <p class="body"><strong>LC 1668 — Maximum Repeating Substring.</strong> Inverse direction — given a word, find max k such that word·k is a substring of a sequence.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+/* problem-specific speed overrides */
+function bfTogglePlay(){if(bfTimer){bfStopPlay();}else{document.getElementById('bf-play').textContent='⏸ Pause';bfTimer=setInterval(()=>{if(bfCur<bfSteps.length-1)bfNext();else bfStopPlay();},550);}}
+function cvTogglePlay(){if(cvTimer){cvStopPlay();}else{document.getElementById('cv-bplay').textContent='⏸ Pause';cvTimer=setInterval(()=>{if(cvCur<cvSteps.length-1)cvNext();else cvStopPlay();},850);}}
+function drTogglePlay(){if(drTimer){drStopPlay();}else{document.getElementById('dr-bplay').textContent='⏸ Pause';drTimer=setInterval(()=>{if(drCur<drSteps.length-1)drNext();else drStopPlay();},1000);}}
+
+/* ══════════════════════════════
+   SHARED DATA
+══════════════════════════════ */
+const EXAMPLES=[
+  {s:'abab'},
+  {s:'abcdabcdabcd'},
+  {s:'abcabcabd'},
+];
+
+/* tiny helper: build a strip of character cells with index labels */
+function buildStrip(containerId, s, opts){
+  const con = document.getElementById(containerId);
+  con.innerHTML = '';
+  opts = opts || {};
+  for(let i=0;i<s.length;i++){
+    const wrap = document.createElement('div'); wrap.className='rsp-cellwrap';
+    const idx = document.createElement('div'); idx.className='rsp-idx'; idx.textContent=i;
+    const cell = document.createElement('div'); cell.className='rsp-cell'; cell.textContent=s[i];
+    cell.id = (opts.idPrefix||'') + 'c' + i;
+    const lbl = document.createElement('div'); lbl.className='rsp-lbl'; lbl.id=(opts.idPrefix||'')+'l'+i; lbl.innerHTML='&nbsp;';
+    wrap.appendChild(idx); wrap.appendChild(cell);
+    if(opts.withLabel !== false) wrap.appendChild(lbl);
+    con.appendChild(wrap);
+  }
+}
+
+/* ══════════════════════════════
+   BRUTE FORCE
+══════════════════════════════ */
+let bfSteps=[], bfCur=0, bfTimer=null;
+
+function bfGenSteps({s}){
+  const n=s.length, out=[];
+  let ops=0;
+  out.push({s,d:0,phase:'init',ops,built:'',mark:[],verdict:null,
+    msg:`n = ${n}. Try every d from 1 to n/2 = ${Math.floor(n/2)}.`});
+
+  for(let d=1; d<=Math.floor(n/2); d++){
+    if(n % d !== 0){
+      out.push({s,d,phase:'skip',ops,built:'',mark:[],verdict:null,
+        msg:`d = ${d}: n % d = ${n % d} ≠ 0 → skip (can't tile).`});
+      continue;
+    }
+    const pat = s.slice(0, d);
+    const built = pat.repeat(n / d);
+    out.push({s,d,phase:'build',ops,built,mark:Array.from({length:d},(_,i)=>i),verdict:null,
+      msg:`d = ${d}: build "${pat}" × ${n/d} = "${built}" (length ${n}).`});
+    let mismatchIdx = -1;
+    for(let i=0;i<n;i++){
+      ops++;
+      if(built[i] !== s[i]){ mismatchIdx = i; break; }
+    }
+    if(mismatchIdx === -1){
+      out.push({s,d,phase:'matchPeriod',ops,built,mark:Array.from({length:n},(_,i)=>i),verdict:true,
+        msg:`Compared all ${n} chars — every position matches. s is ${n/d} copies of "${pat}". Return true.`});
+      return out;
+    } else {
+      out.push({s,d,phase:'mismatch',ops,built,mark:[mismatchIdx],verdict:null,
+        msg:`Mismatch at i = ${mismatchIdx}: built[${mismatchIdx}] = '${built[mismatchIdx]}' vs s[${mismatchIdx}] = '${s[mismatchIdx]}'. Abandon d = ${d}.`});
+    }
+  }
+  out.push({s,d:0,phase:'done',ops,built:'',mark:[],verdict:false,
+    msg:`No d worked. Return false.`});
+  return out;
+}
+
+function bfRender(st){
+  buildStrip('bf-strip', st.s, {idPrefix:'bf-', withLabel:false});
+  for(let i=0;i<st.s.length;i++){
+    const c = document.getElementById('bf-c'+i);
+    if(!c) continue;
+    if(st.phase==='matchPeriod' && st.mark.includes(i)) c.classList.add('matched');
+    else if(st.phase==='mismatch' && st.mark.includes(i)) c.classList.add('mismatched');
+    else if(st.phase==='build' && st.mark.includes(i)) c.classList.add('period');
+  }
+  document.getElementById('bf-d').textContent = st.d || '—';
+  document.getElementById('bf-ops').textContent = st.ops;
+  document.getElementById('bf-built').textContent = st.built ? `built: "${st.built}"` : 'built: —';
+  document.getElementById('bf-msg').textContent = st.msg;
+  const vd = document.getElementById('bf-verdict');
+  if(st.verdict === true){
+    vd.style.display='inline-block';
+    vd.style.background='var(--bg-success)'; vd.style.color='var(--text-success)';
+    vd.textContent = '✓ return true';
+  } else if(st.verdict === false){
+    vd.style.display='inline-block';
+    vd.style.background='var(--bg-danger)'; vd.style.color='var(--text-danger)';
+    vd.textContent = '✗ return false';
+  } else { vd.style.display='none'; }
+  document.getElementById('bf-sctr').textContent = `Step ${bfCur+1}/${bfSteps.length}`;
+  document.getElementById('bf-prev').disabled = bfCur===0;
+  document.getElementById('bf-next').disabled = bfCur===bfSteps.length-1;
+}
+
+function bfNext(){if(bfCur<bfSteps.length-1){bfCur++;bfRender(bfSteps[bfCur]);}else bfStopPlay();}
+function bfPrev(){if(bfCur>0){bfCur--;bfRender(bfSteps[bfCur]);}}
+function bfReset(){bfStopPlay();bfCur=0;bfRender(bfSteps[0]);}
+function bfLoadEx(idx){
+  bfStopPlay(); bfCur=0;
+  [0,1,2].forEach(i=>document.getElementById('bf-ex'+i).classList.toggle('active',i===idx));
+  bfSteps = bfGenSteps(EXAMPLES[idx]);
+  bfRender(bfSteps[0]);
+}
+
+/* ══════════════════════════════
+   CODE VISUALIZATION
+══════════════════════════════ */
+const CV_LINES=[
+  {n:1,  c:'bool repeatedSubstringPattern(string s) {'},
+  {n:2,  c:'    int n = s.size();'},
+  {n:3,  c:'    if (n < 2) { return false; }'},
+  {n:4,  c:'    for (int d = 1; d <= n / 2; d++) {'},
+  {n:5,  c:'        if (n % d != 0) { continue; }'},
+  {n:6,  c:'        bool ok = true;'},
+  {n:7,  c:'        for (int i = d; i < n; i++) {'},
+  {n:8,  c:'            if (s[i] != s[i - d]) {'},
+  {n:9,  c:'                ok = false;'},
+  {n:10, c:'                break;'},
+  {n:11, c:'            }'},
+  {n:12, c:'        }'},
+  {n:13, c:'        if (ok) { return true; }'},
+  {n:14, c:'    }'},
+  {n:15, c:'    return false;'},
+  {n:16, c:'}'},
+];
+
+const CV_LIVE={
+  init:[],
+  n:['n'],
+  outer:['n','d','nmodd'],
+  outer_skip:['n','d','nmodd'],
+  inner_init:['n','d','ok'],
+  inner_step:['n','d','i','si','sid','ok'],
+  inner_match:['n','d','i','si','sid','ok'],
+  inner_mismatch:['n','d','i','si','sid','ok'],
+  inner_done:['n','d','ok'],
+  match:['n','d'],
+  done:['n'],
+};
+
+let cvSteps=[], cvCur=0, cvTimer=null;
+
+function cvGenSteps({s}){
+  const out=[], n=s.length;
+  const snap=(line,narr,phase,vars,marks)=>out.push({
+    line,narr,phase,vars:{...vars},s,n,
+    marks: marks||{},
+  });
+
+  snap(1, `Enter repeatedSubstringPattern with s = "${s}".`, 'init', {});
+  snap(2, `n = s.size() = ${n}.`, 'n', {n});
+  if(n < 2){
+    snap(3, `n < 2 — return false.`, 'done', {n});
+    snap(15, `Return false.`, 'done', {n});
+    return out;
+  }
+  snap(3, `n ≥ 2 — continue.`, 'n', {n});
+
+  for(let d=1; d<=Math.floor(n/2); d++){
+    const m = n % d;
+    snap(4, `Try d = ${d}.`, 'outer', {n,d,nmodd:m}, {periodEnd:d-1});
+    if(m !== 0){
+      snap(5, `n % d = ${m} ≠ 0 — d=${d} can't tile s. continue.`, 'outer_skip', {n,d,nmodd:m}, {periodEnd:d-1});
+      continue;
+    }
+    snap(5, `n % d = 0 — d=${d} divides n. Run periodicity check.`, 'outer', {n,d,nmodd:m}, {periodEnd:d-1});
+    snap(6, `ok = true.`, 'inner_init', {n,d,ok:'true'}, {periodEnd:d-1});
+    let ok=true;
+    const matched=[];
+    let i;
+    for(i=d; i<n; i++){
+      snap(7, `Inner loop i=${i}.`, 'inner_step', {n,d,i,si:`'${s[i]}'`,sid:`'${s[i-d]}'`,ok:'true'},
+        {periodEnd:d-1, i, idMinusD:i-d, matched:[...matched]});
+      if(s[i] !== s[i-d]){
+        ok=false;
+        snap(8, `s[${i}]='${s[i]}' ≠ s[${i-d}]='${s[i-d]}' — mismatch.`, 'inner_mismatch',
+          {n,d,i,si:`'${s[i]}'`,sid:`'${s[i-d]}'`,ok:'true'},
+          {periodEnd:d-1, i, idMinusD:i-d, matched:[...matched], mismatched:[i]});
+        snap(9, `ok = false.`, 'inner_mismatch',
+          {n,d,i,si:`'${s[i]}'`,sid:`'${s[i-d]}'`,ok:'false'},
+          {periodEnd:d-1, i, idMinusD:i-d, matched:[...matched], mismatched:[i]});
+        snap(10, `break inner loop — abandon d=${d}.`, 'inner_mismatch',
+          {n,d,i,si:`'${s[i]}'`,sid:`'${s[i-d]}'`,ok:'false'},
+          {periodEnd:d-1, i, idMinusD:i-d, matched:[...matched], mismatched:[i]});
+        break;
+      } else {
+        matched.push(i);
+        snap(8, `s[${i}]='${s[i]}' == s[${i-d}]='${s[i-d]}' ✓`, 'inner_match',
+          {n,d,i,si:`'${s[i]}'`,sid:`'${s[i-d]}'`,ok:'true'},
+          {periodEnd:d-1, i, idMinusD:i-d, matched:[...matched]});
+      }
+    }
+    snap(12, `Inner loop done.`, 'inner_done', {n,d,ok:ok?'true':'false'},
+      {periodEnd:d-1, matched:[...matched], mismatched: ok?[]:[i]});
+    if(ok){
+      snap(13, `ok == true → s is ${n/d} copies of "${s.slice(0,d)}". Return true.`, 'match',
+        {n,d}, {periodEnd:d-1, doneAll:true});
+      return out;
+    }
+  }
+  snap(15, `No d worked. Return false.`, 'done', {n});
+  return out;
+}
+
+function cvBuildStrip(s){
+  buildStrip('cv-s-strip', s, {idPrefix:'cv-', withLabel:true});
+}
+
+function cvRender(st){
+  document.querySelectorAll('.cv-line').forEach(el=>el.classList.remove('active','active-match'));
+  const al = document.getElementById('cvL'+st.line);
+  if(al){ al.classList.add(st.phase==='match'?'active-match':'active'); }
+
+  // strip: reset all cells
+  for(let k=0; k<st.s.length; k++){
+    const c = document.getElementById('cv-c'+k);
+    const l = document.getElementById('cv-l'+k);
+    if(c){ c.className='rsp-cell'; }
+    if(l){ l.className='rsp-lbl'; l.innerHTML='&nbsp;'; }
+  }
+  const m = st.marks || {};
+  if(m.periodEnd >= 0){
+    for(let k=0; k<=m.periodEnd; k++){
+      const c = document.getElementById('cv-c'+k);
+      if(c) c.classList.add('period');
+    }
+  }
+  (m.matched||[]).forEach(k=>{
+    const c = document.getElementById('cv-c'+k);
+    if(c){ c.className='rsp-cell matched'; }
+  });
+  (m.mismatched||[]).forEach(k=>{
+    const c = document.getElementById('cv-c'+k);
+    if(c){ c.className='rsp-cell mismatched'; }
+  });
+  if(m.i != null){
+    const ci = document.getElementById('cv-c'+m.i);
+    const li = document.getElementById('cv-l'+m.i);
+    const cj = document.getElementById('cv-c'+m.idMinusD);
+    const lj = document.getElementById('cv-l'+m.idMinusD);
+    if(ci && !ci.classList.contains('matched') && !ci.classList.contains('mismatched')) ci.classList.add('cmp-i');
+    if(cj && !cj.classList.contains('matched') && !cj.classList.contains('mismatched')) cj.classList.add('cmp-j');
+    if(li){ li.classList.add('l-i'); li.textContent='i'; }
+    if(lj){ lj.classList.add('l-j'); lj.textContent='i−d'; }
+  }
+  if(m.doneAll){
+    for(let k=0; k<st.s.length; k++){
+      const c = document.getElementById('cv-c'+k); if(c) c.className='rsp-cell done-period';
+    }
+  }
+
+  const VAR_IDS=['n','d','nmodd','i','si','sid','ok'];
+  const live = CV_LIVE[st.phase] || [];
+  VAR_IDS.forEach(id=>{
+    const card = document.getElementById('cvv-'+id); if(!card) return;
+    card.classList.remove('hl','hl-match','dim');
+    const v = st.vars[id];
+    const valEl = card.querySelector('.cv-var-val');
+    if(v==null){ valEl.textContent='—'; card.classList.add('dim'); }
+    else {
+      valEl.textContent=v;
+      if(!live.includes(id)) card.classList.add('dim');
+    }
+  });
+
+  const narr = document.getElementById('cv-narration');
+  narr.textContent = st.narr;
+  narr.className='cv-narration'+(st.phase==='match'?' is-match':st.phase!=='done'?' is-active':'');
+
+  document.getElementById('cv-sctr').textContent = `Step ${cvCur+1} / ${cvSteps.length}`;
+  document.getElementById('cv-bp').disabled = cvCur===0;
+  document.getElementById('cv-bn').disabled = cvCur===cvSteps.length-1;
+}
+
+function cvNext(){if(cvCur<cvSteps.length-1){cvCur++;cvRender(cvSteps[cvCur]);}else cvStopPlay();}
+function cvPrev(){if(cvCur>0){cvCur--;cvRender(cvSteps[cvCur]);}}
+function cvReset(){cvStopPlay();cvCur=0;cvRender(cvSteps[0]);}
+function cvLoadEx(idx){
+  cvStopPlay(); cvCur=0;
+  [0,1,2].forEach(i=>document.getElementById('cv-ex'+i).classList.toggle('active',i===idx));
+  cvSteps = cvGenSteps(EXAMPLES[idx]);
+  cvBuildCode(CV_LINES);
+  cvBuildStrip(EXAMPLES[idx].s);
+  cvRender(cvSteps[0]);
+}
+
+/* ══════════════════════════════
+   DRY RUN
+══════════════════════════════ */
+let drSteps=[], drCur=0, drTimer=null;
+
+function drGenSteps({s}){
+  const out=[], n=s.length;
+  const log=[];
+  const snap=(opts)=>out.push({
+    s,n,
+    d: opts.d ?? null,
+    mod: opts.mod ?? null,
+    i: opts.i ?? null,
+    iMinusD: opts.iMinusD ?? null,
+    cmpText: opts.cmpText ?? null,
+    matched: opts.matched ? [...opts.matched] : [],
+    mismatched: opts.mismatched ? [...opts.mismatched] : [],
+    periodEnd: opts.periodEnd ?? -1,
+    doneAll: !!opts.doneAll,
+    phase: opts.phase,
+    what: opts.what,
+    why:  opts.why,
+    found: opts.found ?? null,
+    log: [...log],
+  });
+
+  if(n < 2){
+    log.push({c:'sk', t:`n = ${n} < 2 → false (no candidates)`});
+    snap({phase:'done', what:`n = ${n} < 2 — no possible period.`, why:'Return false immediately.', found:false});
+    return out;
+  }
+
+  snap({phase:'start', what:`s = "${s}", n = ${n}. Search d in [1, ${Math.floor(n/2)}].`,
+    why:'Outer loop iterates candidate period d from 1 to n/2 inclusive.'});
+
+  for(let d=1; d<=Math.floor(n/2); d++){
+    const m = n % d;
+    if(m !== 0){
+      log.push({c:'sk', t:`d=${d}: skip  (n % d = ${m})`});
+      snap({d, mod:m, periodEnd:d-1, phase:'skip',
+        what:`d = ${d}: n % d = ${m} ≠ 0 → skip.`,
+        why:`d=${d} can't tile s — ${n}/${d} isn't an integer. Move on in O(1).`});
+      continue;
+    }
+    snap({d, mod:0, periodEnd:d-1, phase:'trial',
+      what:`d = ${d}: candidate period "${s.slice(0,d)}".`,
+      why:`d divides n (${n}/${d}=${n/d}). Run inner check: s[i] == s[i-${d}] for i ∈ [${d}, ${n}).`});
+    let ok=true;
+    const matched=[];
+    let i;
+    for(i=d; i<n; i++){
+      const same = s[i] === s[i-d];
+      if(same){
+        matched.push(i);
+        snap({d, mod:0, i, iMinusD:i-d, periodEnd:d-1, matched, phase:'inner_ok',
+          cmpText:`'${s[i]}' == '${s[i-d]}' ✓`,
+          what:`i = ${i}: s[${i}]='${s[i]}' == s[${i-d}]='${s[i-d]}' ✓`,
+          why:`Position ${i} agrees with position ${i-d} — d=${d} still alive.`});
+      } else {
+        ok = false;
+        log.push({c:'no', t:`d=${d}: ✗ mismatch at i=${i}  ('${s[i]}' ≠ '${s[i-d]}')`});
+        snap({d, mod:0, i, iMinusD:i-d, periodEnd:d-1, matched, mismatched:[i], phase:'inner_bad',
+          cmpText:`'${s[i]}' ≠ '${s[i-d]}' ✗`,
+          what:`i = ${i}: s[${i}]='${s[i]}' ≠ s[${i-d}]='${s[i-d]}' — abandon d=${d}.`,
+          why:`Break inner loop. Move to next divisor.`});
+        break;
+      }
+    }
+    if(ok){
+      log.push({c:'ok', t:`d=${d}: ✓ all match → s is ${n/d} copies of "${s.slice(0,d)}"`});
+      snap({d, mod:0, periodEnd:d-1, matched, doneAll:true, phase:'match',
+        what:`d = ${d}: all ${n-d} comparisons passed. s is ${n/d} copies of "${s.slice(0,d)}".`,
+        why:`Return true.`, found:true});
+      return out;
+    }
+  }
+  snap({phase:'done', what:'No divisor produced a clean periodicity check.', why:'Return false.', found:false});
+  return out;
+}
+
+function drRender(st){
+  buildStrip('dr-strip', st.s, {idPrefix:'dr-', withLabel:true});
+  if(st.periodEnd >= 0){
+    for(let k=0; k<=st.periodEnd; k++){
+      const c=document.getElementById('dr-c'+k);
+      if(c) c.classList.add('period');
+    }
+  }
+  (st.matched||[]).forEach(k=>{
+    const c=document.getElementById('dr-c'+k); if(c){c.className='rsp-cell matched';}
+  });
+  (st.mismatched||[]).forEach(k=>{
+    const c=document.getElementById('dr-c'+k); if(c){c.className='rsp-cell mismatched';}
+  });
+  if(st.i != null){
+    const ci=document.getElementById('dr-c'+st.i);
+    const cj=document.getElementById('dr-c'+st.iMinusD);
+    const li=document.getElementById('dr-l'+st.i);
+    const lj=document.getElementById('dr-l'+st.iMinusD);
+    if(ci && !ci.classList.contains('matched') && !ci.classList.contains('mismatched')) ci.classList.add('cmp-i');
+    if(cj && !cj.classList.contains('matched') && !cj.classList.contains('mismatched')) cj.classList.add('cmp-j');
+    if(li){ li.classList.add('l-i'); li.textContent='i'; }
+    if(lj){ lj.classList.add('l-j'); lj.textContent='i−d'; }
+  }
+  if(st.doneAll){
+    for(let k=0; k<st.s.length; k++){
+      const c=document.getElementById('dr-c'+k); if(c) c.className='rsp-cell done-period';
+    }
+  }
+
+  const conn=document.getElementById('dr-conn');
+  if(st.i != null){
+    conn.innerHTML = `compare <span class="hl">s[${st.i}] = '${st.s[st.i]}'</span> with <span class="jl">s[${st.iMinusD}] = '${st.s[st.iMinusD]}'</span> &nbsp; (one period back)`;
+  } else if(st.d != null && st.phase==='trial'){
+    conn.innerHTML = `period candidate: <span class="hl">"${st.s.slice(0, st.d)}"</span> &nbsp;(positions 0..${st.d-1})`;
+  } else { conn.innerHTML='&nbsp;'; }
+
+  document.getElementById('f-n').textContent = st.n;
+  document.getElementById('f-d').textContent = st.d ?? '—';
+  document.getElementById('f-mod').textContent = st.mod ?? '—';
+  document.getElementById('f-i').textContent = st.i ?? '—';
+  document.getElementById('f-cmp').textContent = st.cmpText ?? '—';
+
+  const fp=document.getElementById('dr-formula');
+  fp.className='formula-panel'+(st.phase==='match'?' is-match':(['inner_ok','inner_bad','trial','skip'].includes(st.phase)?' is-slide':''));
+
+  const eq=document.getElementById('dr-formula-eq');
+  if(st.phase==='match'){
+    eq.innerHTML=`<span class="eq-hl">d = ${st.d}: s is ${st.n/st.d} × "${st.s.slice(0, st.d)}" → return true</span>`;
+  } else if(st.phase==='done'){
+    eq.innerHTML='No divisor worked → return false';
+  } else if(st.phase==='skip'){
+    eq.innerHTML=`d = ${st.d}: n % d = ${st.mod} → skip`;
+  } else if(st.phase==='trial'){
+    eq.innerHTML=`d = ${st.d} divides n → check s[i] == s[i − ${st.d}]`;
+  } else if(st.phase==='inner_ok' || st.phase==='inner_bad'){
+    eq.innerHTML=`s[${st.i}] vs s[${st.iMinusD}] → ${st.cmpText}`;
+  } else {
+    eq.innerHTML='Press Next to begin.';
+  }
+
+  const sp=document.getElementById('dr-step');
+  sp.className='step-panel'+(st.phase==='match'?' match':(['inner_ok','inner_bad','trial','skip'].includes(st.phase)?' slide':''));
+  document.getElementById('dr-what').textContent = st.what;
+  document.getElementById('dr-why').textContent = st.why;
+
+  const logEl = document.getElementById('dr-log');
+  if(st.log.length === 0){
+    logEl.innerHTML = '<span style="color:var(--text3)">(no trials yet)</span>';
+  } else {
+    logEl.innerHTML = st.log.map(l=>`<div class="${l.c}">${l.t}</div>`).join('');
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  const rl=document.getElementById('dr-result');
+  if(st.found === true){ rl.textContent='true'; rl.style.color='var(--text-success)'; }
+  else if(st.found === false){ rl.textContent='false'; rl.style.color='var(--text-danger)'; }
+  else { rl.textContent='…'; rl.style.color='var(--text3)'; }
+
+  document.getElementById('dr-sctr').textContent=`Step ${drCur+1} / ${drSteps.length}`;
+  document.getElementById('dr-bp').disabled = drCur===0;
+  document.getElementById('dr-bn').disabled = drCur===drSteps.length-1;
+}
+
+function drNext(){if(drCur<drSteps.length-1){drCur++;drRender(drSteps[drCur]);}else drStopPlay();}
+function drPrev(){if(drCur>0){drCur--;drRender(drSteps[drCur]);}}
+function drReset(){drStopPlay();drCur=0;drRender(drSteps[0]);}
+function drLoadEx(idx){
+  drStopPlay(); drCur=0;
+  [0,1,2].forEach(i=>document.getElementById('dr-ex'+i).classList.toggle('active',i===idx));
+  drSteps = drGenSteps(EXAMPLES[idx]);
+  drRender(drSteps[0]);
+}
+
+/* ══════════════════════════════
+   INIT
+══════════════════════════════ */
+bfLoadEx(0);
+cvLoadEx(0);
+drLoadEx(0);
+</script>
+
+</body>
+</html>

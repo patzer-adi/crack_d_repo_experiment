@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product of Array Except Self — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC: number-cell strips for nums[] and out[], pass badges */
+  .pae-row{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end}
+  .pae-cellwrap{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
+  .pae-badge{font-family:var(--mono);font-size:10px;line-height:1;padding:3px 5px;border-radius:4px;border:0.5px solid var(--border);background:var(--bg2);color:var(--text3);min-width:22px;text-align:center}
+  .pae-badge.lp{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info)}
+  .pae-badge.rp{background:var(--bg-warn);border-color:var(--border-warn);color:var(--text-warn)}
+  .pae-badge.empty{visibility:hidden}
+  .pae-cell{width:42px;height:42px;border-radius:5px;border:0.5px solid var(--border);background:var(--bg2);font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;justify-content:center;transition:all .2s}
+  .pae-cell.cur{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);transform:translateY(-2px)}
+  .pae-cell.dim{opacity:.45}
+  .pae-out{background:var(--bg3)}
+  .pae-out.written{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info)}
+  .pae-out.finalised{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success)}
+  .pae-idx{font-family:var(--mono);font-size:9px;color:var(--text3)}
+  .pae-rowlbl{font-family:var(--mono);font-size:11px;color:var(--text3);min-width:48px;display:inline-block}
+  .pae-stack{display:flex;flex-direction:column;gap:8px;margin:.5rem 0}
+  .pae-stackrow{display:flex;align-items:flex-end;gap:10px}
+  .acc-pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;padding:5px 10px;border-radius:6px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2)}
+  .acc-pill.lp{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info)}
+  .acc-pill.rp{background:var(--bg-warn);border-color:var(--border-warn);color:var(--text-warn)}
+  .acc-pill b{font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Product of Array Except Self</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/product-of-array-except-self/" target="_blank">LC #238</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Arrays</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer locks in a design decision — and rules out an entire family of "obvious" solutions.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <p class="acard-q">Can the input contain zeros?</p>
+      <p class="acard-a">Yes — and possibly more than one. Zero values are explicitly allowed.</p>
+      <span class="acard-u">→ rules out <code>total ÷ nums[i]</code>: division by zero crashes, and a single zero collapses the total product to 0.</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Am I allowed to use the division operator?</p>
+      <p class="acard-a">No. The problem explicitly forbids it.</p>
+      <span class="acard-u">→ each <code>answer[i]</code> must be built from products of <em>other</em> elements, never from a quotient.</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Does the output array count toward extra space?</p>
+      <p class="acard-a">No. Only auxiliary structures count toward the O(1) extra-space target.</p>
+      <span class="acard-u">→ <code>answer[]</code> can double as the prefix-product scratchpad — no second array needed.</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Will every prefix product fit in a 32-bit int?</p>
+      <p class="acard-a">Yes — the problem promises it.</p>
+      <span class="acard-u">→ no big-int arithmetic; one running multiplier per pass is enough.</span>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Integer array of length ≥ 2; zeros and negatives allowed; no division; the returned <code>answer[]</code> doesn't count as extra space; every product fits in <code>int</code>.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Split at i: every answer is left-product × right-product.</p>
+
+  <p class="body">For any index <code>i</code>, the product of every element <em>except</em> <code>nums[i]</code> factors into two halves: everything strictly to the left, and everything strictly to the right. Knowing those two products, the answer at <code>i</code> is one multiplication. Two sweeps build both halves — a left-to-right pass for prefix products, then a right-to-left pass for suffix products.</p>
+
+  <!-- Foundational visual: animated 9-step walkthrough of the two-pass algorithm on nums = [1,2,3,4].
+       Pattern (PLAN-017 convention adapted for prefix_scan):
+         - current cell (info-blue): the i being processed this step
+         - written cells from L-pass (light blue): out cells holding the prefix product, not yet finalized
+         - finalized cells (success-green): out cells with both passes applied
+         - pivot marker (⇄): shown when direction flips at the L→R boundary -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <!-- Legend -->
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);border:0.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>current cell (i)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);opacity:.5;border:0.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>L-pass written (prefix product)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-success);border:0.5px solid var(--border-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>finalized (both passes done)</span>
+      <span><span style="color:var(--text-warn);font-weight:700;font-size:14px;vertical-align:middle">⇄</span> direction pivot</span>
+    </div>
+
+    <!-- Row 1: nums -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:.5rem">
+      <div style="width:80px;font-family:var(--mono);font-size:10px;color:var(--text3);text-align:right">nums</div>
+      <div id="si-nums-strip" class="pae-row" style="gap:4px"></div>
+    </div>
+
+    <!-- Row 2: out -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:.625rem">
+      <div style="width:80px;font-family:var(--mono);font-size:10px;color:var(--text3);text-align:right">out</div>
+      <div id="si-out-strip" class="pae-row" style="gap:4px"></div>
+    </div>
+
+    <!-- Row 3: accumulators -->
+    <div style="display:flex;gap:1rem;align-items:center;margin:.625rem 0;flex-wrap:wrap">
+      <span class="acc-pill lp">left = <b id="si-left-val">1</b></span>
+      <span id="si-pass-badge" style="font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:6px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2)">init</span>
+      <span class="acc-pill rp">right = <b id="si-right-val">1</b></span>
+    </div>
+
+    <!-- Caption -->
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <!-- Controls -->
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d" style="font-family:var(--mono);font-size:13px;line-height:2">
+      answer[i] = (∏ nums[0..i−1]) × (∏ nums[i+1..n−1])<br>
+      <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:var(--text3)">L-pass writes prefix products into out[] (left-to-right). R-pass folds suffix products in (right-to-left). Two passes, one running accumulator per pass, O(1) extra space.</span>
+    </p>
+  </div>
+</div>
+
+<script>
+  // §1 animation — two-pass walkthrough on nums = [1,2,3,4]
+  const SI_NUMS = [1, 2, 3, 4];
+  let siSteps = siGenSteps(SI_NUMS);
+  let siCur = 0;
+  let siTimer = null;
+
+  function siGenSteps(nums) {
+    const n = nums.length;
+    const steps = [];
+    const out = new Array(n).fill(1);
+
+    // Step 0: init
+    steps.push({
+      pass: 'init', i: -1, nums: [...nums], out: [...out],
+      left: 1, right: 1, writtenL: new Set(), finalized: new Set(),
+      caption: `Initialise: out = [${out.join(', ')}]. left = right = 1 (multiplicative identity).`,
+    });
+
+    // L-pass: for i in 0..n-1: out[i] = left; left *= nums[i]
+    let left = 1;
+    const writtenL = new Set();
+    for (let i = 0; i < n; i++) {
+      const leftBefore = left;
+      out[i] = leftBefore;
+      writtenL.add(i);
+      const leftAfter = leftBefore * nums[i];
+      steps.push({
+        pass: 'L', i, nums: [...nums], out: [...out],
+        left: leftAfter, right: 1,
+        writtenL: new Set(writtenL), finalized: new Set(),
+        caption: `L-pass i=${i}: write out[${i}] = left (${leftBefore}); then left *= nums[${i}] (${nums[i]}) → left = ${leftAfter}. out[${i}] now holds the product of cells strictly before ${i}.`,
+      });
+      left = leftAfter;
+    }
+
+    // R-pass: for i in n-1..0: out[i] *= right; right *= nums[i]
+    let right = 1;
+    const finalized = new Set();
+    for (let i = n - 1; i >= 0; i--) {
+      const rightBefore = right;
+      out[i] = out[i] * rightBefore;
+      finalized.add(i);
+      const rightAfter = rightBefore * nums[i];
+      const isPivot = (finalized.size === 1); // first R-step
+      steps.push({
+        pass: 'R', i, nums: [...nums], out: [...out],
+        left, right: rightAfter,
+        writtenL: new Set(writtenL), finalized: new Set(finalized),
+        pivot: isPivot,
+        caption: `${isPivot ? '⇄ Direction pivots: L-pass complete, R-pass begins. ' : ''}R-pass i=${i}: out[${i}] *= right (${rightBefore}) → out[${i}] = ${out[i]}; then right *= nums[${i}] (${nums[i]}) → right = ${rightAfter}. Cell ${i} is now finalized.`,
+      });
+      right = rightAfter;
+    }
+    return steps;
+  }
+
+  function siRender(st) {
+    // Row 1: nums — highlight current cell
+    const numsStrip = document.getElementById('si-nums-strip');
+    numsStrip.innerHTML = '';
+    st.nums.forEach((v, idx) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'pae-cellwrap';
+      const cell = document.createElement('div');
+      cell.className = 'pae-cell';
+      if (idx === st.i) cell.classList.add('cur');
+      else cell.classList.add('dim');
+      cell.textContent = v;
+      const lbl = document.createElement('div');
+      lbl.className = 'pae-idx';
+      lbl.textContent = idx === st.i ? `${idx} ← i` : idx;
+      if (idx === st.i) lbl.style.color = 'var(--text-info)';
+      wrap.appendChild(cell);
+      wrap.appendChild(lbl);
+      numsStrip.appendChild(wrap);
+    });
+
+    // Row 2: out — show pivot marker between cells if applicable, plus write states
+    const outStrip = document.getElementById('si-out-strip');
+    outStrip.innerHTML = '';
+    st.out.forEach((v, idx) => {
+      // Pivot marker before the cell where pivot occurred
+      if (st.pivot && idx === st.i) {
+        const mark = document.createElement('div');
+        mark.style.cssText = 'display:flex;align-items:center;font-size:18px;color:var(--text-warn);margin:0 -2px;font-weight:700';
+        mark.textContent = '⇄';
+        mark.title = 'direction pivot — L-pass ended, R-pass begins here';
+        outStrip.appendChild(mark);
+      }
+      const wrap = document.createElement('div');
+      wrap.className = 'pae-cellwrap';
+      const cell = document.createElement('div');
+      cell.className = 'pae-cell pae-out';
+      if (st.finalized.has(idx)) cell.classList.add('finalised');
+      else if (st.writtenL.has(idx)) cell.classList.add('written');
+      if (idx === st.i) {
+        cell.style.transform = 'translateY(-2px)';
+        cell.style.outline = '1.5px solid var(--text-info)';
+      }
+      cell.textContent = v;
+      const lbl = document.createElement('div');
+      lbl.className = 'pae-idx';
+      lbl.textContent = idx;
+      wrap.appendChild(cell);
+      wrap.appendChild(lbl);
+      outStrip.appendChild(wrap);
+    });
+
+    // Row 3: accumulators
+    document.getElementById('si-left-val').textContent = st.left;
+    document.getElementById('si-right-val').textContent = st.right;
+    const badge = document.getElementById('si-pass-badge');
+    if (st.pass === 'init')      { badge.textContent = 'init';   badge.style.background = 'var(--bg3)';     badge.style.color = 'var(--text2)'; }
+    else if (st.pass === 'L')    { badge.textContent = 'L-pass →'; badge.style.background = 'var(--bg-info)';    badge.style.color = 'var(--text-info)'; }
+    else if (st.pass === 'R')    { badge.textContent = '← R-pass'; badge.style.background = 'var(--bg-warn)';    badge.style.color = 'var(--text-warn)'; }
+
+    // Caption
+    document.getElementById('si-caption').textContent = st.caption;
+
+    // Step counter
+    const ctr = document.getElementById('si-sctr');
+    if (ctr) ctr.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() {
+    clearInterval(siTimer); siTimer = null;
+    const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto';
+  }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur < siSteps.length - 1) siNext(); else siStopPlay();
+    }, 1400);
+  }
+
+  siRender(siSteps[0]);
+</script>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — multiply every other element, for every index</p>
+  <p class="body">For each index <code>i</code>, walk the entire array and multiply together every element whose index is not <code>i</code>. That is one full pass per output cell — n outputs × n elements = O(n²) multiplications. Correct, but quadratic.</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">[1, 2, 3, 4]</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">[2, 3, 4, 5]</button>
+  </div>
+  <div id="bf-strip" class="pae-row" style="margin-bottom:.5rem"></div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    i = <span id="bf-i" style="font-weight:600;color:var(--text)">—</span> &nbsp;·&nbsp;
+    j = <span id="bf-j" style="font-weight:600;color:var(--text-info)">—</span> &nbsp;·&nbsp;
+    prod = <span id="bf-prod" style="font-weight:600;color:var(--text)">—</span> &nbsp;·&nbsp;
+    multiplications: <span id="bf-ops" style="font-weight:600;color:var(--text-danger)">0</span>
+  </div>
+  <div id="bf-out" class="pae-row" style="margin-top:.5rem"></div>
+  <div class="ctrl-row" style="margin-top:.625rem">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n²) time</p>
+    <p class="infobox-d">Re-multiplying everything-except-i for every i discards work that could be reused. Each prefix product is computed n times instead of once.</p>
+  </div>
+
+  <button class="reveal-btn" onclick="toggleEl('code-bf', this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+<pre class="cb"><span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; <span class="fn">productExceptSelf_BF</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>();
+    <span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; out(n);
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        <span class="kw">int</span> prod = <span class="nu">1</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> j = <span class="nu">0</span>; j &lt; n; j++) {
+            <span class="kw">if</span> (j != i) { prod *= nums[j]; }   <span class="cm">// skip self</span>
+        }
+        out[i] = prod;
+    }
+    <span class="kw">return</span> out;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Four translations to O(n) time, O(1) extra space</p>
+  <p class="body">The brute force recomputes the same prefix and suffix products n times each. These four named translations remove every duplicated multiplication and then collapse the auxiliary storage to a single integer.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 1 — Split the product at <code>i</code></p>
+        <p class="wt-desc">Rewrite "product of all elements except <code>nums[i]</code>" as <code>(prefix product up to i−1) × (suffix product from i+1)</code>. The two halves are independent — neither depends on which <code>i</code> we are computing.</p>
+        <p class="wt-gain">→ identifies what to cache: prefix products and suffix products, not the full per-i product.</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 2 — Precompute both arrays (DP)</p>
+        <p class="wt-desc">One left-to-right pass builds <code>L[i] = ∏ nums[0..i−1]</code>. One right-to-left pass builds <code>R[i] = ∏ nums[i+1..n−1]</code>. A third pass writes <code>answer[i] = L[i] × R[i]</code>. Three O(n) passes instead of n × O(n).</p>
+        <p class="wt-gain">→ time fixed at O(n). Space still O(n) — two arrays of length n.</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 3 — Reuse <code>answer[]</code> as the prefix scratchpad</p>
+        <p class="wt-desc">The first pass writes prefix products into <code>answer[]</code> directly. Now <code>answer[i]</code> already holds <code>L[i]</code>; the suffix array is the only extra storage left.</p>
+        <p class="wt-gain">→ one of the two O(n) auxiliary arrays is gone.</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">4</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 4 — Replace the suffix array with one running variable</p>
+        <p class="wt-desc">Walk right-to-left carrying a single integer <code>right = 1</code>. At each step, multiply <code>answer[i] *= right</code>, then update <code>right *= nums[i]</code>. The suffix product flows through one cell of memory.</p>
+        <p class="wt-gain">→ space: O(n) → O(1) extra. One integer replaces the second array.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t"><b>Allocate</b> <code>answer[n]</code> and a running multiplier <code>left = 1</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t"><b>Sweep left → right.</b> At each <code>i</code>: <b>write</b> <code>answer[i] = left</code>, then <b>update</b> <code>left *= nums[i]</code>. After this pass, <code>answer[i]</code> holds the product of everything strictly left of <code>i</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t"><b>Reset</b> a second running multiplier <code>right = 1</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t"><b>Sweep right → left.</b> At each <code>i</code>: <b>multiply</b> <code>answer[i] *= right</code>, then <b>update</b> <code>right *= nums[i]</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t"><b>Return</b> <code>answer</code>.</span></div>
+  </div>
+  <div class="infobox info" style="margin-top:.875rem">
+    <p class="infobox-t">Why write before update</p>
+    <p class="infobox-d">In the L-pass, we write <code>answer[i] = left</code> <em>before</em> multiplying <code>nums[i]</code> in. That is what makes the stored value the product of elements <em>strictly to the left of</em> <code>i</code> — not including <code>nums[i]</code> itself. The R-pass mirrors this: multiply first, then update <code>right</code>.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Canonical C++ solution</p>
+  <p class="body">Try to reproduce this from the five steps before revealing.</p>
+  <button class="reveal-btn" id="reveal-btn" onclick="toggleEl('code-main', document.getElementById('reveal-btn'))">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+<pre class="cb"><span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; <span class="fn">productExceptSelf</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>();
+    <span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; out(n, <span class="nu">1</span>);
+
+    <span class="kw">int</span> left = <span class="nu">1</span>;                            <span class="cm">// L-pass: prefix products into out[]</span>
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        out[i] = left;                       <span class="cm">// write BEFORE updating</span>
+        left *= nums[i];
+    }
+
+    <span class="kw">int</span> right = <span class="nu">1</span>;                           <span class="cm">// R-pass: fold in suffix products</span>
+    <span class="kw">for</span> (<span class="kw">int</span> i = n - <span class="nu">1</span>; i &gt;= <span class="nu">0</span>; i--) {
+        out[i] *= right;                     <span class="cm">// multiply BEFORE updating</span>
+        right *= nums[i];
+    }
+    <span class="kw">return</span> out;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">Ex 1: [1,2,3,4]</button>
+    <button class="ex-btn" id="cv-ex1" onclick="cvLoadEx(1)">Ex 2: [-1,1,0,-3,3]</button>
+    <button class="ex-btn" id="cv-ex2" onclick="cvLoadEx(2)">Ex 3: [2,3,4,5]</button>
+  </div>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px">arrays — top: nums[], bottom: out[]</p>
+        <div id="cv-strip" class="pae-stack"></div>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:5px">Variables</p>
+        <div class="cv-var-grid">
+          <div class="cv-var-card dim" id="cvv-i"><p class="cv-var-name">i</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-left"><p class="cv-var-name">left</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-right"><p class="cv-var-name">right</p><p class="cv-var-val">—</p></div>
+          <div class="cv-var-card dim" id="cvv-write"><p class="cv-var-name">out[i]</p><p class="cv-var-val">—</p></div>
+        </div>
+      </div>
+      <div class="cv-narration" id="cv-narration">Select an example to begin.</div>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="cv-bp" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="cv-bn" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn" onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Interactive dry run</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1: [1,2,3,4]</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">Ex 2: [-1,1,0,-3,3]</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">Ex 3: [2,3,4,5]</button>
+  </div>
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:var(--bg-info);border:0.5px solid var(--border-info)"></div><span class="leg-label">L-pass write (prefix)</span></div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--bg-warn);border:0.5px solid var(--border-warn)"></div><span class="leg-label">R-pass multiply (suffix)</span></div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--bg-success);border:0.5px solid var(--border-success)"></div><span class="leg-label">finalised</span></div>
+  </div>
+  <div id="dr-strip" class="pae-stack"></div>
+  <div class="panels-fixed">
+    <div class="formula-panel" id="dr-formula">
+      <div class="formula-grid">
+        <div><p class="fitem-label">phase</p><p class="fitem-val" id="f-phase">—</p><p class="fitem-sub">L / R / done</p></div>
+        <div><p class="fitem-label">i</p><p class="fitem-val" id="f-i">—</p><p class="fitem-sub">current index</p></div>
+        <div><p class="fitem-label" style="color:var(--text-info)">left</p><p class="fitem-val" id="f-left">—</p><p class="fitem-sub">prefix accum</p></div>
+        <div><p class="fitem-label" style="color:var(--text-warn)">right</p><p class="fitem-val" id="f-right">—</p><p class="fitem-sub">suffix accum</p></div>
+        <div><p class="fitem-label">out[i]</p><p class="fitem-val" id="f-outi">—</p><p class="fitem-sub">cell value</p></div>
+      </div>
+      <div class="formula-eq" id="dr-feq">Select an example to begin.</div>
+    </div>
+    <div class="step-panel" id="dr-step">
+      <p class="step-what" id="dr-what">—</p>
+      <p class="step-why" id="dr-why">Use the controls below to step through.</p>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+  <div style="margin-top:.875rem">
+    <p style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-bottom:4px">Final answer[]</p>
+    <p id="dr-result" style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--text)">—</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner"><div class="cnum">1</div><div>
+    <p class="corner-title">Single zero in the array — e.g. <code>[1, 2, 0, 4]</code></p>
+    <p class="corner-body">Only the index of the zero ends up non-zero; every other cell's product still contains that zero. The algorithm handles it without a branch — once <code>left</code> or <code>right</code> sees the zero, it propagates 0 into every subsequent multiplication.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">2</div><div>
+    <p class="corner-title">Two or more zeros — e.g. <code>[0, 1, 0, 4]</code></p>
+    <p class="corner-body">Every cell of the output is 0: each cell's product still contains at least one zero. No special case needed — both passes carry a 0 through their respective accumulators.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">3</div><div>
+    <p class="corner-title">Negative numbers — e.g. <code>[-1, 1, 0, -3, 3]</code></p>
+    <p class="corner-body">Sign of <code>answer[i]</code> is determined by the parity of negatives <em>outside</em> index <code>i</code>. The multiplications handle this automatically; nothing changes in the algorithm.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">4</div><div>
+    <p class="corner-title">Length 2 — e.g. <code>[a, b]</code> → <code>[b, a]</code></p>
+    <p class="corner-body">L-pass writes <code>[1, a]</code>; R-pass multiplies in <code>b, 1</code> giving <code>[b, a]</code>. The smallest valid input — confirms accumulator initial value 1 is correct.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">5</div><div>
+    <p class="corner-title">All ones — <code>[1, 1, 1, 1]</code></p>
+    <p class="corner-body">Every cell of the output is 1. Sanity check that <code>left</code> and <code>right</code> both initialise to 1, not 0 — initialising to 0 would zero out every answer.</p>
+  </div></div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>No division:</b> meets the problem's hard constraint and avoids the divide-by-zero hazard.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>O(1) extra space:</b> only two integer accumulators beyond the output array.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Each cell visited exactly twice:</b> once per pass — total work is 2n multiplications and 2n writes.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Accumulators start at 1:</b> not 0 — the multiplicative identity is 1. Verified by the all-ones case.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Write before update (and multiply before update):</b> guarantees each stored value excludes <code>nums[i]</code> itself.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Integer overflow:</b> per the problem's guarantee, every prefix product fits in <code>int</code>. Switch to <code>long long</code> if constraints loosen.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Two-pass, O(1) extra (optimal)</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Prefix + suffix arrays</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Brute force</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(1) extra</span>
+    <p class="body" style="margin-top:.5rem">Two passes; the first writes prefix products into <code>out[]</code>, the second folds suffix products in using a single integer accumulator. The algorithm above. Strictly less memory than the DP variant; same correctness.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body" style="margin-top:.5rem">Build two helper arrays <code>L[i]</code> and <code>R[i]</code> explicitly, then combine in a third pass. Easiest to read and the natural step in an interview before compressing to the optimal.</p>
+<pre class="cb" style="margin-top:.75rem"><span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; <span class="fn">productExceptSelf</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>();
+    <span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; L(n, <span class="nu">1</span>), R(n, <span class="nu">1</span>), out(n);
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">1</span>; i &lt; n; i++)   L[i] = L[i-<span class="nu">1</span>] * nums[i-<span class="nu">1</span>];
+    <span class="kw">for</span> (<span class="kw">int</span> i = n-<span class="nu">2</span>; i &gt;= <span class="nu">0</span>; i--) R[i] = R[i+<span class="nu">1</span>] * nums[i+<span class="nu">1</span>];
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++)   out[i] = L[i] * R[i];
+    <span class="kw">return</span> out;
+}</pre>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">Time O(n²)</span><span class="tag tag-space">Space O(1) extra</span>
+    <p class="body" style="margin-top:.5rem">For each <code>i</code>, multiply every other element. TLEs on large <code>n</code>. Useful only as the derivation anchor for the translations above. Note: a "total product ÷ nums[i]" trick is O(n) but disqualified — the problem forbids division and zeros break it.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard" style="border-color:var(--border-danger)"><p class="ccard-l">Brute force</p><p class="ccard-v">O(n²) / O(1)</p><p class="ccard-n">A full inner loop per output cell.</p></div>
+    <div class="ccard" style="border-color:var(--border-warn)"><p class="ccard-l">Prefix + suffix arrays</p><p class="ccard-v">O(n) / O(n)</p><p class="ccard-n">Three passes; two helper arrays of length n.</p></div>
+    <div class="ccard" style="border-color:var(--border-success)"><p class="ccard-l">Two-pass, O(1) extra ✓</p><p class="ccard-v">O(n) / O(1)</p><p class="ccard-n">Two passes; output array reused as the prefix scratchpad; one suffix accumulator.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p class="body">The <strong>prefix–suffix decomposition</strong>: any per-index quantity that depends on "everything to the left and everything to the right" can be built with a left-pass plus a right-pass. The output array often doubles as the prefix scratchpad, saving an O(n) buffer.</p>
+    <p class="body">In an interview: explain the prefix + suffix array variant first (it's the cleanest proof), then point out the output array can absorb one of the two halves, then compress the other half to a single running variable.</p>
+    <p class="body">Related: <strong>LC 42 Trapping Rain Water</strong> — same prefix/suffix decomposition with <code>max</code> instead of <code>×</code>; collapses to two converging pointers. <strong>LC 152 Maximum Product Subarray</strong> — running products with a min-tracker, since negatives flip small products into large ones. <strong>LC 303 Range Sum Query</strong> — same prefix-accumulator idea generalised to arbitrary range queries with <code>+</code>. <strong>LC 560 Subarray Sum Equals K</strong> — where prefix sums meet a hash map.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  /* ─── DATA ─── */
+  const EXAMPLES    = [[1,2,3,4], [-1,1,0,-3,3], [2,3,4,5]];
+  const BF_EXAMPLES = [[1,2,3,4], [2,3,4,5]];
+
+  /* ─── BRUTE FORCE ─── */
+  let bfSteps=[], bfCur=0, bfTimer=null;
+  function bfGen(nums){
+    const out=[], n=nums.length;
+    let ops=0;
+    const finalOut = new Array(n).fill(null);
+    out.push({nums, n, i:-1, j:-1, prod:null, ops:0, finalOut:[...finalOut], msg:'For each i, multiply every nums[j] where j ≠ i.'});
+    for(let i=0;i<n;i++){
+      let prod=1;
+      out.push({nums, n, i, j:-1, prod, ops, finalOut:[...finalOut], msg:`i=${i}: start fresh prod=1, then walk j=0..${n-1}.`});
+      for(let j=0;j<n;j++){
+        if(j===i){
+          out.push({nums, n, i, j, prod, ops, finalOut:[...finalOut], msg:`j=${i}: skip — that's i itself.`});
+          continue;
+        }
+        ops++;
+        prod *= nums[j];
+        out.push({nums, n, i, j, prod, ops, finalOut:[...finalOut], msg:`j=${j}: prod *= nums[${j}](${nums[j]}) → prod=${prod}.`});
+      }
+      finalOut[i] = prod;
+      out.push({nums, n, i, j:-1, prod, ops, finalOut:[...finalOut], msg:`out[${i}] = ${prod}.`});
+    }
+    out.push({nums, n, i:-1, j:-1, prod:null, ops, finalOut:[...finalOut], msg:`Done. ${ops} multiplications.`});
+    return out;
+  }
+  function paeRenderRow(elId, values, opts){
+    const con = document.getElementById(elId); con.innerHTML='';
+    values.forEach((v,i)=>{
+      const w = document.createElement('div'); w.className='pae-cellwrap';
+      const cell = document.createElement('div'); cell.className='pae-cell';
+      if(opts && opts.outClass) cell.classList.add('pae-out');
+      if(opts && opts.cur === i) cell.classList.add('cur');
+      if(opts && opts.dim && opts.dim.includes(i)) cell.classList.add('dim');
+      if(opts && opts.written && opts.written.includes(i)) cell.classList.add('written');
+      if(opts && opts.finalised && opts.finalised.includes(i)) cell.classList.add('finalised');
+      cell.textContent = v === null || v === undefined ? '·' : v;
+      const idx = document.createElement('div'); idx.className='pae-idx'; idx.textContent=i;
+      w.appendChild(cell); w.appendChild(idx); con.appendChild(w);
+    });
+  }
+  function bfRender(st){
+    paeRenderRow('bf-strip', st.nums, {cur: st.j>=0 ? st.j : st.i});
+    const writtenIdx = st.finalOut.map((v,i)=>v!==null?i:-1).filter(i=>i>=0);
+    const outVals = st.finalOut.map(v=>v===null?'·':v);
+    paeRenderRow('bf-out', outVals, {outClass:true, written: writtenIdx, cur: st.i});
+    document.getElementById('bf-i').textContent   = st.i>=0 ? st.i : '—';
+    document.getElementById('bf-j').textContent   = st.j>=0 ? st.j : '—';
+    document.getElementById('bf-prod').textContent= st.prod===null ? '—' : st.prod;
+    document.getElementById('bf-ops').textContent = st.ops;
+    document.getElementById('bf-sctr').textContent= `Step ${bfCur+1} / ${bfSteps.length}`;
+    document.getElementById('bf-prev').disabled = bfCur===0;
+    document.getElementById('bf-next').disabled = bfCur===bfSteps.length-1;
+  }
+  function bfNext(){ if(bfCur<bfSteps.length-1){ bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev(){ if(bfCur>0){ bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset(){ bfStopPlay(); bfCur=0; bfRender(bfSteps[0]); }
+  function bfLoadEx(idx){
+    bfStopPlay(); bfCur=0;
+    [0,1].forEach(i=>document.getElementById('bf-ex'+i).classList.toggle('active', i===idx));
+    bfSteps = bfGen(BF_EXAMPLES[idx]);
+    bfRender(bfSteps[0]);
+  }
+
+  /* ─── CODE VISUALIZATION ─── */
+  const CV_LINES=[
+    {n:1,  c:'vector<int> productExceptSelf(vector<int>& nums) {'},
+    {n:2,  c:'    int n = nums.size();'},
+    {n:3,  c:'    vector<int> out(n, 1);'},
+    {n:4,  c:'    int left = 1;'},
+    {n:5,  c:'    for (int i = 0; i < n; i++) {'},
+    {n:6,  c:'        out[i] = left;'},
+    {n:7,  c:'        left *= nums[i];'},
+    {n:8,  c:'    }'},
+    {n:9,  c:'    int right = 1;'},
+    {n:10, c:'    for (int i = n - 1; i >= 0; i--) {'},
+    {n:11, c:'        out[i] *= right;'},
+    {n:12, c:'        right *= nums[i];'},
+    {n:13, c:'    }'},
+    {n:14, c:'    return out;'},
+    {n:15, c:'}'},
+  ];
+  let cvSteps=[], cvCur=0, cvTimer=null;
+  function cvGen(nums){
+    const steps=[], n=nums.length;
+    let left=1, right=1;
+    const out = new Array(n).fill(1);
+    const written = new Set();        // L-pass touched
+    const finalised = new Set();      // R-pass touched
+    const snap=(line, narr, phase, changed, vars)=>steps.push({
+      line, narr, phase,
+      changed: changed||[],
+      i: vars.i, left: vars.left, right: vars.right, write: vars.write,
+      nums, out:[...out], n, written:[...written], finalised:[...finalised],
+    });
+    snap(1, 'Enter productExceptSelf.', 'init', [], {i:null,left:null,right:null,write:null});
+    snap(2, `n = ${n}.`, 'active', [], {i:null,left:null,right:null,write:null});
+    snap(3, 'Allocate out[] filled with 1s.', 'active', [], {i:null,left:null,right:null,write:null});
+    snap(4, 'left = 1 (multiplicative identity).', 'active', ['left'], {i:null,left,right:null,write:null});
+    for(let i=0;i<n;i++){
+      snap(5, `L-pass: i = ${i}.`, 'active', ['i'], {i,left,right:null,write:null});
+      out[i] = left; written.add(i);
+      snap(6, `out[${i}] = left = ${left}. (write BEFORE update so cell excludes nums[${i}])`, 'lp', ['write','i'], {i,left,right:null,write:left});
+      const newLeft = left * nums[i];
+      snap(7, `left *= nums[${i}](${nums[i]}) → left = ${newLeft}.`, 'lp', ['left'], {i,left:newLeft,right:null,write:left});
+      left = newLeft;
+    }
+    snap(8, 'L-pass complete. out[] now holds prefix products.', 'active', [], {i:null,left,right:null,write:null});
+    snap(9, 'right = 1 (reset accumulator).', 'active', ['right'], {i:null,left,right,write:null});
+    for(let i=n-1;i>=0;i--){
+      snap(10, `R-pass: i = ${i}.`, 'active', ['i'], {i,left,right,write:null});
+      const prev = out[i];
+      out[i] *= right; finalised.add(i);
+      snap(11, `out[${i}] *= right(${right}) → out[${i}] = ${prev}×${right} = ${out[i]}.`, 'rp', ['write','i'], {i,left,right,write:out[i]});
+      const newRight = right * nums[i];
+      snap(12, `right *= nums[${i}](${nums[i]}) → right = ${newRight}.`, 'rp', ['right'], {i,left,right:newRight,write:out[i]});
+      right = newRight;
+    }
+    snap(14, `Return out = [${out.join(', ')}].`, 'done', [], {i:null,left,right,write:null});
+    return steps;
+  }
+  function cvRenderStrip(st){
+    const con = document.getElementById('cv-strip'); con.innerHTML='';
+    // nums row
+    const numsRow = document.createElement('div'); numsRow.className='pae-stackrow';
+    const numsLbl = document.createElement('span'); numsLbl.className='pae-rowlbl'; numsLbl.textContent='nums[]'; numsRow.appendChild(numsLbl);
+    const numsCells = document.createElement('div'); numsCells.className='pae-row'; numsRow.appendChild(numsCells);
+    st.nums.forEach((v,i)=>{
+      const w=document.createElement('div'); w.className='pae-cellwrap';
+      const c=document.createElement('div'); c.className='pae-cell'; c.textContent=v;
+      if(i===st.i) c.classList.add('cur');
+      const idx=document.createElement('div'); idx.className='pae-idx'; idx.textContent=i;
+      w.appendChild(c); w.appendChild(idx); numsCells.appendChild(w);
+    });
+    con.appendChild(numsRow);
+    // out row
+    const outRow = document.createElement('div'); outRow.className='pae-stackrow';
+    const outLbl = document.createElement('span'); outLbl.className='pae-rowlbl'; outLbl.textContent='out[]'; outRow.appendChild(outLbl);
+    const outCells = document.createElement('div'); outCells.className='pae-row'; outRow.appendChild(outCells);
+    st.out.forEach((v,i)=>{
+      const w=document.createElement('div'); w.className='pae-cellwrap';
+      const c=document.createElement('div'); c.className='pae-cell pae-out'; c.textContent=v;
+      if(st.finalised.includes(i)) c.classList.add('finalised');
+      else if(st.written.includes(i)) c.classList.add('written');
+      if(i===st.i) c.classList.add('cur');
+      const idx=document.createElement('div'); idx.className='pae-idx'; idx.textContent=i;
+      w.appendChild(c); w.appendChild(idx); outCells.appendChild(w);
+    });
+    con.appendChild(outRow);
+    // accumulator pills
+    const accRow = document.createElement('div'); accRow.style.cssText='display:flex;gap:8px;margin-top:.25rem;flex-wrap:wrap';
+    const lp = document.createElement('span'); lp.className='acc-pill lp'; lp.innerHTML=`left = <b>${st.left===null?'—':st.left}</b>`; accRow.appendChild(lp);
+    const rp = document.createElement('span'); rp.className='acc-pill rp'; rp.innerHTML=`right = <b>${st.right===null?'—':st.right}</b>`; accRow.appendChild(rp);
+    con.appendChild(accRow);
+  }
+  function cvRender(st){
+    document.querySelectorAll('.cv-line').forEach(el=>el.classList.remove('active','active-match'));
+    const al = document.getElementById('cvL'+st.line);
+    if(al){
+      al.classList.add(st.phase==='lp' || st.phase==='rp' ? 'active-match' : 'active');
+      if(visPx(document.querySelector('.cv-section'))>0) al.scrollIntoView({block:'nearest', behavior:'smooth'});
+    }
+    cvRenderStrip(st);
+    const VARS=['i','left','right','write'];
+    VARS.forEach(id=>{
+      const card=document.getElementById('cvv-'+id); if(!card) return;
+      card.classList.remove('hl','hl-match','dim');
+      let val;
+      if(id==='i')      val = st.i===null     ? '—' : st.i;
+      else if(id==='left')  val = st.left===null  ? '—' : st.left;
+      else if(id==='right') val = st.right===null ? '—' : st.right;
+      else if(id==='write') val = st.write===null ? '—' : st.write;
+      card.querySelector('.cv-var-val').textContent = val;
+      if(st.changed.includes(id)) card.classList.add(st.phase==='lp' || st.phase==='rp' ? 'hl-match' : 'hl');
+      if(val==='—') card.classList.add('dim');
+    });
+    const narr=document.getElementById('cv-narration');
+    narr.textContent=st.narr;
+    narr.className='cv-narration' + (st.phase==='lp' || st.phase==='rp' ? ' is-match' : st.phase!=='done' ? ' is-active' : '');
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur+1} / ${cvSteps.length}`;
+    document.getElementById('cv-bp').disabled = cvCur===0;
+    document.getElementById('cv-bn').disabled = cvCur===cvSteps.length-1;
+  }
+  function cvNext(){ if(cvCur<cvSteps.length-1){ cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev(){ if(cvCur>0){ cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset(){ cvStopPlay(); cvCur=0; cvRender(cvSteps[0]); }
+  function cvLoadEx(idx){
+    cvStopPlay(); cvCur=0;
+    [0,1,2].forEach(i=>document.getElementById('cv-ex'+i).classList.toggle('active', i===idx));
+    cvSteps = cvGen(EXAMPLES[idx]);
+    cvBuildCode(CV_LINES);
+    cvRender(cvSteps[0]);
+  }
+
+  /* ─── DRY RUN ─── */
+  let drSteps=[], drCur=0, drTimer=null;
+  function drGen(nums){
+    const steps=[], n=nums.length;
+    let left=1, right=1;
+    const out = new Array(n).fill(1);
+    const written = new Set();
+    const finalised = new Set();
+    const snap=(what, why, phase, vars)=>steps.push({
+      nums, out:[...out], n,
+      written:[...written], finalised:[...finalised],
+      i: vars.i, left: vars.left, right: vars.right, outi: vars.outi,
+      what, why, phase,
+    });
+    snap('Start: out[] = [1,1,…], left = 1, right = 1.', 'Two passes: L→R writes prefix products, R→L folds in suffix products.', 'init', {i:null,left,right,outi:null});
+    for(let i=0;i<n;i++){
+      out[i] = left; written.add(i);
+      const wrote = left;
+      snap(
+        `L-pass i=${i}: out[${i}] = left = ${wrote}, then left *= nums[${i}](${nums[i]}) → ${left*nums[i]}.`,
+        `out[${i}] now holds the product of nums[0..${i-1}] (the prefix strictly to the left of i).`,
+        'lp', {i, left:left*nums[i], right, outi:wrote}
+      );
+      left *= nums[i];
+    }
+    for(let i=n-1;i>=0;i--){
+      const before = out[i];
+      out[i] *= right; finalised.add(i);
+      snap(
+        `R-pass i=${i}: out[${i}] *= right(${right}) → ${out[i]}, then right *= nums[${i}](${nums[i]}) → ${right*nums[i]}.`,
+        `Folded suffix product (${right}) into out[${i}]. Cell now holds (prefix ${before}) × (suffix ${right}) = ${out[i]} = answer[${i}].`,
+        'rp', {i, left, right:right*nums[i], outi:out[i]}
+      );
+      right *= nums[i];
+    }
+    snap(`Done. answer = [${out.join(', ')}].`, 'Two passes, no division, O(1) extra space beyond the output.', 'done', {i:null,left,right,outi:null});
+    return steps;
+  }
+  function drRenderStrip(st){
+    const con = document.getElementById('dr-strip'); con.innerHTML='';
+    // nums
+    const numsRow = document.createElement('div'); numsRow.className='pae-stackrow';
+    const lbl1 = document.createElement('span'); lbl1.className='pae-rowlbl'; lbl1.textContent='nums[]'; numsRow.appendChild(lbl1);
+    const numsCells = document.createElement('div'); numsCells.className='pae-row'; numsRow.appendChild(numsCells);
+    st.nums.forEach((v,i)=>{
+      const w=document.createElement('div'); w.className='pae-cellwrap';
+      const c=document.createElement('div'); c.className='pae-cell'; c.textContent=v;
+      if(i===st.i) c.classList.add('cur');
+      const idx=document.createElement('div'); idx.className='pae-idx'; idx.textContent=i;
+      w.appendChild(c); w.appendChild(idx); numsCells.appendChild(w);
+    });
+    con.appendChild(numsRow);
+    // out
+    const outRow = document.createElement('div'); outRow.className='pae-stackrow';
+    const lbl2 = document.createElement('span'); lbl2.className='pae-rowlbl'; lbl2.textContent='out[]'; outRow.appendChild(lbl2);
+    const outCells = document.createElement('div'); outCells.className='pae-row'; outRow.appendChild(outCells);
+    st.out.forEach((v,i)=>{
+      const w=document.createElement('div'); w.className='pae-cellwrap';
+      const c=document.createElement('div'); c.className='pae-cell pae-out'; c.textContent=v;
+      if(st.finalised.includes(i)) c.classList.add('finalised');
+      else if(st.written.includes(i)) c.classList.add('written');
+      if(i===st.i) c.classList.add('cur');
+      const idx=document.createElement('div'); idx.className='pae-idx'; idx.textContent=i;
+      w.appendChild(c); w.appendChild(idx); outCells.appendChild(w);
+    });
+    con.appendChild(outRow);
+  }
+  function drRender(st){
+    drRenderStrip(st);
+    const phaseLabel = st.phase==='lp' ? 'L-pass' : st.phase==='rp' ? 'R-pass' : st.phase==='done' ? 'done' : 'init';
+    document.getElementById('f-phase').textContent = phaseLabel;
+    document.getElementById('f-i').textContent     = st.i===null ? '—' : st.i;
+    document.getElementById('f-left').textContent  = st.left;
+    document.getElementById('f-right').textContent = st.right;
+    document.getElementById('f-outi').textContent  = st.outi===null ? '—' : st.outi;
+    const feq = st.phase==='done'
+      ? `<span class="eq-hl">answer = [${st.out.join(', ')}]</span>`
+      : st.phase==='lp'
+        ? `out[${st.i}] ← left &nbsp;·&nbsp; then left ← left × nums[${st.i}]`
+        : st.phase==='rp'
+          ? `out[${st.i}] ← out[${st.i}] × right &nbsp;·&nbsp; then right ← right × nums[${st.i}]`
+          : 'Two-pass build: prefix products into out[], then fold suffix products in.';
+    document.getElementById('dr-feq').innerHTML = feq;
+    const fp = document.getElementById('dr-formula');
+    fp.className = 'formula-panel' + (st.phase==='lp' || st.phase==='rp' ? ' is-match' : '');
+    const sp = document.getElementById('dr-step');
+    sp.className = 'step-panel' + (st.phase==='lp' || st.phase==='rp' ? ' match' : '');
+    document.getElementById('dr-what').textContent = st.what;
+    document.getElementById('dr-why').textContent  = st.why;
+    const rl = document.getElementById('dr-result');
+    if(st.phase==='done'){ rl.textContent = '[' + st.out.join(', ') + ']'; rl.style.color='var(--text-success)'; }
+    else { rl.textContent = '…'; rl.style.color='var(--text3)'; }
+    document.getElementById('dr-sctr').textContent = `Step ${drCur+1} / ${drSteps.length}`;
+    document.getElementById('dr-bp').disabled = drCur===0;
+    document.getElementById('dr-bn').disabled = drCur===drSteps.length-1;
+  }
+  function drNext(){ if(drCur<drSteps.length-1){ drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev(){ if(drCur>0){ drCur--; drRender(drSteps[drCur]); } }
+  function drReset(){ drStopPlay(); drCur=0; drRender(drSteps[0]); }
+  function drLoadEx(idx){
+    drStopPlay(); drCur=0;
+    [0,1,2].forEach(i=>document.getElementById('dr-ex'+i).classList.toggle('active', i===idx));
+    drSteps = drGen(EXAMPLES[idx]);
+    drRender(drSteps[0]);
+  }
+
+  /* ─── INIT ─── */
+  bfLoadEx(0);
+  cvLoadEx(0);
+  drLoadEx(0);
+</script>
+
+</body>
+</html>

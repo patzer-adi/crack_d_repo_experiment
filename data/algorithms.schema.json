@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://crack_d.local/schemas/algorithms.json",
+  "title": "Algorithms Inventory",
+  "description": "PLAN-013 — canonical CS algorithms reference, kept separate from the LC problem inventory at data/problems.json.",
+  "type": "array",
+  "items": { "$ref": "#/definitions/entry" },
+  "definitions": {
+    "entry": {
+      "type": "object",
+      "required": [
+        "id", "name", "category", "category_order", "ramp_pos", "order",
+        "kind", "tier", "interview_relevance", "complexity",
+        "prereqs", "short_note", "references", "related_lc",
+        "lesson_status", "lesson_path"
+      ],
+      "properties": {
+        "id":             { "type": "string", "pattern": "^[a-z0-9-]+$",
+                            "description": "Stable kebab-case primary key, e.g. 'dijkstras-algorithm'." },
+        "name":           { "type": "string", "minLength": 1 },
+        "category":       { "type": "string", "enum": [
+          "Foundational Algorithms",
+          "Graph Algorithms",
+          "Dynamic Programming",
+          "String Algorithms",
+          "Computational Geometry",
+          "Numerical and Optimization",
+          "Data Structures",
+          "Advanced Graph",
+          "Cryptography and Security",
+          "Parallel and Distributed",
+          "Miscellaneous",
+          "Domain-Specific",
+          "Advanced Theoretical",
+          "Emerging Areas"
+        ]},
+        "category_order": { "type": "integer", "minimum": 1, "maximum": 15,
+                            "description": "PDF numbering preserved; category_order 10 is the gap left by skipping 'Machine Learning and Data Mining' (PLAN-013 §8 decision 2)." },
+        "ramp_pos":       { "type": "integer", "minimum": 1 },
+        "order":          { "type": "integer", "minimum": 1001,
+                            "description": "= category_order * 1000 + ramp_pos. Sort key for the dashboard." },
+        "kind":           { "type": "string", "enum": ["algorithm", "data_structure"] },
+        "aliases":        { "type": "array", "items": { "type": "string" }, "default": [] },
+        "tier":           { "type": "integer", "enum": [1, 2, 3],
+                            "description": "1=foundational primer, 2=core, 3=advanced." },
+        "interview_relevance": { "type": "string", "enum": ["high", "medium", "low"],
+                                 "description": "Dashboard filter defaults to 'high'+'medium'; 'low' hidden until toggled on." },
+        "complexity": {
+          "type": "object",
+          "required": ["time", "space"],
+          "properties": {
+            "time":  { "type": "string", "description": "e.g. 'O(n log n)' or 'O((V+E) log V) with binary heap'." },
+            "space": { "type": "string" },
+            "notes": { "type": "string", "description": "Preconditions, best/avg/worst splits, etc." }
+          }
+        },
+        "prereqs": {
+          "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "description": "Other algorithm `id`s the learner should know first. Build script will validate references and reject cycles."
+        },
+        "short_note": { "type": "string", "minLength": 1, "maxLength": 240,
+                        "description": "One-sentence hook describing the key idea." },
+        "references": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "External references: textbook citations, Wikipedia URLs, papers. Canonical implementations live inside the lesson HTML, not here."
+        },
+        "related_lc": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "description": "LC problem slugs in data/problems.json that exercise this algorithm. Resolved on-load by the dashboard for cross-link chips. Build script warns on missing slugs."
+        },
+        "lesson_status": { "type": "string", "enum": ["none", "in-progress", "generated"] },
+        "lesson_path":   { "type": ["string", "null"],
+                           "description": "e.g. 'algorithms/dijkstras-algorithm/lesson.html' once authored; null otherwise. Build script fills this from disk." }
+      },
+      "additionalProperties": false
+    }
+  }
+}
