@@ -2063,7 +2063,7 @@
       "google_focused"
     ],
     "status": "done",
-    "lesson_status": "none"
+    "lesson_status": "generated"
   },
   {
     "order": 13003,
@@ -2080,8 +2080,8 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
-    "lesson_status": "none"
+    "status": "done",
+    "lesson_status": "generated"
   },
   {
     "order": 13004,
@@ -2098,7 +2098,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "done",
+    "status": "new",
     "lesson_status": "generated"
   },
   {
@@ -2115,7 +2115,7 @@
     "twist": "Kadane variant: track *both* min and max because of negatives",
     "tracks": [],
     "status": "new",
-    "lesson_status": "none"
+    "lesson_status": "generated"
   },
   {
     "order": 13006,
@@ -2265,7 +2265,7 @@
       "google_focused"
     ],
     "status": "new",
-    "lesson_status": "none"
+    "lesson_status": "generated"
   },
   {
     "order": 13015,

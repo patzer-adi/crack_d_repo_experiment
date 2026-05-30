@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coin Change — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* Problem-specific: dp-array cells, recursion-tree boxes */
+  .dp-row{display:flex;gap:6px;flex-wrap:wrap;margin:.5rem 0;font-family:var(--mono)}
+  .dp-cell{min-width:42px;height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+           border:1px solid var(--border2);background:var(--bg2);border-radius:6px;font-size:13px;color:var(--text2);padding:2px}
+  .dp-cell .dp-idx{font-size:10px;color:var(--text3);line-height:1}
+  .dp-cell .dp-val{font-weight:600;line-height:1.2}
+  .dp-cell.cur{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info)}
+  .dp-cell.dep{background:var(--bg-warn);border-color:var(--border-warn);color:var(--text-warn)}
+  .dp-cell.done{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success)}
+  .dp-cap{font-family:var(--mono);font-size:12px;color:var(--text2);margin:.25rem 0 .5rem;min-height:1.2em}
+  .dp-tries{font-family:var(--mono);font-size:12px;color:var(--text3);margin:.25rem 0 .5rem;min-height:1.2em}
+  .bf-tree{display:flex;flex-direction:column;gap:4px;background:var(--bg2);border:0.5px solid var(--border2);
+           border-radius:8px;padding:.625rem .75rem;font-family:var(--mono);font-size:12px;min-height:120px}
+  .bf-line{color:var(--text2);white-space:pre}
+  .bf-line.active{color:var(--text-info);font-weight:600}
+  .bf-line.ret{color:var(--text-success)}
+  .bf-line.dup{color:var(--text-warn)}
+  .bf-stat{display:flex;gap:1rem;font-family:var(--mono);font-size:13px;margin:.5rem 0}
+  .bf-stat-pill{padding:4px 10px;border-radius:6px;background:var(--bg2);border:0.5px solid var(--border2);color:var(--text2)}
+  .bf-stat-pill.calls{background:var(--bg-danger);color:var(--text-danger);border-color:var(--border-danger)}
+  .coin-pills{display:flex;gap:6px;font-family:var(--mono);font-size:12px;margin:.25rem 0 .5rem;color:var(--text3)}
+  .coin-pill{padding:2px 8px;border-radius:6px;background:var(--bg2);border:0.5px solid var(--border2);color:var(--text2)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Coin Change</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/coin-change/" target="_blank">LC #322</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Dynamic Programming</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Can the same coin be used many times?</div>
+      <div class="acard-a">Yes — coin supply is unbounded. Picking a 5 once doesn't stop us from picking another 5.</div>
+      <div class="acard-u">→ unlocks: dp[i] may revisit the same coin from dp[i−c]; this is unbounded knapsack, not 0/1 — we don't track "used".</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">What if the amount can't be made from the given coins?</div>
+      <div class="acard-a">Return −1.</div>
+      <div class="acard-u">→ unlocks: need a sentinel for "unreachable" distinct from any real coin count — use <code>amount+1</code> (no honest answer can exceed <code>amount</code> 1-coins).</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Are coin values always positive integers?</div>
+      <div class="acard-a">Yes — coins are in <code>[1, 2³¹−1]</code> and all distinct.</div>
+      <div class="acard-u">→ unlocks: no zero coin (would loop forever); no negatives (would break monotone subproblem ordering — dp[i] depends on dp[i−c] with c ≥ 1).</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">What's the range of <code>amount</code>?</div>
+      <div class="acard-a">0 ≤ amount ≤ 10⁴. Note that 0 is legal — answer is 0.</div>
+      <div class="acard-u">→ unlocks: O(amount × |coins|) table is ~10⁶ ops — comfortably fast. Must handle amount=0 (loop body never runs, return dp[0]=0).</div>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Coins are positive integers, repeatable. We need the <em>fewest</em> coins (not the number of ways). Return −1 if impossible. <code>amount=0</code> means zero coins.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">The last coin splits the problem in two: one coin, plus a smaller version of the same problem</p>
+
+  <p class="body">Whatever the optimal coin set for amount <code>N</code> looks like, it must end with <em>some</em> coin <code>c</code>. Strip that coin off and what remains is the optimal coin set for amount <code>N−c</code> — the same problem, smaller. So the answer at <code>N</code> is decided by the answers at amounts strictly below it.</p>
+
+  <!-- Foundational visual: animated dp-array fill -->
+  <div style="margin:1rem 0">
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:var(--text3);margin-bottom:.5rem">
+      Walk through <code style="color:var(--text2)">coins = [1, 2, 5]</code>, <code style="color:var(--text2)">amount = 6</code>. Watch each cell read from earlier cells and pick the smallest <code>dp[i−c]+1</code>.
+    </div>
+    <div class="coin-pills">
+      coins:
+      <span class="coin-pill">1</span>
+      <span class="coin-pill">2</span>
+      <span class="coin-pill">5</span>
+    </div>
+    <div id="si-dp" class="dp-row" aria-label="dp array"></div>
+    <div id="si-cap" class="dp-cap"></div>
+    <div id="si-tries" class="dp-tries"></div>
+    <div class="legend" style="margin-top:.25rem">
+      <span class="leg-item"><span class="leg-dot" style="background:var(--bg-info);border:1px solid var(--border-info)"></span><span class="leg-label">cell being filled (i)</span></span>
+      <span class="leg-item"><span class="leg-dot" style="background:var(--bg-warn);border:1px solid var(--border-warn)"></span><span class="leg-label">dependency dp[i−c]</span></span>
+      <span class="leg-item"><span class="leg-dot" style="background:var(--bg-success);border:1px solid var(--border-success)"></span><span class="leg-label">finalised dp value</span></span>
+    </div>
+    <div class="ctrl-row" style="margin-top:.625rem">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d" style="font-family:var(--mono);font-size:13px;line-height:1.9">
+      dp[0] = 0 <br>
+      dp[i] = 1 + min<sub>c ∈ coins, c ≤ i</sub> dp[i−c] <br>
+      <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:var(--text3)">answer = dp[amount] if reachable, else −1</span>
+    </p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">If you just write the recurrence directly — <code>f(n) = 1 + min(f(n−c))</code> — and recurse without remembering anything, the same subproblem is computed over and over. The call tree branches by <code>|coins|</code> at each level and is up to <code>amount/min_coin</code> deep, so the work is exponential. Watch the calls counter explode on small inputs.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">amount=3, coins=[1,2]</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">amount=4, coins=[1,2]</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">amount=5, coins=[1,2,5]</button>
+  </div>
+
+  <div class="bf-stat">
+    <span class="bf-stat-pill">arg: <b id="bf-arg">—</b></span>
+    <span class="bf-stat-pill">depth: <b id="bf-depth">0</b></span>
+    <span class="bf-stat-pill calls">calls: <b id="bf-calls">0</b></span>
+  </div>
+  <div id="bf-tree" class="bf-tree"></div>
+
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(|coins|<sup>amount/min_coin</sup>) time, O(amount) stack</p>
+    <p class="infobox-d">The same subproblem (e.g. <code>f(2)</code>) is recomputed under many different paths. For <code>amount=5, coins=[1,2,5]</code> that's already 20+ calls; for <code>amount=30</code> it's millions. The fix is to remember each subproblem's answer once — dynamic programming.</p>
+  </div>
+
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal Code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="kw">int</span> <span class="fn">solve</span>(vector&lt;<span class="tp">int</span>&gt;&amp; coins, <span class="kw">int</span> n) {
+    <span class="kw">if</span> (n == <span class="nu">0</span>) {
+        <span class="kw">return</span> <span class="nu">0</span>;
+    }
+    <span class="kw">if</span> (n &lt; <span class="nu">0</span>) {
+        <span class="kw">return</span> INT_MAX;            <span class="cm">// unreachable</span>
+    }
+    <span class="kw">int</span> best = INT_MAX;
+    <span class="kw">for</span> (<span class="kw">int</span> c : coins) {
+        <span class="kw">int</span> sub = <span class="fn">solve</span>(coins, n - c);
+        <span class="kw">if</span> (sub != INT_MAX) {
+            best = min(best, sub + <span class="nu">1</span>);
+        }
+    }
+    <span class="kw">return</span> best;
+}
+
+<span class="kw">int</span> <span class="fn">coinChange</span>(vector&lt;<span class="tp">int</span>&gt;&amp; coins, <span class="kw">int</span> amount) {
+    <span class="kw">int</span> r = <span class="fn">solve</span>(coins, amount);
+    <span class="kw">return</span> r == INT_MAX ? -<span class="nu">1</span> : r;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three concrete moves carry us from the exponential recursion to the linear table: re-frame the recurrence as a subproblem table, fill it bottom-up so every dependency is already computed, and choose a sentinel that distinguishes "no path yet" from "zero coins".</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">"Fewest coins for N" → "1 + fewest coins for N−c, taken over coins c"</div>
+        <div class="wt-desc">The last-coin decomposition. Whatever optimal solution exists for N, peel off its last coin <code>c</code>; what remains is the optimal solution for <code>N−c</code>. So the answer at N is one more than the smallest answer over all reachable predecessors.</div>
+        <div class="wt-gain">→ recursion shape becomes a clean recurrence: dp[i] = 1 + min over c of dp[i−c]</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">"For every amount below N" → 1-D table <code>dp[0..N]</code>, filled left-to-right</div>
+        <div class="wt-desc">Because <code>c ≥ 1</code>, every dependency <code>dp[i−c]</code> sits at a strictly smaller index than <code>i</code>. Filling in increasing order of <code>i</code> guarantees those cells are already finalised when we read them — no recursion, no memoisation overhead.</div>
+        <div class="wt-gain">→ exponential recursion → O(amount × |coins|) iteration, O(amount) memory</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">"Impossible / not yet reachable" → sentinel value <code>amount+1</code></div>
+        <div class="wt-desc">We need to write a number into every cell, even unreachable ones, so that <code>min(…)</code> still works. Use <code>amount+1</code>: it's larger than any real answer (which is at most <code>amount</code>, using all 1-coins) and fits in an <code>int</code> without overflow risk. At the end, <code>dp[amount] &gt; amount</code> means unreachable → return −1.</div>
+        <div class="wt-gain">→ no special-case branching inside the loop; one clean min() expression</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1</span><span class="algo-t"><b>Allocate</b> <code>dp</code> of length <code>amount+1</code>; fill every cell with the sentinel <code>amount+1</code>, then <b>set</b> <code>dp[0]=0</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">2</span><span class="algo-t"><b>For</b> each target <code>i</code> from 1 to <code>amount</code>:</span></div>
+    <div class="algo-step"><span class="algo-n">3</span><span class="algo-t"><b>For</b> each coin <code>c</code>: if <code>c ≤ i</code>, compute <code>dp[i−c]+1</code> and keep the running minimum as <code>dp[i]</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">4</span><span class="algo-t"><b>After</b> the table is filled: if <code>dp[amount] &gt; amount</code> the target is unreachable — <b>return</b> <code>−1</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">5</span><span class="algo-t">Otherwise <b>return</b> <code>dp[amount]</code>.</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">int</span> <span class="fn">coinChange</span>(vector&lt;<span class="tp">int</span>&gt;&amp; coins, <span class="kw">int</span> amount) {
+    vector&lt;<span class="tp">int</span>&gt; dp(amount + <span class="nu">1</span>, amount + <span class="nu">1</span>);
+    dp[<span class="nu">0</span>] = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">1</span>; i &lt;= amount; i++) {
+        <span class="kw">for</span> (<span class="kw">int</span> c : coins) {
+            <span class="kw">if</span> (c &lt;= i) {
+                dp[i] = min(dp[i], dp[i - c] + <span class="nu">1</span>);
+            }
+        }
+    }
+    <span class="kw">if</span> (dp[amount] &gt; amount) {
+        <span class="kw">return</span> -<span class="nu">1</span>;
+    }
+    <span class="kw">return</span> dp[amount];
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Watch each code line drive a state change. The dp array on the right is the same array you'd inspect in a debugger; every read of <code>dp[i−c]</code> lights up the dependency cell.</p>
+
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-i"><div class="cv-var-name">i</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-c"><div class="cv-var-name">c (coin)</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-sub"><div class="cv-var-name">dp[i−c]+1</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-best"><div class="cv-var-name">dp[i]</div><div class="cv-var-val">—</div></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+
+  <div id="cv-arr-con" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0;">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.25rem">dp array</div>
+    <div id="cv-dp" class="dp-row"></div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">coins=[2], amount=3</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">coins=[1,2,5], amount=6</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">coins=[1], amount=0</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick an example, then step through the dp array fill. Each step considers one target <code>i</code> and walks every coin choice for it. Try predicting <code>dp[i]</code> before clicking Next.</p>
+
+  <div id="dr-dp" class="dp-row"></div>
+  <div id="dr-cap" class="dp-cap"></div>
+  <div id="dr-tries" class="dp-tries"></div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid">
+        <div class="fitem-label">i</div><div class="fitem-val" id="dr-f-i">—</div>
+        <div class="fitem-label">coin c</div><div class="fitem-val" id="dr-f-c">—</div>
+        <div class="fitem-label">dp[i−c]</div><div class="fitem-val" id="dr-f-prev">—</div>
+        <div class="fitem-label">candidate</div><div class="fitem-val" id="dr-f-cand">—</div>
+      </div>
+      <div class="formula-eq" id="dr-f-eq">dp[i] = min(dp[i], dp[i−c] + 1)</div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what" id="dr-what">Pick an example to begin.</div>
+      <div class="step-why"  id="dr-why">The dp table starts as [0, ∞, ∞, …].</div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">coins=[1,2,5], amount=11</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">coins=[2], amount=3</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">coins=[5,2,1], amount=7</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div>
+      <div class="corner-title"><code>amount = 0</code> — empty target</div>
+      <div class="corner-body">dp has one cell, <code>dp[0]=0</code>; the outer loop's range is <code>1..0</code> which never executes. Returns 0 cleanly — no special case needed.</div>
+    </div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div>
+      <div class="corner-title"><code>coins=[2], amount=3</code> — unreachable</div>
+      <div class="corner-body"><code>dp[1]</code> and <code>dp[3]</code> never get updated; they stay at sentinel <code>amount+1=4</code>. The final check <code>dp[amount] &gt; amount</code> catches this and returns −1.</div>
+    </div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div>
+      <div class="corner-title"><code>coins=[3], amount=9</code> — only multiples reachable</div>
+      <div class="corner-body">dp[3]=1, dp[6]=2, dp[9]=3; the non-multiples (1, 2, 4, 5, 7, 8) stay sentinel. The min() never picks them because they're larger than <code>amount</code>. Answer 3.</div>
+    </div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div>
+      <div class="corner-title">Coin larger than amount</div>
+      <div class="corner-body">The guard <code>c &lt;= i</code> skips those coins. A 100-valued coin contributes nothing while we're filling <code>dp[1..99]</code>; no crash, no off-by-one.</div>
+    </div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div>
+      <div class="corner-title">Greedy temptation: <code>coins=[1,3,4], amount=6</code></div>
+      <div class="corner-body">Greedy "take the biggest coin that fits" picks 4+1+1=3 coins. The DP correctly finds 3+3=2 coins. Mentioning this in an interview shows you know greedy fails here — and why the DP is necessary.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>amount = 0</b> — falls out: outer loop never runs, dp[0]=0 is returned directly. No special-case.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Unreachable amount</b> — sentinel <code>amount+1</code> survives in dp[amount]; the final <code>dp[amount] &gt; amount</code> check returns −1.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Coin &gt; remaining</b> — the <code>c &lt;= i</code> guard skips it; no out-of-bounds read of <code>dp[i−c]</code>.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Integer overflow</b> — sentinel is <code>amount+1 ≤ 10⁴+1</code>; adding 1 in <code>dp[i−c]+1</code> stays well inside int. Avoid <code>INT_MAX</code> as sentinel (then <code>+1</code> overflows).</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Off-by-one</b> — dp size is <code>amount+1</code> (indices 0..amount inclusive); outer loop is <code>i &lt;= amount</code>, not <code>&lt;</code>.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Greedy pitfall</b> — do not "take the largest coin that fits"; counterexample <code>[1,3,4], amount=6</code> proves it can be wrong.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Coin order independence</b> — the inner min() commutes; coins do not need to be sorted. Sorting can let you break early once <code>c &gt; i</code>, a minor constant-factor win.</div></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Bottom-up DP</button>
+    <button class="tab-btn"        id="tab1" onclick="switchTab(1)">Top-down memo</button>
+    <button class="tab-btn"        id="tab2" onclick="switchTab(2)">BFS over amounts</button>
+  </div>
+
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(amount · |coins|)</span> <span class="tag tag-space">O(amount)</span>
+    <p class="body">The reference solution. One pass over the dp table, no recursion, no hash map. Sentinel <code>amount+1</code> keeps the inner expression branch-free. This is the default answer in an interview because it's iterative, simple to reason about, and fits naturally in the lower bound (you genuinely do need to know dp[i] for every i ≤ amount in the worst case).</p>
+    <button class="reveal-btn" onclick="toggleEl('code-t0',this)">▶ Reveal Code</button>
+    <div id="code-t0" class="code-block">
+      <pre class="cb"><span class="kw">int</span> <span class="fn">coinChange</span>(vector&lt;<span class="tp">int</span>&gt;&amp; coins, <span class="kw">int</span> amount) {
+    vector&lt;<span class="tp">int</span>&gt; dp(amount + <span class="nu">1</span>, amount + <span class="nu">1</span>);
+    dp[<span class="nu">0</span>] = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">1</span>; i &lt;= amount; i++) {
+        <span class="kw">for</span> (<span class="kw">int</span> c : coins) {
+            <span class="kw">if</span> (c &lt;= i) {
+                dp[i] = min(dp[i], dp[i - c] + <span class="nu">1</span>);
+            }
+        }
+    }
+    <span class="kw">return</span> dp[amount] &gt; amount ? -<span class="nu">1</span> : dp[amount];
+}</pre>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(amount · |coins|)</span> <span class="tag tag-space">O(amount) heap + O(amount) stack</span>
+    <p class="body">Mirrors the recurrence directly: a recursive function <code>solve(n)</code> returning the answer for amount <code>n</code>, with a memo array so each subproblem is solved once. Same asymptotic cost as bottom-up but pays recursion overhead and risks stack depth at amount=10⁴ (most languages handle this, but it's worth flagging). Worth mentioning if the interviewer asks "how would you write this recursively?"</p>
+    <button class="reveal-btn" onclick="toggleEl('code-t1',this)">▶ Reveal Code</button>
+    <div id="code-t1" class="code-block">
+      <pre class="cb">vector&lt;<span class="tp">int</span>&gt; memo;
+
+<span class="kw">int</span> <span class="fn">solve</span>(vector&lt;<span class="tp">int</span>&gt;&amp; coins, <span class="kw">int</span> n) {
+    <span class="kw">if</span> (n == <span class="nu">0</span>) {
+        <span class="kw">return</span> <span class="nu">0</span>;
+    }
+    <span class="kw">if</span> (memo[n] != -<span class="nu">2</span>) {
+        <span class="kw">return</span> memo[n];
+    }
+    <span class="kw">int</span> best = INT_MAX;
+    <span class="kw">for</span> (<span class="kw">int</span> c : coins) {
+        <span class="kw">if</span> (c &lt;= n) {
+            <span class="kw">int</span> sub = <span class="fn">solve</span>(coins, n - c);
+            <span class="kw">if</span> (sub != -<span class="nu">1</span> &amp;&amp; sub != INT_MAX) {
+                best = min(best, sub + <span class="nu">1</span>);
+            }
+        }
+    }
+    memo[n] = (best == INT_MAX) ? -<span class="nu">1</span> : best;
+    <span class="kw">return</span> memo[n];
+}
+
+<span class="kw">int</span> <span class="fn">coinChange</span>(vector&lt;<span class="tp">int</span>&gt;&amp; coins, <span class="kw">int</span> amount) {
+    memo.assign(amount + <span class="nu">1</span>, -<span class="nu">2</span>);
+    <span class="kw">return</span> <span class="fn">solve</span>(coins, amount);
+}</pre>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O(amount · |coins|)</span> <span class="tag tag-space">O(amount)</span>
+    <p class="body">Treat amounts as graph nodes and each coin as an edge of weight 1. BFS from 0 finds the shortest path to <code>amount</code>, which is the fewest coins. Same asymptotic complexity, but BFS can terminate <em>early</em> the moment it dequeues <code>amount</code> — sometimes much faster on inputs with a shallow answer. Worth mentioning when the interviewer presses on the worst case vs. typical case.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-t2',this)">▶ Reveal Code</button>
+    <div id="code-t2" class="code-block">
+      <pre class="cb"><span class="kw">int</span> <span class="fn">coinChange</span>(vector&lt;<span class="tp">int</span>&gt;&amp; coins, <span class="kw">int</span> amount) {
+    <span class="kw">if</span> (amount == <span class="nu">0</span>) {
+        <span class="kw">return</span> <span class="nu">0</span>;
+    }
+    vector&lt;<span class="tp">bool</span>&gt; seen(amount + <span class="nu">1</span>, <span class="kw">false</span>);
+    queue&lt;<span class="tp">int</span>&gt; q;
+    q.push(<span class="nu">0</span>);
+    seen[<span class="nu">0</span>] = <span class="kw">true</span>;
+    <span class="kw">int</span> level = <span class="nu">0</span>;
+    <span class="kw">while</span> (!q.empty()) {
+        level++;
+        <span class="kw">int</span> sz = q.size();
+        <span class="kw">while</span> (sz--) {
+            <span class="kw">int</span> cur = q.front(); q.pop();
+            <span class="kw">for</span> (<span class="kw">int</span> c : coins) {
+                <span class="kw">int</span> nxt = cur + c;
+                <span class="kw">if</span> (nxt == amount) {
+                    <span class="kw">return</span> level;
+                }
+                <span class="kw">if</span> (nxt &lt; amount &amp;&amp; !seen[nxt]) {
+                    seen[nxt] = <span class="kw">true</span>;
+                    q.push(nxt);
+                }
+            }
+        }
+    }
+    <span class="kw">return</span> -<span class="nu">1</span>;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(amount · |coins|)</div>
+      <div class="ccard-n">The outer loop runs <code>amount</code> times; the inner loop tries every coin and does O(1) work per pair.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(amount)</div>
+      <div class="ccard-n">The <code>dp</code> table holds <code>amount+1</code> integers. No recursion, so stack depth is O(1).</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><b>LC 518 — Coin Change II</b> — same kernel, but <em>count</em> the number of ways instead of the fewest coins. The coin loop moves outside the amount loop to avoid counting permutations as distinct ways.</p>
+    <p><b>LC 279 — Perfect Squares</b> — same template, but the "coin set" is the infinite set {1, 4, 9, 16, …}. You generate squares up to <code>n</code> first, then run the identical DP.</p>
+    <p><b>LC 139 — Word Break</b> — same last-piece decomposition with words instead of coins; dp[i] becomes a <code>bool</code> ("is prefix of length i breakable?").</p>
+    <p><b>LC 70 — Climbing Stairs</b> — the degenerate case with coins={1, 2} where you <em>count</em> ways. Same recursion shape, simpler.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  /* ── PER-LESSON DATA ─────────────────────────────────────────── */
+
+  const SENTINEL = 1e9;
+
+  // Examples for §6 (code visualization). Each: [coins, amount, label]
+  const CV_EXAMPLES = [
+    { coins: [2],        amount: 3, label: 'coins=[2], amount=3'        },
+    { coins: [1, 2, 5],  amount: 6, label: 'coins=[1,2,5], amount=6'    },
+    { coins: [1],        amount: 0, label: 'coins=[1], amount=0'        },
+  ];
+
+  // Examples for §7 (dry run). Always three.
+  const DR_EXAMPLES = [
+    { coins: [1, 2, 5],  amount: 11, label: 'coins=[1,2,5], amount=11' },
+    { coins: [2],        amount: 3,  label: 'coins=[2], amount=3'      },
+    { coins: [5, 2, 1],  amount: 7,  label: 'coins=[5,2,1], amount=7'  },
+  ];
+
+  // Examples for §2 (brute force).
+  const BF_EXAMPLES = [
+    { coins: [1, 2],     amount: 3, label: 'amount=3, coins=[1,2]'    },
+    { coins: [1, 2],     amount: 4, label: 'amount=4, coins=[1,2]'    },
+    { coins: [1, 2, 5],  amount: 5, label: 'amount=5, coins=[1,2,5]'  },
+  ];
+
+  // Optimal C++ code, line-numbered for §6.
+  const CV_LINES = [
+    { n: 1,  c: 'int coinChange(vector<int>& coins, int amount) {' },
+    { n: 2,  c: '    vector<int> dp(amount + 1, amount + 1);'      },
+    { n: 3,  c: '    dp[0] = 0;'                                   },
+    { n: 4,  c: '    for (int i = 1; i <= amount; i++) {'          },
+    { n: 5,  c: '        for (int c : coins) {'                    },
+    { n: 6,  c: '            if (c <= i) {'                        },
+    { n: 7,  c: '                dp[i] = min(dp[i], dp[i-c] + 1);' },
+    { n: 8,  c: '            }'                                    },
+    { n: 9,  c: '        }'                                        },
+    { n: 10, c: '    }'                                            },
+    { n: 11, c: '    if (dp[amount] > amount) {'                   },
+    { n: 12, c: '        return -1;'                               },
+    { n: 13, c: '    }'                                            },
+    { n: 14, c: '    return dp[amount];'                           },
+    { n: 15, c: '}'                                                },
+  ];
+
+  /* ── HELPERS ─────────────────────────────────────────────────── */
+
+  function fmtDp(v, amount) {
+    return (v > amount) ? '∞' : String(v);
+  }
+
+  function renderDpRow(containerId, dp, amount, curIdx, depIdxs, doneUpto) {
+    const con = document.getElementById(containerId);
+    if (!con) return;
+    con.innerHTML = '';
+    for (let i = 0; i <= amount; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'dp-cell';
+      if (i === curIdx) cell.classList.add('cur');
+      else if (depIdxs && depIdxs.includes(i)) cell.classList.add('dep');
+      else if (doneUpto >= 0 && i <= doneUpto && (dp[i] <= amount)) cell.classList.add('done');
+      const idx = document.createElement('div');
+      idx.className = 'dp-idx';
+      idx.textContent = i;
+      const val = document.createElement('div');
+      val.className = 'dp-val';
+      val.textContent = fmtDp(dp[i], amount);
+      cell.appendChild(idx);
+      cell.appendChild(val);
+      con.appendChild(cell);
+    }
+  }
+
+  /* ── §1 INSIGHT ANIMATION ───────────────────────────────────── */
+
+  let siSteps = [];
+  let siCur = 0;
+  let siTimer = null;
+  const SI_COINS = [1, 2, 5];
+  const SI_AMOUNT = 6;
+
+  function siGenSteps() {
+    const coins = SI_COINS;
+    const amount = SI_AMOUNT;
+    const dp = new Array(amount + 1).fill(amount + 1);
+    dp[0] = 0;
+    const steps = [];
+    steps.push({
+      dp: dp.slice(), cur: -1, deps: [], doneUpto: 0,
+      caption: 'Initialise dp[0] = 0; all other cells set to sentinel (∞).',
+      tries: '',
+    });
+    for (let i = 1; i <= amount; i++) {
+      let best = amount + 1;
+      const tries = [];
+      const deps = [];
+      for (const c of coins) {
+        if (c <= i) {
+          const cand = dp[i - c] + 1;
+          deps.push(i - c);
+          if (dp[i - c] > amount) {
+            tries.push(`c=${c}: dp[${i - c}]=∞ → skip`);
+          } else {
+            tries.push(`c=${c}: dp[${i - c}]+1 = ${dp[i - c]}+1 = ${cand}`);
+            if (cand < best) best = cand;
+          }
+        }
+      }
+      dp[i] = best;
+      steps.push({
+        dp: dp.slice(), cur: i, deps,
+        doneUpto: i,
+        caption: `i = ${i}: try every coin, take the min.`,
+        tries: tries.join('   ·   ') + `   →   dp[${i}] = ${fmtDp(best, amount)}`,
+      });
+    }
+    return steps;
+  }
+
+  function siRender(st) {
+    renderDpRow('si-dp', st.dp, SI_AMOUNT, st.cur, st.deps, st.doneUpto);
+    document.getElementById('si-cap').textContent = st.caption;
+    document.getElementById('si-tries').textContent = st.tries;
+    siUpdateCtr();
+  }
+
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0)                  { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null;
+    const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1200);
+  }
+  function siUpdateCtr() {
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  /* ── §2 BRUTE FORCE — recursion-tree trace ──────────────────── */
+
+  let bfSteps = [];
+  let bfCur = 0;
+  let bfTimer = null;
+  let bfCtx = BF_EXAMPLES[0];
+
+  function bfGenSteps(coins, amount) {
+    const steps = [];
+    const lines = [];
+    let calls = 0;
+    function indent(d) { return '  '.repeat(d); }
+
+    function rec(n, depth) {
+      calls++;
+      const lineIdx = lines.length;
+      lines.push({ text: `${indent(depth)}call f(${n})`, cls: 'active', depth });
+      steps.push({
+        lines: lines.map(l => ({ ...l })),
+        active: lineIdx,
+        arg: n, depth, calls,
+        note: `call f(${n})`,
+      });
+      // Mark previously-active line as "settled"
+      if (lineIdx > 0) lines[lineIdx].cls = '';
+
+      let result;
+      if (n === 0) {
+        result = 0;
+      } else if (n < 0) {
+        result = Infinity;
+      } else {
+        let best = Infinity;
+        for (const c of coins) {
+          const sub = rec(n - c, depth + 1);
+          if (sub !== Infinity) best = Math.min(best, sub + 1);
+        }
+        result = best;
+      }
+
+      lines.push({
+        text: `${indent(depth)}f(${n}) = ${result === Infinity ? '∞' : result}`,
+        cls: 'ret', depth,
+      });
+      steps.push({
+        lines: lines.map(l => ({ ...l })),
+        active: lines.length - 1,
+        arg: n, depth, calls,
+        note: `f(${n}) returns ${result === Infinity ? '∞' : result}`,
+      });
+      return result;
+    }
+
+    rec(amount, 0);
+    return steps;
+  }
+
+  function bfRender(st) {
+    const tree = document.getElementById('bf-tree');
+    tree.innerHTML = '';
+    st.lines.forEach((l, idx) => {
+      const div = document.createElement('div');
+      div.className = 'bf-line' + (l.cls ? ' ' + l.cls : '');
+      if (idx === st.active) div.classList.add('active');
+      div.textContent = l.text;
+      tree.appendChild(div);
+    });
+    // Auto-scroll to active line
+    const activeEl = tree.children[st.active];
+    if (activeEl && activeEl.scrollIntoView) {
+      activeEl.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    }
+    document.getElementById('bf-arg').textContent = st.arg;
+    document.getElementById('bf-depth').textContent = st.depth;
+    document.getElementById('bf-calls').textContent = st.calls;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0)                  { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+  function bfLoadEx(idx) {
+    bfStopPlay();
+    bfCtx = BF_EXAMPLES[idx];
+    document.querySelectorAll('#bf-ex0, #bf-ex1, #bf-ex2').forEach((b, i) =>
+      b.classList.toggle('active', i === idx));
+    bfSteps = bfGenSteps(bfCtx.coins, bfCtx.amount);
+    bfCur = 0;
+    bfRender(bfSteps[0]);
+  }
+
+  /* ── §6 CODE VISUALIZATION ──────────────────────────────────── */
+
+  let cvSteps = [];
+  let cvCur = 0;
+  let cvTimer = null;
+  let cvCtx = CV_EXAMPLES[0];
+
+  function cvGenSteps(coins, amount) {
+    const steps = [];
+    const dp = new Array(amount + 1).fill(amount + 1);
+
+    steps.push({
+      line: 2, dp: dp.slice(), i: '—', c: '—', sub: '—', best: '—',
+      narr: `Allocate dp of length ${amount + 1}; fill with sentinel ${amount + 1}.`,
+      changed: ['dp'],
+    });
+    dp[0] = 0;
+    steps.push({
+      line: 3, dp: dp.slice(), i: '—', c: '—', sub: '—', best: '—',
+      narr: 'Base case: dp[0] = 0 (zero coins make zero amount).',
+      changed: ['dp'],
+    });
+
+    if (amount === 0) {
+      steps.push({
+        line: 11, dp: dp.slice(), i: '—', c: '—', sub: '—', best: 0,
+        narr: 'Check: dp[amount]=0 ≤ amount=0; not the sentinel branch.',
+        changed: ['best'],
+      });
+      steps.push({
+        line: 14, dp: dp.slice(), i: '—', c: '—', sub: '—', best: 0,
+        narr: 'Return dp[amount] = 0.', phase: 'done', changed: ['best'],
+      });
+      return steps;
+    }
+
+    for (let i = 1; i <= amount; i++) {
+      steps.push({
+        line: 4, dp: dp.slice(), i, c: '—', sub: '—', best: fmtDp(dp[i], amount),
+        narr: `Outer loop: i = ${i}. Will try each coin.`,
+        changed: ['i'],
+      });
+      for (const c of coins) {
+        steps.push({
+          line: 5, dp: dp.slice(), i, c, sub: '—', best: fmtDp(dp[i], amount),
+          narr: `Inner loop: try coin c = ${c}.`,
+          changed: ['c'],
+        });
+        if (c <= i) {
+          steps.push({
+            line: 6, dp: dp.slice(), i, c, sub: '—', best: fmtDp(dp[i], amount),
+            narr: `Guard c ≤ i passes (${c} ≤ ${i}). Compute candidate.`,
+          });
+          const candRaw = dp[i - c] + 1;
+          const candDisp = (dp[i - c] > amount) ? '∞' : String(candRaw);
+          steps.push({
+            line: 7, dp: dp.slice(), i, c, sub: candDisp, best: fmtDp(dp[i], amount),
+            narr: `Candidate dp[${i - c}]+1 = ${fmtDp(dp[i - c], amount)}+1 = ${candDisp}.`,
+            changed: ['sub'],
+          });
+          if (candRaw < dp[i]) {
+            dp[i] = candRaw;
+            steps.push({
+              line: 7, dp: dp.slice(), i, c, sub: candDisp, best: fmtDp(dp[i], amount),
+              narr: `${candDisp} improves dp[${i}] → dp[${i}] = ${fmtDp(dp[i], amount)}.`,
+              changed: ['best', 'dp'], phase: 'match',
+            });
+          }
+        } else {
+          steps.push({
+            line: 6, dp: dp.slice(), i, c, sub: '—', best: fmtDp(dp[i], amount),
+            narr: `Guard c ≤ i fails (${c} > ${i}). Skip this coin.`,
+          });
+        }
+      }
+    }
+    const finalOK = dp[amount] <= amount;
+    steps.push({
+      line: 11, dp: dp.slice(), i: '—', c: '—', sub: '—', best: fmtDp(dp[amount], amount),
+      narr: finalOK
+        ? `dp[amount] = ${dp[amount]} ≤ ${amount}; reachable.`
+        : `dp[amount] = ∞ > ${amount}; unreachable.`,
+      changed: ['best'],
+    });
+    if (finalOK) {
+      steps.push({
+        line: 14, dp: dp.slice(), i: '—', c: '—', sub: '—', best: dp[amount],
+        narr: `Return dp[amount] = ${dp[amount]}.`, phase: 'done', changed: ['best'],
+      });
+    } else {
+      steps.push({
+        line: 12, dp: dp.slice(), i: '—', c: '—', sub: '—', best: '∞',
+        narr: 'Return −1.', phase: 'done', changed: ['best'],
+      });
+    }
+    return steps;
+  }
+
+  function cvRender(st) {
+    // 1. Active code line
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el =>
+      el.classList.remove('active', 'active-match'));
+    const lineEl = document.getElementById('cvL' + st.line);
+    if (lineEl) {
+      lineEl.classList.add(
+        (st.phase === 'match' || st.phase === 'done') ? 'active-match' : 'active');
+    }
+
+    // 2. Variable cards
+    const cards = [
+      { id: 'cv-v-i',    val: st.i,    key: 'i'    },
+      { id: 'cv-v-c',    val: st.c,    key: 'c'    },
+      { id: 'cv-v-sub',  val: st.sub,  key: 'sub'  },
+      { id: 'cv-v-best', val: st.best, key: 'best' },
+    ];
+    cards.forEach(c => {
+      const el = document.getElementById(c.id);
+      if (!el) return;
+      el.classList.remove('hl', 'hl-match', 'dim');
+      el.querySelector('.cv-var-val').textContent = c.val;
+      if (c.val === '—' || c.val === undefined) {
+        el.classList.add('dim');
+      } else if (st.changed && st.changed.includes(c.key)) {
+        el.classList.add(st.phase === 'match' || st.phase === 'done' ? 'hl-match' : 'hl');
+      }
+    });
+
+    // 3. Narration
+    const n = document.getElementById('cv-narration');
+    n.classList.remove('is-match', 'is-active');
+    n.classList.add(st.phase === 'match' || st.phase === 'done' ? 'is-match' : 'is-active');
+    n.textContent = st.narr;
+
+    // 4. dp array
+    renderDpRow('cv-dp', st.dp, cvCtx.amount,
+      (typeof st.i === 'number') ? st.i : -1,
+      (typeof st.i === 'number' && typeof st.c === 'number' && st.c <= st.i) ? [st.i - st.c] : [],
+      (typeof st.i === 'number') ? st.i - 1 : cvCtx.amount);
+
+    // 5. Step counter
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0)                  { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+  function cvLoadEx(idx) {
+    cvStopPlay();
+    cvCtx = CV_EXAMPLES[idx];
+    document.querySelectorAll('#cv-ex0, #cv-ex1, #cv-ex2').forEach((b, i) =>
+      b.classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(cvCtx.coins, cvCtx.amount);
+    cvCur = 0;
+    cvRender(cvSteps[0]);
+  }
+
+  /* ── §7 DRY RUN ─────────────────────────────────────────────── */
+
+  let drSteps = [];
+  let drCur = 0;
+  let drTimer = null;
+  let drCtx = DR_EXAMPLES[0];
+
+  function drGenSteps(coins, amount) {
+    const steps = [];
+    const dp = new Array(amount + 1).fill(amount + 1);
+    dp[0] = 0;
+    steps.push({
+      dp: dp.slice(), cur: -1, deps: [], doneUpto: 0,
+      i: '—', c: '—', prev: '—', cand: '—',
+      what: 'Initialise dp[0] = 0; all other cells are ∞.',
+      why:  `Length ${amount + 1}; fill every cell with sentinel ${amount + 1} except dp[0].`,
+      caption: 'Initial state.', tries: '',
+    });
+    if (amount === 0) {
+      steps.push({
+        dp: dp.slice(), cur: 0, deps: [], doneUpto: 0,
+        i: '—', c: '—', prev: '—', cand: '—',
+        what: 'amount = 0 → outer loop body never runs.',
+        why:  'dp[amount] is already 0. Return 0.',
+        caption: 'amount = 0: nothing to do.', tries: '',
+      });
+      return steps;
+    }
+    for (let i = 1; i <= amount; i++) {
+      let best = amount + 1;
+      const tryStrs = [];
+      const deps = [];
+      for (const c of coins) {
+        if (c <= i) {
+          const cand = dp[i - c] + 1;
+          deps.push(i - c);
+          const prev = dp[i - c] > amount ? '∞' : dp[i - c];
+          const candDisp = dp[i - c] > amount ? '∞' : cand;
+          tryStrs.push(`c=${c}: dp[${i - c}]+1 = ${prev}+1 = ${candDisp}`);
+          steps.push({
+            dp: dp.slice(), cur: i, deps: [i - c], doneUpto: i - 1,
+            i, c, prev, cand: candDisp,
+            what: `i=${i}, try coin c=${c}`,
+            why:  `dp[${i - c}] = ${prev}; candidate = ${candDisp}. ${dp[i - c] > amount ? 'Sentinel — skip.' : (cand < best ? 'Improves the running min.' : 'Not better than current best.')}`,
+            caption: `i = ${i}: trying coins`,
+            tries: tryStrs.join('   ·   '),
+          });
+          if (dp[i - c] <= amount && cand < best) best = cand;
+        } else {
+          tryStrs.push(`c=${c}: c>i, skip`);
+          steps.push({
+            dp: dp.slice(), cur: i, deps: [], doneUpto: i - 1,
+            i, c, prev: '—', cand: '—',
+            what: `i=${i}, try coin c=${c}`,
+            why:  `c=${c} > i=${i}: out of range, skip.`,
+            caption: `i = ${i}: trying coins`,
+            tries: tryStrs.join('   ·   '),
+          });
+        }
+      }
+      dp[i] = best;
+      steps.push({
+        dp: dp.slice(), cur: i, deps: [], doneUpto: i,
+        i, c: '—', prev: '—', cand: '—',
+        what: `Commit dp[${i}] = ${fmtDp(best, amount)}`,
+        why: best > amount ? 'No coin reached this amount — stays ∞.' : 'Best of the candidates seen.',
+        caption: `i = ${i}: committed`,
+        tries: tryStrs.join('   ·   ') + `   →   dp[${i}] = ${fmtDp(best, amount)}`,
+      });
+    }
+    const finalOK = dp[amount] <= amount;
+    steps.push({
+      dp: dp.slice(), cur: amount, deps: [], doneUpto: amount,
+      i: '—', c: '—', prev: '—', cand: '—',
+      what: finalOK ? `Answer: ${dp[amount]}` : 'Answer: −1',
+      why:  finalOK ? `dp[${amount}] = ${dp[amount]} ≤ ${amount}; reachable.`
+                    : `dp[${amount}] = ∞ > ${amount}; unreachable.`,
+      caption: 'Done.', tries: '',
+    });
+    return steps;
+  }
+
+  function drRender(st) {
+    renderDpRow('dr-dp', st.dp, drCtx.amount, st.cur, st.deps, st.doneUpto);
+    document.getElementById('dr-cap').textContent = st.caption;
+    document.getElementById('dr-tries').textContent = st.tries;
+    document.getElementById('dr-f-i').textContent    = st.i;
+    document.getElementById('dr-f-c').textContent    = st.c;
+    document.getElementById('dr-f-prev').textContent = st.prev;
+    document.getElementById('dr-f-cand').textContent = st.cand;
+    document.getElementById('dr-what').textContent   = st.what;
+    document.getElementById('dr-why').textContent    = st.why;
+    document.getElementById('dr-sctr').textContent   = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0)                  { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+  function drLoadEx(idx) {
+    drStopPlay();
+    drCtx = DR_EXAMPLES[idx];
+    document.querySelectorAll('#dr-ex0, #dr-ex1, #dr-ex2').forEach((b, i) =>
+      b.classList.toggle('active', i === idx));
+    drSteps = drGenSteps(drCtx.coins, drCtx.amount);
+    drCur = 0;
+    drRender(drSteps[0]);
+  }
+
+  /* ── INIT ───────────────────────────────────────────────────── */
+  siSteps = siGenSteps();
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>

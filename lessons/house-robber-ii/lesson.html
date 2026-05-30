@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>House Robber II — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* ───── house row (re-used pattern from HR-I) ───── */
+  .hr-row { display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; }
+  .hr-house {
+    display:flex; flex-direction:column; align-items:center; min-width:54px;
+    font-family:var(--mono); font-size:13px; position:relative;
+  }
+  .hr-cash { font-weight:700; color:var(--text2); font-size:13px; margin-bottom:3px; }
+  .hr-bar {
+    width:46px; border-radius:6px 6px 0 0;
+    background:var(--bg2); border:1px solid var(--border2);
+    color:var(--text3); display:flex; align-items:flex-end; justify-content:center;
+    padding-bottom:4px; font-size:13px; font-weight:600;
+    transition:background .15s,border-color .15s,opacity .15s;
+  }
+  .hr-bar.cur      { background:var(--bg-info);    border-color:var(--border-info);    color:var(--text-info); }
+  .hr-bar.done     { background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); }
+  .hr-bar.skipped  { background:var(--bg-warn);    border-color:var(--border-warn);    color:var(--text-warn); }
+  .hr-bar.excluded { opacity:.25; background:var(--bg2); border-style:dashed; color:var(--text3); }
+  .hr-idx { color:var(--text3); margin-top:4px; font-size:12px; }
+  .hr-dp  { color:var(--text2); font-weight:700; margin-top:3px; font-size:13px; }
+  .hr-ptr {
+    font-family:var(--mono); font-size:12px; font-weight:600;
+    color:var(--text3); margin-top:4px;
+    min-height:16px; text-align:center; line-height:1.3;
+  }
+  .hr-ptr.has-ptr { color:var(--text-info); }
+  .hr-ptr.excluded { color:var(--text-danger); }
+
+  /* Memory pills above the houses (prev2 / prev1) */
+  .hr-mem { display:flex; gap:16px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
+  .hr-mempill {
+    display:inline-flex; align-items:baseline; gap:7px;
+    padding:8px 12px; border-radius:8px;
+    background:var(--bg2); border:1px solid var(--border2);
+    font-family:var(--mono); font-size:13px;
+  }
+  .hr-memk { color:var(--text3); font-size:13px; }
+  .hr-memv { color:var(--text2); font-weight:700; font-size:15px; }
+  .hr-mempill.lit  { background:var(--bg-info);    border-color:var(--border-info); }
+  .hr-mempill.lit .hr-memv { color:var(--text-info); }
+  .hr-mempill.slid { background:var(--bg-warn);    border-color:var(--border-warn); }
+  .hr-mempill.slid .hr-memv { color:var(--text-warn); }
+  .hr-mempill.fixA { background:var(--bg-success); border-color:var(--border-success); }
+  .hr-mempill.fixA .hr-memv { color:var(--text-success); }
+  .hr-mempill.fixB { background:var(--bg-success); border-color:var(--border-success); }
+  .hr-mempill.fixB .hr-memv { color:var(--text-success); }
+
+  .hr-cap { font-size:12.5px; color:var(--text3); margin:.5rem 0 .375rem; }
+
+  /* Phase tag (SETUP / CASE A / CASE B / COMBINE) */
+  .si-phase {
+    font-family:var(--mono); font-size:12.5px;
+    padding:4px 10px; border-radius:6px;
+    background:var(--bg2); border:1px solid var(--border2);
+    color:var(--text2); font-weight:700; letter-spacing:.5px;
+    margin-left:.5rem;
+  }
+  .si-phase.phase-setup   { background:var(--bg-info);    border-color:var(--border-info);    color:var(--text-info); }
+  .si-phase.phase-caseA   { background:var(--bg-warn);    border-color:var(--border-warn);    color:var(--text-warn); }
+  .si-phase.phase-caseB   { background:var(--bg-warn);    border-color:var(--border-warn);    color:var(--text-warn); }
+  .si-phase.phase-combine { background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); }
+
+  /* Color legend strip */
+  .hr-legend {
+    display:flex; gap:16px; margin:.375rem 0 .75rem; flex-wrap:wrap;
+    font-family:var(--mono); font-size:12.5px; color:var(--text2);
+  }
+  .hr-leg { display:inline-flex; align-items:center; gap:7px; }
+  .hr-legchip {
+    width:16px; height:16px; border-radius:4px; border:1px solid;
+  }
+  .hr-legchip.cur      { background:var(--bg-info);    border-color:var(--border-info); }
+  .hr-legchip.done     { background:var(--bg-success); border-color:var(--border-success); }
+  .hr-legchip.skipped  { background:var(--bg-warn);    border-color:var(--border-warn); }
+  .hr-legchip.excluded { background:var(--bg2);        border-color:var(--border2); border-style:dashed; opacity:.5; }
+
+  /* Circle arc — small visual cue that houses 0 and n-1 are adjacent */
+  .hr-circlecap {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:4px 10px; border-radius:14px;
+    background:var(--bg-info); border:1px solid var(--border-info);
+    color:var(--text-info); font-family:var(--mono); font-size:12px; font-weight:700;
+    margin-bottom:8px;
+  }
+
+  /* Two-case result tiles */
+  .hr-cases {
+    display:flex; gap:12px; flex-wrap:wrap; margin-top:14px;
+    font-family:var(--mono); font-size:13px;
+  }
+  .hr-case {
+    padding:10px 14px; border-radius:8px;
+    background:var(--bg2); border:1px solid var(--border2);
+    color:var(--text2); min-width:200px;
+  }
+  .hr-case.active { background:var(--bg-info);    border-color:var(--border-info);    color:var(--text-info); }
+  .hr-case.done   { background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); font-weight:700; }
+  .hr-case.dim    { opacity:.45; }
+  .hr-case-l { font-size:11px; color:var(--text3); font-weight:600; letter-spacing:.4px; margin-bottom:3px; }
+  .hr-case-v { font-size:18px; font-weight:700; }
+  .hr-case.active .hr-case-l,
+  .hr-case.done   .hr-case-l { color:inherit; opacity:.8; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>House Robber II</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/house-robber-ii/" target="_blank">LC #213</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Dynamic Programming</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">This problem is one tiny rule away from regular House Robber (LC 198). The questions below pin down exactly what changed.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Are the houses really arranged in a circle? What does "circle" mean for adjacency?</div>
+      <div class="acard-a">Yes — the array is cyclic. House <code>0</code> and house <code>n-1</code> are neighbours, on top of all the usual <code>i ↔ i+1</code> pairs.</div>
+      <div class="acard-u">→ unlocks: exactly one new forbidden pair compared to LC 198: <code>{0, n-1}</code></div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Can <code>n == 1</code>? Can <code>nums[i]</code> be 0?</div>
+      <div class="acard-a"><code>1 ≤ n ≤ 100</code> and <code>0 ≤ nums[i] ≤ 1000</code>. Single house allowed; values non-negative.</div>
+      <div class="acard-u">→ unlocks: special-case <code>n == 1</code>; otherwise rolling-pair DP handles everything</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Can I just run plain linear House Robber and patch the answer?</div>
+      <div class="acard-a">No. Linear HR may rob both <code>nums[0]</code> and <code>nums[n-1]</code> — they don't look adjacent in the linear view. The algorithm has to <i>know</i> about the new constraint up front.</div>
+      <div class="acard-u">→ unlocks: we must structurally exclude at least one endpoint</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Return which houses we robbed, or just the total?</div>
+      <div class="acard-a">Total money only.</div>
+      <div class="acard-u">→ unlocks: O(1)-memory rolling pair from LC 198 still works</div>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:1rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Cyclic array of <code>n ≥ 1</code> non-negative integers; adjacency includes both <code>i ↔ i+1</code> AND <code>0 ↔ n-1</code>; return the max sum. <b>Prerequisite:</b> you already know how to solve linear House Robber (LC 198) in O(n) time and O(1) memory with two rolling variables <code>prev2, prev1</code>.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Break the circle: one of the two endpoints is always free of robbery, so solve linear House Robber twice.</p>
+
+  <p class="body">Going from a line of houses to a circle adds <b>exactly one new rule</b>: house <code>0</code> and house <code>n-1</code> are now neighbours. Everything else is unchanged. Because adjacent houses can't both be robbed, the optimal plan <b>cannot include both endpoints</b> — at least one of them must be skipped. So we try the two cases: <b>Case A</b> drops the last house and solves linear House Robber on what's left; <b>Case B</b> drops the first house and does the same. The answer is whichever case gives the bigger total. Each case is just LC 198 — same rolling-pair DP, same O(n) time, same O(1) memory — run twice.</p>
+
+  <!-- Foundational visual: animated houses with the excluded endpoint dimmed per case -->
+  <div style="margin:1.25rem 0">
+    <div class="hr-cap" id="si-setup">Walking through <code>nums = [1, 2, 3, 1]</code> — circular adjacency means house 0 ↔ house 3 are neighbours, so we can't rob both.</div>
+
+    <span class="hr-circlecap" id="si-arc">↻ circle: house 0 ↔ house 3 are adjacent</span>
+
+    <div class="hr-legend">
+      <span class="hr-leg"><span class="hr-legchip cur"></span> houses in the active slice</span>
+      <span class="hr-leg"><span class="hr-legchip done"></span> robbed in the slice's best plan</span>
+      <span class="hr-leg"><span class="hr-legchip skipped"></span> skipped in the slice's best plan</span>
+      <span class="hr-leg"><span class="hr-legchip excluded"></span> excluded this case</span>
+    </div>
+
+    <div class="hr-row" id="si-houses"></div>
+
+    <div class="hr-cases">
+      <div class="hr-case" id="si-caseA">
+        <div class="hr-case-l">CASE A — exclude last (nums[n-1])</div>
+        <div class="hr-case-v" id="si-caseAv">—</div>
+      </div>
+      <div class="hr-case" id="si-caseB">
+        <div class="hr-case-l">CASE B — exclude first (nums[0])</div>
+        <div class="hr-case-v" id="si-caseBv">—</div>
+      </div>
+      <div class="hr-case" id="si-result">
+        <div class="hr-case-l">ANSWER = max(A, B)</div>
+        <div class="hr-case-v" id="si-resultv">—</div>
+      </div>
+    </div>
+
+    <div class="hr-cap" id="si-note" style="margin-top:.75rem;color:var(--text2);">Press <b>▶ Auto</b> or step through with <b>Next →</b>. The phase tag (right of the step counter) tells you which sub-problem we're on.</div>
+
+    <div class="ctrl-row" style="margin-top:.625rem">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+      <span class="si-phase" id="si-phase">SETUP</span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">If <code>n == 1</code> return <code>nums[0]</code>. Otherwise compute <code>caseA = linearRob(nums, 0, n-2)</code> and <code>caseB = linearRob(nums, 1, n-1)</code>, where <code>linearRob</code> is the LC 198 rolling-pair DP over an inclusive index range. Return <code>max(caseA, caseB)</code>. One pass per case, O(n) total, O(1) auxiliary memory.</p>
+  </div>
+
+  <!-- Equivalence chain -->
+  <p class="body" style="margin-top:1rem">Why the circle collapses to two independent linear problems:</p>
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">Pick a subset of indices from <code>nums</code> on a circle, no two adjacent (including <code>0</code> ↔ <code>n-1</code>), maximising the sum.</div>
+        <div class="chain-note">the problem</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">Compared to linear House Robber, exactly one new constraint is added: house <code>0</code> and house <code>n-1</code> cannot both be robbed.</div>
+        <div class="chain-note">isolate what's actually different</div>
+        <div class="chain-example">
+          <span class="pill n">linear forbids: {i, i+1}</span>
+          <span style="margin:0 4px;color:var(--text3)">+</span>
+          <span class="pill bad">new: {0, n-1}</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">"Cannot both be robbed" means <b>at least one</b> of <code>{0, n-1}</code> is skipped in any legal plan. Case-split: either house <code>0</code> is skipped, or house <code>n-1</code> is skipped (or both — but both is dominated by either single case when values are non-negative).</div>
+        <div class="chain-note">enumerate the two "which endpoint did we drop?" cases</div>
+        <div class="chain-example">
+          <span class="pill n">Case A: skip n-1</span><span class="arrow">→</span><span class="pill n">slice = nums[0..n-2]</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">Case B: skip 0</span><span class="arrow">→</span><span class="pill n">slice = nums[1..n-1]</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">Inside each slice, the circle is gone — it's just a normal line.</span> The remaining adjacency is purely <code>i ↔ i+1</code>, so each slice is solved by linear House Robber. The overall answer is <code>max(caseA, caseB)</code>.</div>
+        <div class="chain-note">two LC 198 calls + one max — done</div>
+        <div class="chain-example">
+          <span class="pill n">linearRob(nums[0..n-2])</span><span class="arrow">→</span><span class="pill ok">caseA</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">linearRob(nums[1..n-1])</span><span class="arrow">→</span><span class="pill ok">caseB</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill ok">answer = max(A, B)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">As with LC 198, the safest first move is to <b>try every possible plan</b> and keep the best legal one. The only change here is the legality check.</p>
+  <p class="body">A "plan" is still one yes/no decision per house: <b>rob it</b> or <b>leave it</b>, so for <code>n</code> houses we have <code>2^n</code> plans. For each plan we now check <b>two</b> things instead of one: <b>(1)&nbsp;No linear adjacency</b> — no two robbed houses sit at consecutive indices <code>i, i+1</code>. <b>(2)&nbsp;No circle adjacency</b> — house <code>0</code> and house <code>n-1</code> aren't <i>both</i> robbed. If both checks pass, sum the values; keep the best legal total.</p>
+  <p class="body">The animation below enumerates every plan as a binary mask. Houses turn <b>green</b> when picked in a legal plan, <b>amber</b> when the plan is illegal (either kind of adjacency). Watch the counter: it's still <code>2^n</code> plans, so doubling the houses still doubles the work.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">n=3 (triangle)</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">n=4</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">n=5</button>
+  </div>
+
+  <div style="margin-top:.75rem">
+    <div class="hr-cap" id="bf-cap">subset mask · two adjacency checks · running best</div>
+    <span class="hr-circlecap" id="bf-arc" style="margin-bottom:6px">↻ circle: house 0 ↔ house n-1</span>
+    <div class="hr-row" id="bf-strip"></div>
+    <div style="margin-top:.5rem;font-family:var(--mono);font-size:13px;color:var(--text2)">
+      <span id="bf-state">mask = — &nbsp;·&nbsp; sum = 0 &nbsp;·&nbsp; legal = — &nbsp;·&nbsp; best = 0</span>
+    </div>
+    <div style="margin-top:.375rem;font-family:var(--mono);font-size:12.5px;color:var(--text-danger)">
+      Plans tried: <span id="bf-checks">0</span> / 2<sup>n</sup>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(2^n · n) time, O(n) space</p>
+    <p class="infobox-d"><b>Same exponential cost as LC 198</b> — the extra circle check only adds a constant to each plan. <code>n = 30</code> still means a billion plans; the LeetCode constraint allows <code>n = 100</code>, which is hopeless. The whole point of this lesson is that we don't need to look at every plan — we just need to look at <b>two</b> linear sub-problems.</p>
+  </div>
+
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal Code</button>
+  <div id="code-bf" class="code-block"><pre class="cb"><span class="kw">int</span> <span class="fn">robBrute</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.size();
+    <span class="kw">int</span> best = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> mask = <span class="nu">0</span>; mask &lt; (<span class="nu">1</span> &lt;&lt; n); mask++) {
+        <span class="kw">bool</span> legal = <span class="kw">true</span>;
+        <span class="kw">int</span> sum = <span class="nu">0</span>;
+        <span class="kw">int</span> prevBit = -<span class="nu">2</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+            <span class="kw">if</span> ((mask &gt;&gt; i) &amp; <span class="nu">1</span>) {
+                <span class="kw">if</span> (i - prevBit == <span class="nu">1</span>) { legal = <span class="kw">false</span>; <span class="kw">break</span>; }
+                sum += nums[i];
+                prevBit = i;
+            }
+        }
+        <span class="cm">// Circle adjacency: bit 0 AND bit n-1 both set is also illegal</span>
+        <span class="kw">if</span> (legal &amp;&amp; ((mask &amp; <span class="nu">1</span>) &amp;&amp; ((mask &gt;&gt; (n - <span class="nu">1</span>)) &amp; <span class="nu">1</span>))) { legal = <span class="kw">false</span>; }
+        <span class="kw">if</span> (legal) { best = <span class="fn">max</span>(best, sum); }
+    }
+    <span class="kw">return</span> best;
+}</pre></div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">We already know how to solve linear House Robber (LC 198) in one O(n) pass. The job here is just to <b>connect</b> the circular problem to that. Five small steps.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Step 1 — Notice that "linear House Robber on the original array" is wrong.</div>
+        <div class="wt-desc">If we naively run the LC 198 algorithm on <code>nums</code> as if it were a line, it can pick both <code>nums[0]</code> and <code>nums[n-1]</code> (they're 4-or-more apart in the linear view, so the per-index check doesn't catch them). On a circle, that's illegal. <b>Example:</b> <code>[100, 1, 1, 100]</code> — linear HR returns 200, but the correct circular answer is 101. So the line-based algorithm needs help.</div>
+        <div class="wt-gain">→ no code change yet — we just spotted what's broken</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Step 2 — Isolate what actually changed.</div>
+        <div class="wt-desc">Compare linear House Robber's rules to circular House Robber's rules. Linear forbids every pair <code>{i, i+1}</code>. Circular forbids the same set of pairs <b>plus exactly one more</b>: <code>{0, n-1}</code>. That's the entire difference. Everything else — the values, the goal, the per-index "rob or skip" choice — is the same.</div>
+        <div class="wt-gain">→ scope reduced: one extra forbidden pair, nothing else</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">Step 3 — Use the new rule to split the problem into two cleaner ones.</div>
+        <div class="wt-desc">"House <code>0</code> and house <code>n-1</code> cannot <i>both</i> be robbed" means in any legal plan, at least one of them is skipped. So every legal plan falls into one of two buckets: <b>plans that skip house <code>n-1</code></b> (Case A), and <b>plans that skip house <code>0</code></b> (Case B). Some plans skip both — those plans live in <i>both</i> buckets, which is fine. We just need to find the best plan in each bucket and take the bigger one.</div>
+        <div class="wt-gain">→ one hard problem → two simpler sub-problems</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">4</div>
+      <div class="wt-body">
+        <div class="wt-name">Step 4 — Inside each case, the circle is gone.</div>
+        <div class="wt-desc">In Case A we've already decided to skip house <code>n-1</code>. The remaining houses are <code>nums[0..n-2]</code>, and the only adjacency we still need to honour is the plain linear one (<code>i ↔ i+1</code>). The pair <code>{0, n-1}</code> can never trigger because <code>n-1</code> is no longer in the picture. So Case A is exactly LC 198 on the sub-array <code>nums[0..n-2]</code>. Case B is the same logic on <code>nums[1..n-1]</code>. We already have the LC 198 code — just pass it the right slice.</div>
+        <div class="wt-gain">→ each case = one call to LC 198's rolling-pair DP</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">5</div>
+      <div class="wt-body">
+        <div class="wt-name">Step 5 — Combine and handle the one edge case.</div>
+        <div class="wt-desc">Compute <code>caseA = linearRob(nums, 0, n-2)</code> and <code>caseB = linearRob(nums, 1, n-1)</code>, then return <code>max(caseA, caseB)</code>. There's one annoying edge case: when <code>n == 1</code>, both slices are empty (the ranges <code>[0, -1]</code> and <code>[1, 0]</code> have no elements), and the helper returns 0 — but the right answer is <code>nums[0]</code>. So short-circuit <code>n == 1</code> at the top.</div>
+        <div class="wt-gain">→ O(n) time, <b>O(1) memory</b>. Same complexity as LC 198, two passes instead of one.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step"><div class="algo-n">1</div><div class="algo-t"><b>Edge case.</b> If <code>n == 1</code>, return <code>nums[0]</code>. Single house, no circle, no work needed.</div></div>
+    <div class="algo-step"><div class="algo-n">2</div><div class="algo-t"><b>Case A — exclude the last house.</b> Run linear House Robber on the inclusive range <code>nums[0 .. n-2]</code>: start with <code>prev2 = prev1 = 0</code>, walk the slice left to right, and at each step compute <code>cur = max(prev1, prev2 + nums[i])</code> then slide <code>prev2 = prev1; prev1 = cur</code>. Save the final <code>prev1</code> as <code>caseA</code>.</div></div>
+    <div class="algo-step"><div class="algo-n">3</div><div class="algo-t"><b>Case B — exclude the first house.</b> Same rolling-pair DP, but on the inclusive range <code>nums[1 .. n-1]</code>. Reset <code>prev2 = prev1 = 0</code> before the loop so Case B doesn't see any leftover state from Case A. Save the final <code>prev1</code> as <code>caseB</code>.</div></div>
+    <div class="algo-step"><div class="algo-n">4</div><div class="algo-t"><b>Return</b> <code>max(caseA, caseB)</code>.</div></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block"><pre class="cb"><span class="kw">int</span> <span class="fn">rob</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.size();
+    <span class="kw">if</span> (n == <span class="nu">1</span>) { <span class="kw">return</span> nums[<span class="nu">0</span>]; }
+
+    <span class="cm">// Case A — exclude last house, linear HR on nums[0..n-2]</span>
+    <span class="kw">int</span> p2A = <span class="nu">0</span>, p1A = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt;= n - <span class="nu">2</span>; i++) {
+        <span class="kw">int</span> curA = <span class="fn">max</span>(p1A, p2A + nums[i]);
+        p2A = p1A;
+        p1A = curA;
+    }
+
+    <span class="cm">// Case B — exclude first house, linear HR on nums[1..n-1]</span>
+    <span class="kw">int</span> p2B = <span class="nu">0</span>, p1B = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">1</span>; i &lt;= n - <span class="nu">1</span>; i++) {
+        <span class="kw">int</span> curB = <span class="fn">max</span>(p1B, p2B + nums[i]);
+        p2B = p1B;
+        p1B = curB;
+    }
+
+    <span class="kw">return</span> <span class="fn">max</span>(p1A, p1B);
+}</pre></div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Every line lights up in turn. Watch the variable cards on the right as we walk through the edge-case guard, the full Case A loop, the full Case B loop, and the final max. The phase tag in the controls tells you which sub-problem the loop is on.</p>
+
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-n">    <div class="cv-var-name">n</div>          <div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-i">    <div class="cv-var-name">i</div>          <div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-x">    <div class="cv-var-name">nums[i]</div>    <div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-p2">   <div class="cv-var-name">prev2</div>      <div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-p1">   <div class="cv-var-name">prev1</div>      <div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-cur">  <div class="cv-var-name">cur</div>        <div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-caseA"><div class="cv-var-name">caseA (= p1A)</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-caseB"><div class="cv-var-name">caseB (= p1B)</div><div class="cv-var-val">—</div></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through every line.</div>
+    </div>
+  </div>
+
+  <!-- Per-step array preview with case markers under houses -->
+  <div id="cv-arr-con" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0;">
+    <div class="hr-cap" id="cv-arr-cap">array view</div>
+    <div class="hr-row" id="cv-houses"></div>
+    <div style="margin-top:.5rem;display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:13px">
+      <span class="hr-case" id="cv-tile-A" style="padding:6px 10px;min-width:0"><span class="hr-case-l">caseA</span> <span id="cv-tileAv">—</span></span>
+      <span class="hr-case" id="cv-tile-B" style="padding:6px 10px;min-width:0"><span class="hr-case-l">caseB</span> <span id="cv-tileBv">—</span></span>
+      <span class="hr-case" id="cv-tile-R" style="padding:6px 10px;min-width:0"><span class="hr-case-l">answer</span> <span id="cv-tileRv">—</span></span>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">[2,3,2] → 3</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">[1,2,3,1] → 4</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">10-house run → 17</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="si-phase" id="cv-phase">SETUP</span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through three different inputs</p>
+  <p class="body">Pick an example and walk it yourself. The phase tag says which case we're running; the formula panel shows what the current iteration computes; the houses show which slice is active (excluded ones are dimmed out).</p>
+
+  <div style="margin-top:.75rem">
+    <div class="hr-cap" id="dr-cap">nums = …</div>
+    <span class="hr-circlecap">↻ circle: house 0 ↔ house n-1</span>
+
+    <div class="hr-mem">
+      <div class="hr-mempill" id="dr-mem-p2"><span class="hr-memk">prev2 =</span><span class="hr-memv" id="dr-p2val">0</span></div>
+      <div class="hr-mempill" id="dr-mem-p1"><span class="hr-memk">prev1 =</span><span class="hr-memv" id="dr-p1val">0</span></div>
+      <div class="hr-mempill fixA" id="dr-mem-cA" style="display:none"><span class="hr-memk">caseA =</span><span class="hr-memv" id="dr-cAval">—</span></div>
+      <div class="hr-mempill fixB" id="dr-mem-cB" style="display:none"><span class="hr-memk">caseB =</span><span class="hr-memv" id="dr-cBval">—</span></div>
+    </div>
+
+    <div class="hr-row" id="dr-houses"></div>
+
+    <div class="panels-fixed" style="margin-top:.75rem">
+      <div id="dr-formula" class="formula-panel">
+        <div class="formula-grid">
+          <div class="fitem-label">case</div>       <div class="fitem-val" id="dr-fcase">—</div>
+          <div class="fitem-label">i</div>          <div class="fitem-val" id="dr-fi">—</div>
+          <div class="fitem-label">nums[i]</div>    <div class="fitem-val" id="dr-fx">—</div>
+          <div class="fitem-label">cur</div>        <div class="fitem-val" id="dr-fcur">—</div>
+        </div>
+        <div class="formula-eq" id="dr-feq">cur = max(prev1, prev2 + nums[i]) = —</div>
+      </div>
+      <div id="dr-step" class="step-panel">
+        <div class="step-what" id="dr-what">Press Next → to start.</div>
+        <div class="step-why"  id="dr-why">Two linear passes, one max at the end.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">[2,3,2] → 3</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">[1,2,3,1] → 4</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">10-house run → 17</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+    <span class="si-phase" id="dr-phase">SETUP</span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div>
+      <div class="corner-title">Single house — <code>[5]</code> → <code>5</code></div>
+      <div class="corner-body">The <code>n == 1</code> short-circuit returns <code>nums[0]</code>. Don't try to run either linear pass — Case A on the range <code>[0, -1]</code> and Case B on <code>[1, 0]</code> are both empty and the rolling pair returns <code>0</code>, which is wrong. The early return is mandatory.</div>
+    </div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div>
+      <div class="corner-title">Two houses — <code>[3, 10]</code> → <code>10</code></div>
+      <div class="corner-body">They're adjacent both linearly and on the circle, so we can rob exactly one. Case A on <code>[3]</code> (just index 0) returns <code>3</code>; Case B on <code>[10]</code> (just index 1) returns <code>10</code>; the max is <code>10</code>. The rolling pair works on a single-element slice because the seeds are <code>0</code>.</div>
+    </div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div>
+      <div class="corner-title">Triangle — <code>[2, 3, 2]</code> → <code>3</code></div>
+      <div class="corner-body">In a 3-cycle, every pair of houses is adjacent (linearly <i>and</i> via the wrap-around), so any legal plan robs at most one house. Both Case A on <code>[2, 3]</code> and Case B on <code>[3, 2]</code> return <code>3</code> (rob the biggest). The two cases tie, which is fine — <code>max</code> handles it without special logic.</div>
+    </div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div>
+      <div class="corner-title">All same — <code>[4, 4, 4, 4]</code> → <code>8</code></div>
+      <div class="corner-body">In a 4-cycle the optimum robs two opposite houses (indices 0 &amp; 2, or 1 &amp; 3) for a total of <code>8</code>. Both cases compute <code>8</code>. Confirms the algorithm finds the alternating pattern even when no house "looks special" — the recurrence does the work.</div>
+    </div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div>
+      <div class="corner-title">Bait at the endpoints — <code>[100, 1, 1, 100]</code> → <code>101</code></div>
+      <div class="corner-body">This is <b>the example</b> that fails if you mistakenly run linear House Robber on the original array — linear HR happily robs both <code>100</code>s for a total of <code>200</code>, but they're adjacent on the circle so that plan is illegal. Case A excludes the last <code>100</code> and gets <code>101</code> (rob index 0 plus index 2); Case B excludes the first <code>100</code> and gets <code>101</code> (rob index 1 plus index 3, or index 3 alone — depends on the slice). Either way the answer is <code>101</code>. If your solution returns <code>200</code> on this input, you forgot to split into cases.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>The <code>n == 1</code> guard is mandatory</b> — without it, both slices are empty and the helper returns 0 when the right answer is <code>nums[0]</code>.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Reset the rolling pair between cases</b> — Case B must start with fresh <code>prev2 = prev1 = 0</code>, not whatever Case A left behind. If you use a helper function this is automatic; if you inline both passes, write it out.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Get the slice bounds right</b> — Case A is the inclusive range <code>[0, n-2]</code>, Case B is <code>[1, n-1]</code>. Off-by-ones here silently produce wrong answers on small inputs.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Slide-order bug</b> — same trap as LC 198: write <code>prev2 = prev1</code> <i>before</i> <code>prev1 = cur</code>, or save the old <code>prev1</code> into a temp first.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Integer overflow</b> — under the LC constraints (<code>n ≤ 100</code>, <code>nums[i] ≤ 1000</code>) the worst-case sum is 50 000; <code>int</code> is fine. If a variant raises the bounds, switch to <code>long long</code>.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>"Just run linear HR" is the canonical bug</b> — explicitly mention the case split to the interviewer to show you spotted the trap. Test on <code>[100, 1, 1, 100]</code> if you're not sure.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Variant awareness</b> — name House Robber I (LC 198) as the reused helper and House Robber III (LC 337, tree variant) as the next step in the family.</div></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Helper + two passes (cleanest)</button>
+    <button class="tab-btn"        id="tab1" onclick="switchTab(1)">Two inlined passes</button>
+    <button class="tab-btn"        id="tab2" onclick="switchTab(2)">Single fused pass (advanced)</button>
+  </div>
+
+  <div class="tab-pane active" id="pane0">
+    <div style="margin-bottom:.5rem">
+      <span class="tag tag-time">O(n) time</span>
+      <span class="tag tag-space">O(1) space</span>
+    </div>
+    <p class="body">A small helper <code>linearRob(nums, lo, hi)</code> runs the LC 198 rolling-pair DP over an inclusive sub-range. The main function handles the <code>n == 1</code> edge case, calls the helper twice with <code>(0, n-2)</code> and <code>(1, n-1)</code>, and returns the max. This is what you'd write on the whiteboard — clear, obviously correct, no duplication.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-helper',this)">▶ Reveal Code</button>
+    <div id="code-helper" class="code-block"><pre class="cb"><span class="kw">int</span> <span class="fn">linearRob</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums, <span class="kw">int</span> lo, <span class="kw">int</span> hi) {
+    <span class="kw">int</span> prev2 = <span class="nu">0</span>, prev1 = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = lo; i &lt;= hi; i++) {
+        <span class="kw">int</span> cur = <span class="fn">max</span>(prev1, prev2 + nums[i]);
+        prev2 = prev1;
+        prev1 = cur;
+    }
+    <span class="kw">return</span> prev1;
+}
+
+<span class="kw">int</span> <span class="fn">rob</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.size();
+    <span class="kw">if</span> (n == <span class="nu">1</span>) { <span class="kw">return</span> nums[<span class="nu">0</span>]; }
+    <span class="kw">return</span> <span class="fn">max</span>(<span class="fn">linearRob</span>(nums, <span class="nu">0</span>, n - <span class="nu">2</span>),
+               <span class="fn">linearRob</span>(nums, <span class="nu">1</span>, n - <span class="nu">1</span>));
+}</pre></div>
+  </div>
+
+  <div class="tab-pane" id="pane1">
+    <div style="margin-bottom:.5rem">
+      <span class="tag tag-time">O(n) time</span>
+      <span class="tag tag-space">O(1) space</span>
+    </div>
+    <p class="body">Same algorithm, but with both linear passes spelled out in one function — no helper. Slightly longer, but some interviewers prefer "show all the logic in one place" and it's what the code visualisation above traces. Identical complexity.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-inlined',this)">▶ Reveal Code</button>
+    <div id="code-inlined" class="code-block"><pre class="cb"><span class="kw">int</span> <span class="fn">rob</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.size();
+    <span class="kw">if</span> (n == <span class="nu">1</span>) { <span class="kw">return</span> nums[<span class="nu">0</span>]; }
+
+    <span class="kw">int</span> p2A = <span class="nu">0</span>, p1A = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt;= n - <span class="nu">2</span>; i++) {
+        <span class="kw">int</span> curA = <span class="fn">max</span>(p1A, p2A + nums[i]);
+        p2A = p1A;
+        p1A = curA;
+    }
+
+    <span class="kw">int</span> p2B = <span class="nu">0</span>, p1B = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">1</span>; i &lt;= n - <span class="nu">1</span>; i++) {
+        <span class="kw">int</span> curB = <span class="fn">max</span>(p1B, p2B + nums[i]);
+        p2B = p1B;
+        p1B = curB;
+    }
+
+    <span class="kw">return</span> <span class="fn">max</span>(p1A, p1B);
+}</pre></div>
+  </div>
+
+  <div class="tab-pane" id="pane2">
+    <div style="margin-bottom:.5rem">
+      <span class="tag tag-time">O(n) time</span>
+      <span class="tag tag-space">O(1) space</span>
+    </div>
+    <p class="body">It's possible to compute both cases in a <i>single</i> traversal by carrying two rolling pairs in parallel — one that's allowed to include house <code>0</code> (started at <code>i = 0</code>) and one that isn't (started at <code>i = 1</code>). This trades clarity for one fewer loop. Asymptotically the same, harder to read, and rarely worth it. Useful to mention if the interviewer asks "can it be done in one pass?", but two passes is the recommended write-up.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-fused',this)">▶ Reveal Code</button>
+    <div id="code-fused" class="code-block"><pre class="cb"><span class="kw">int</span> <span class="fn">rob</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.size();
+    <span class="kw">if</span> (n == <span class="nu">1</span>) { <span class="kw">return</span> nums[<span class="nu">0</span>]; }
+    <span class="cm">// Pair A walks nums[0..n-2]; pair B walks nums[1..n-1]</span>
+    <span class="kw">int</span> p2A = <span class="nu">0</span>, p1A = <span class="nu">0</span>;
+    <span class="kw">int</span> p2B = <span class="nu">0</span>, p1B = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        <span class="kw">if</span> (i &lt;= n - <span class="nu">2</span>) {
+            <span class="kw">int</span> curA = <span class="fn">max</span>(p1A, p2A + nums[i]);
+            p2A = p1A; p1A = curA;
+        }
+        <span class="kw">if</span> (i &gt;= <span class="nu">1</span>) {
+            <span class="kw">int</span> curB = <span class="fn">max</span>(p1B, p2B + nums[i]);
+            p2B = p1B; p1B = curB;
+        }
+    }
+    <span class="kw">return</span> <span class="fn">max</span>(p1A, p1B);
+}</pre></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(n)</div>
+      <div class="ccard-n">Two passes over disjoint sub-ranges of <code>nums</code>, each constant work per element. <code>2n</code> total operations → <code>O(n)</code>.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(1)</div>
+      <div class="ccard-n">Four scalars in total — two rolling pairs (<code>p2A, p1A, p2B, p1B</code>) — plus a per-iteration temporary. No DP array, no recursion.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><b>LC 198 — House Robber I</b> — the linear version. This problem literally calls LC 198 twice; if you can't write that one cold, do it first.</p>
+    <p><b>LC 337 — House Robber III</b> — same recurrence but on a binary tree. Each node returns the pair <code>(robThis, dontRobThis)</code>; the parent combines them in post-order. The case-split trick from this lesson generalises to tree DP.</p>
+    <p><b>LC 740 — Delete and Earn</b> — reframe by bucketing values, then LC 198 verbatim on the bucket array. Adjacency is on the <i>value</i> axis there, not the index axis.</p>
+    <p><b>LC 152 — Maximum Product Subarray</b> — different problem, same case-split idea: track two parallel rolling answers (current max, current min) so sign flips don't destroy the optimum.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  // ────────────────────────────────────────────────────────────────────────
+  // Shared data
+  // ────────────────────────────────────────────────────────────────────────
+  const EX = [
+    { nums: [2, 3, 2],                              label: '[2,3,2]',          answer: 3  },
+    { nums: [1, 2, 3, 1],                           label: '[1,2,3,1]',        answer: 4  },
+    { nums: [2, 1, 1, 2, 3, 1, 5, 4, 6, 2],         label: '10-house run',     answer: 17 },
+  ];
+  const BF_EX = [
+    { nums: [2, 3, 2] },
+    { nums: [1, 2, 3, 1] },
+    { nums: [3, 5, 2, 4, 7] },
+  ];
+
+  // Linear House Robber on inclusive sub-range — used by §1, §6, §7 generators.
+  function linearRob(nums, lo, hi) {
+    let p2 = 0, p1 = 0;
+    for (let i = lo; i <= hi; i++) {
+      const cur = Math.max(p1, p2 + nums[i]);
+      p2 = p1; p1 = cur;
+    }
+    return p1;
+  }
+
+  // Build a row of "house" bars (re-used from HR-I; each house gets a .hr-ptr slot)
+  function buildHouses(containerId, nums) {
+    const c = document.getElementById(containerId); if (!c) return;
+    c.innerHTML = '';
+    nums.forEach((v, i) => {
+      const cell = document.createElement('div'); cell.className = 'hr-house';
+      cell.innerHTML =
+        '<div class="hr-cash">$' + v + '</div>' +
+        '<div class="hr-bar" id="' + containerId + '-bar-' + i + '" style="height:' + (24 + v * 2) + 'px">' + v + '</div>' +
+        '<div class="hr-idx">i=' + i + '</div>' +
+        '<div class="hr-dp" id="' + containerId + '-dp-' + i + '">·</div>' +
+        '<div class="hr-ptr" id="' + containerId + '-ptr-' + i + '"></div>';
+      c.appendChild(cell);
+    });
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // §1 — Insight animation (siGenSteps / siRender / siNext / siPrev / siReset / siTogglePlay)
+  // ────────────────────────────────────────────────────────────────────────
+  const SI_NUMS = [1, 2, 3, 1];   // expected answer: 4 (caseA=4, caseB=3)
+  let siSteps = []; let siCur = 0; let siTimer = null;
+
+  // For each step we record per-house markers:
+  //   ptr: '' | 'cur' | 'done' | 'skipped' | 'excluded'
+  // and which "case panel" is active. Six steps total for [1,2,3,1]:
+  //   1 SETUP  → all houses normal, arc lit
+  //   2 CASE A start → exclude last, show slice
+  //   3 CASE A result → caseA value revealed; mark robbed/skipped within slice
+  //   4 CASE B start → exclude first, show slice
+  //   5 CASE B result → caseB value revealed
+  //   6 COMBINE → answer = max(A, B)
+  function siGenSteps(nums) {
+    const n = nums.length;
+    const caseA = linearRob(nums, 0, n - 2);
+    const caseB = linearRob(nums, 1, n - 1);
+    const answer = Math.max(caseA, caseB);
+
+    // For visual flair on the result steps, mark which houses are "robbed" / "skipped"
+    // in each case's optimum. For [1,2,3,1]: caseA on [1,2,3] picks idx0+idx2 → houses 0,2 robbed.
+    //                                       caseB on [2,3,1] picks idx2 alone → house 2 robbed
+    //                                       (or idx0+idx2 of slice = original idx1+idx3).
+    // We compute these with a small helper that recovers the picks; not displayed in the values,
+    // just used to color the bars.
+    function pickedInSlice(nums, lo, hi) {
+      // Recover one optimal subset by recomputing dp[] and walking back.
+      const m = hi - lo + 1;
+      if (m <= 0) return [];
+      const dp = new Array(m + 1).fill(0); // dp[k] = best from first k elements
+      for (let k = 1; k <= m; k++) {
+        const v = nums[lo + k - 1];
+        dp[k] = Math.max(dp[k - 1], (k >= 2 ? dp[k - 2] : 0) + v);
+      }
+      const picked = [];
+      let k = m;
+      while (k > 0) {
+        const v = nums[lo + k - 1];
+        const takeIt = (k >= 2 ? dp[k - 2] : 0) + v;
+        if (takeIt >= dp[k - 1] && dp[k] === takeIt) { picked.push(lo + k - 1); k -= 2; }
+        else { k -= 1; }
+      }
+      return picked;
+    }
+    const pickedA = new Set(pickedInSlice(nums, 0, n - 2));
+    const pickedB = new Set(pickedInSlice(nums, 1, n - 1));
+
+    function houseMarks(opts) {
+      // opts: { sliceLo, sliceHi, picked, decided }
+      const marks = nums.map((_, i) => '');
+      for (let i = 0; i < n; i++) {
+        if (i < opts.sliceLo || i > opts.sliceHi) {
+          marks[i] = 'excluded';
+        } else if (opts.decided) {
+          marks[i] = opts.picked.has(i) ? 'done' : 'skipped';
+        } else {
+          marks[i] = 'cur';
+        }
+      }
+      return marks;
+    }
+
+    const steps = [];
+
+    // 1. SETUP
+    steps.push({
+      phase: 'setup',
+      marks: nums.map(() => 'cur'),
+      arc: true,
+      caseAv: null, caseBv: null, resultv: null,
+      activeCase: null,
+      note: 'SETUP. The houses sit on a circle, so house 0 and house ' + (n - 1) + ' are adjacent — we can\'t rob both. Total houses to consider: ' + n + '.',
+    });
+
+    // 2. CASE A start — exclude last
+    steps.push({
+      phase: 'caseA',
+      marks: houseMarks({ sliceLo: 0, sliceHi: n - 2, picked: pickedA, decided: false }),
+      arc: false,
+      caseAv: null, caseBv: null, resultv: null,
+      activeCase: 'A',
+      note: 'CASE A starts. We drop house ' + (n - 1) + ' (dimmed). The remaining houses 0…' + (n - 2) + ' form a normal line — solve linear House Robber on them.',
+    });
+
+    // 3. CASE A result
+    steps.push({
+      phase: 'caseA',
+      marks: houseMarks({ sliceLo: 0, sliceHi: n - 2, picked: pickedA, decided: true }),
+      arc: false,
+      caseAv: caseA, caseBv: null, resultv: null,
+      activeCase: 'A',
+      note: 'CASE A result. Linear House Robber on nums[0..' + (n - 2) + '] gives caseA = ' + caseA + ' (robbed houses shown in green, skipped in amber).',
+    });
+
+    // 4. CASE B start — exclude first
+    steps.push({
+      phase: 'caseB',
+      marks: houseMarks({ sliceLo: 1, sliceHi: n - 1, picked: pickedB, decided: false }),
+      arc: false,
+      caseAv: caseA, caseBv: null, resultv: null,
+      activeCase: 'B',
+      note: 'CASE B starts. Reset: now we drop house 0 instead. The remaining houses 1…' + (n - 1) + ' form a normal line — solve linear House Robber on this slice.',
+    });
+
+    // 5. CASE B result
+    steps.push({
+      phase: 'caseB',
+      marks: houseMarks({ sliceLo: 1, sliceHi: n - 1, picked: pickedB, decided: true }),
+      arc: false,
+      caseAv: caseA, caseBv: caseB, resultv: null,
+      activeCase: 'B',
+      note: 'CASE B result. Linear House Robber on nums[1..' + (n - 1) + '] gives caseB = ' + caseB + '.',
+    });
+
+    // 6. COMBINE
+    steps.push({
+      phase: 'combine',
+      marks: nums.map(() => 'cur'),
+      arc: true,
+      caseAv: caseA, caseBv: caseB, resultv: answer,
+      activeCase: null,
+      note: 'COMBINE. answer = max(caseA, caseB) = max(' + caseA + ', ' + caseB + ') = ' + answer + '. Done.',
+    });
+
+    return steps;
+  }
+
+  function siRender(st) {
+    // Houses
+    SI_NUMS.forEach((_, i) => {
+      const bar = document.getElementById('si-houses-bar-' + i);
+      const ptr = document.getElementById('si-houses-ptr-' + i);
+      const dp  = document.getElementById('si-houses-dp-' + i);
+      if (!bar || !ptr || !dp) return;
+      bar.classList.remove('cur', 'done', 'skipped', 'excluded');
+      const m = st.marks[i];
+      if (m) bar.classList.add(m);
+      ptr.classList.remove('has-ptr', 'excluded');
+      if (m === 'excluded') { ptr.textContent = 'excluded'; ptr.classList.add('excluded'); }
+      else { ptr.textContent = ''; }
+      dp.textContent = '·';
+    });
+
+    // Circle arc visibility (dim during case work, bright on setup/combine)
+    const arc = document.getElementById('si-arc');
+    if (arc) arc.style.opacity = st.arc ? '1' : '.4';
+
+    // Case tiles
+    const aTile = document.getElementById('si-caseA');
+    const bTile = document.getElementById('si-caseB');
+    const rTile = document.getElementById('si-result');
+    aTile.classList.remove('active', 'done', 'dim');
+    bTile.classList.remove('active', 'done', 'dim');
+    rTile.classList.remove('active', 'done', 'dim');
+    document.getElementById('si-caseAv').textContent  = st.caseAv  === null ? '—' : String(st.caseAv);
+    document.getElementById('si-caseBv').textContent  = st.caseBv  === null ? '—' : String(st.caseBv);
+    document.getElementById('si-resultv').textContent = st.resultv === null ? '—' : String(st.resultv);
+    if (st.activeCase === 'A') { aTile.classList.add(st.caseAv === null ? 'active' : 'done'); bTile.classList.add('dim'); rTile.classList.add('dim'); }
+    else if (st.activeCase === 'B') { bTile.classList.add(st.caseBv === null ? 'active' : 'done'); aTile.classList.add('done'); rTile.classList.add('dim'); }
+    else if (st.phase === 'combine') { aTile.classList.add('done'); bTile.classList.add('done'); rTile.classList.add('done'); }
+    else { aTile.classList.add('dim'); bTile.classList.add('dim'); rTile.classList.add('dim'); }
+
+    // Note + phase tag + counter
+    document.getElementById('si-note').textContent = st.note;
+    const ph = document.getElementById('si-phase');
+    if (ph) {
+      let label = 'SETUP';
+      if (st.phase === 'caseA')   label = 'CASE A';
+      if (st.phase === 'caseB')   label = 'CASE B';
+      if (st.phase === 'combine') label = 'COMBINE';
+      ph.textContent = label;
+      ph.className = 'si-phase phase-' + st.phase;
+    }
+    const ctr = document.getElementById('si-sctr');
+    if (ctr) ctr.textContent = 'step ' + (siCur + 1) + ' / ' + siSteps.length;
+  }
+
+  function siNext()   { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()   { if (siCur > 0)                   { siCur--; siRender(siSteps[siCur]); } }
+  function siReset()  { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay(){ clearInterval(siTimer); siTimer = null;
+                         const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur < siSteps.length - 1) siNext(); else siStopPlay();
+    }, 1500);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // §2 — Brute force (every subset with the circle adjacency check)
+  // ────────────────────────────────────────────────────────────────────────
+  let bfSteps = []; let bfCur = 0; let bfTimer = null; let bfNumsRef = [];
+
+  function bfGenSteps(nums) {
+    const n = nums.length;
+    const steps = [];
+    let best = 0;
+    for (let mask = 0; mask < (1 << n); mask++) {
+      let legal = true, sum = 0, prevBit = -2;
+      const picked = new Array(n).fill(false);
+      for (let i = 0; i < n; i++) {
+        if ((mask >> i) & 1) {
+          picked[i] = true;
+          if (i - prevBit === 1) legal = false;
+          sum += nums[i];
+          prevBit = i;
+        }
+      }
+      // Circle check
+      let circleViolation = false;
+      if (legal && (mask & 1) && ((mask >> (n - 1)) & 1)) {
+        legal = false; circleViolation = true;
+      }
+      if (legal) best = Math.max(best, sum);
+      steps.push({
+        mask, picked, legal, sum, best, circleViolation,
+        maskStr: mask.toString(2).padStart(n, '0').split('').reverse().join(''),
+        idx: mask + 1, total: (1 << n),
+      });
+    }
+    steps.push({ phase: 'done', best, idx: (1 << n), total: (1 << n) });
+    return steps;
+  }
+
+  function bfRender(st) {
+    bfNumsRef.forEach((_, i) => {
+      const bar = document.getElementById('bf-strip-bar-' + i);
+      if (!bar) return;
+      bar.classList.remove('cur', 'done', 'skipped', 'excluded');
+      if (st.phase === 'done') {
+        // leave default
+      } else if (st.picked && st.picked[i]) {
+        bar.classList.add(st.legal ? 'done' : 'skipped');
+      }
+    });
+    const state = document.getElementById('bf-state');
+    if (st.phase === 'done') {
+      state.textContent = 'done · best = ' + st.best;
+    } else {
+      const reason = st.legal ? 'yes'
+                              : st.circleViolation ? 'NO (circle: 0 & n-1)'
+                                                   : 'NO (linear adjacent)';
+      const color = st.legal ? 'var(--text-success)' : 'var(--text-danger)';
+      state.innerHTML = 'mask = <b>' + st.maskStr + '</b> &nbsp;·&nbsp; sum = ' + st.sum
+                     + ' &nbsp;·&nbsp; legal = <b style="color:' + color + '">' + reason + '</b>'
+                     + ' &nbsp;·&nbsp; best = ' + st.best;
+    }
+    document.getElementById('bf-checks').textContent = st.idx;
+    document.getElementById('bf-sctr').textContent = 'Step ' + (bfCur + 1) + ' / ' + bfSteps.length;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0)                   { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+  function bfLoadEx(idx) {
+    bfStopPlay();
+    ['bf-ex0', 'bf-ex1', 'bf-ex2'].forEach((id, i) => {
+      const e = document.getElementById(id); if (e) e.classList.toggle('active', i === idx);
+    });
+    bfNumsRef = BF_EX[idx].nums;
+    buildHouses('bf-strip', bfNumsRef);
+    document.getElementById('bf-cap').textContent =
+      'Enumerating 2^' + bfNumsRef.length + ' = ' + (1 << bfNumsRef.length)
+      + ' plans · check linear adjacency AND circle adjacency · keep running best';
+    bfSteps = bfGenSteps(bfNumsRef);
+    bfCur = 0;
+    bfRender(bfSteps[0]);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // §6 — Code visualization. Walks EVERY code line in order.
+  // ────────────────────────────────────────────────────────────────────────
+  const CV_LINES = [
+    { n: 1,  c: 'int rob(vector<int>& nums) {' },
+    { n: 2,  c: '    int n = nums.size();' },
+    { n: 3,  c: '    if (n == 1) { return nums[0]; }' },
+    { n: 4,  c: '' },
+    { n: 5,  c: '    // Case A — exclude last house, linear HR on nums[0..n-2]' },
+    { n: 6,  c: '    int p2A = 0, p1A = 0;' },
+    { n: 7,  c: '    for (int i = 0; i <= n - 2; i++) {' },
+    { n: 8,  c: '        int curA = max(p1A, p2A + nums[i]);' },
+    { n: 9,  c: '        p2A = p1A;' },
+    { n: 10, c: '        p1A = curA;' },
+    { n: 11, c: '    }' },
+    { n: 12, c: '' },
+    { n: 13, c: '    // Case B — exclude first house, linear HR on nums[1..n-1]' },
+    { n: 14, c: '    int p2B = 0, p1B = 0;' },
+    { n: 15, c: '    for (int i = 1; i <= n - 1; i++) {' },
+    { n: 16, c: '        int curB = max(p1B, p2B + nums[i]);' },
+    { n: 17, c: '        p2B = p1B;' },
+    { n: 18, c: '        p1B = curB;' },
+    { n: 19, c: '    }' },
+    { n: 20, c: '' },
+    { n: 21, c: '    return max(p1A, p1B);' },
+    { n: 22, c: '}' },
+  ];
+
+  let cvSteps = []; let cvCur = 0; let cvTimer = null; let cvNumsRef = [];
+
+  function cvGenSteps(nums) {
+    const steps = [];
+    const n = nums.length;
+
+    // line 2 — int n = nums.size();
+    steps.push({
+      line: 2, phaseLbl: 'setup', n,
+      narr: 'n = nums.size() = ' + n + '.',
+      changed: ['n'],
+      slice: null, marks: nums.map(() => ''),
+    });
+
+    // line 3 — if (n == 1) — short-circuit only if true
+    if (n === 1) {
+      steps.push({
+        line: 3, phaseLbl: 'setup', n,
+        narr: 'n == 1 is true. Return nums[0] = ' + nums[0] + '.',
+        phase: 'done',
+        changed: [], slice: null, marks: nums.map(() => 'done'),
+        caseA: null, caseB: null, answer: nums[0],
+      });
+      return steps;
+    } else {
+      steps.push({
+        line: 3, phaseLbl: 'setup', n,
+        narr: 'n == 1 is false (n = ' + n + '). Skip the early return.',
+        changed: [], slice: null, marks: nums.map(() => ''),
+      });
+    }
+
+    // ── Case A — exclude last house ───────────────────────────────────────
+    // line 6 — int p2A = 0, p1A = 0;
+    steps.push({
+      line: 6, phaseLbl: 'caseA', n,
+      narr: 'Initialise the rolling pair for Case A: p2A = 0, p1A = 0.',
+      changed: ['p2', 'p1'],
+      prev2: 0, prev1: 0,
+      slice: { lo: 0, hi: n - 2 },
+      marks: nums.map((_, i) => (i > n - 2) ? 'excluded' : 'cur'),
+    });
+
+    let p2 = 0, p1 = 0;
+    for (let i = 0; i <= n - 2; i++) {
+      const x = nums[i];
+      const cur = Math.max(p1, p2 + x);
+
+      // line 7 — for (int i = 0; i <= n - 2; i++) { — loop fetch
+      steps.push({
+        line: 7, phaseLbl: 'caseA', n, i, x,
+        narr: 'Case A iteration: i = ' + i + ', nums[i] = ' + x + '.',
+        changed: ['i', 'x'],
+        prev2: p2, prev1: p1,
+        slice: { lo: 0, hi: n - 2 },
+        marks: nums.map((_, idx) => (idx > n - 2) ? 'excluded' : (idx === i ? 'cur' : '')),
+      });
+
+      // line 8 — int curA = max(p1A, p2A + nums[i]);
+      steps.push({
+        line: 8, phaseLbl: 'caseA', n, i, x, cur,
+        narr: 'curA = max(p1A, p2A + nums[i]) = max(' + p1 + ', ' + p2 + ' + ' + x + ') = ' + cur + '.',
+        changed: ['cur'], phase: 'match',
+        prev2: p2, prev1: p1,
+        slice: { lo: 0, hi: n - 2 },
+        marks: nums.map((_, idx) => (idx > n - 2) ? 'excluded' : (idx === i ? 'cur' : '')),
+      });
+
+      const newP2 = p1;
+      const newP1 = cur;
+
+      // line 9 — p2A = p1A;
+      steps.push({
+        line: 9, phaseLbl: 'caseA', n, i, x, cur,
+        narr: 'p2A = p1A = ' + newP2 + '. (Save the old p1A before line 10 overwrites it.)',
+        changed: ['p2'],
+        prev2: newP2, prev1: p1,
+        slice: { lo: 0, hi: n - 2 },
+        marks: nums.map((_, idx) => (idx > n - 2) ? 'excluded' : (idx === i ? 'cur' : '')),
+      });
+
+      // line 10 — p1A = curA;
+      steps.push({
+        line: 10, phaseLbl: 'caseA', n, i, x, cur,
+        narr: 'p1A = curA = ' + newP1 + '. Rolling pair has slid one step right.',
+        changed: ['p1'],
+        prev2: newP2, prev1: newP1,
+        slice: { lo: 0, hi: n - 2 },
+        marks: nums.map((_, idx) => (idx > n - 2) ? 'excluded' : (idx === i ? 'cur' : '')),
+      });
+
+      p2 = newP2; p1 = newP1;
+    }
+    const caseA = p1;
+
+    // line 11 — } end of Case A loop
+    steps.push({
+      line: 11, phaseLbl: 'caseA', n,
+      narr: 'Case A loop done. caseA = p1A = ' + caseA + '.',
+      changed: ['caseA'],
+      prev2: p2, prev1: p1,
+      caseA,
+      slice: { lo: 0, hi: n - 2 },
+      marks: nums.map((_, idx) => (idx > n - 2) ? 'excluded' : 'done'),
+    });
+
+    // ── Case B — exclude first house ──────────────────────────────────────
+    // line 14 — int p2B = 0, p1B = 0;
+    p2 = 0; p1 = 0;
+    steps.push({
+      line: 14, phaseLbl: 'caseB', n,
+      narr: 'Initialise the rolling pair for Case B: p2B = 0, p1B = 0. (Resetting so Case B doesn\'t inherit Case A\'s state.)',
+      changed: ['p2', 'p1'],
+      prev2: 0, prev1: 0,
+      caseA,
+      slice: { lo: 1, hi: n - 1 },
+      marks: nums.map((_, idx) => (idx < 1) ? 'excluded' : 'cur'),
+    });
+
+    for (let i = 1; i <= n - 1; i++) {
+      const x = nums[i];
+      const cur = Math.max(p1, p2 + x);
+
+      steps.push({
+        line: 15, phaseLbl: 'caseB', n, i, x,
+        narr: 'Case B iteration: i = ' + i + ', nums[i] = ' + x + '.',
+        changed: ['i', 'x'],
+        prev2: p2, prev1: p1, caseA,
+        slice: { lo: 1, hi: n - 1 },
+        marks: nums.map((_, idx) => (idx < 1) ? 'excluded' : (idx === i ? 'cur' : '')),
+      });
+
+      steps.push({
+        line: 16, phaseLbl: 'caseB', n, i, x, cur,
+        narr: 'curB = max(p1B, p2B + nums[i]) = max(' + p1 + ', ' + p2 + ' + ' + x + ') = ' + cur + '.',
+        changed: ['cur'], phase: 'match',
+        prev2: p2, prev1: p1, caseA,
+        slice: { lo: 1, hi: n - 1 },
+        marks: nums.map((_, idx) => (idx < 1) ? 'excluded' : (idx === i ? 'cur' : '')),
+      });
+
+      const newP2 = p1;
+      const newP1 = cur;
+
+      steps.push({
+        line: 17, phaseLbl: 'caseB', n, i, x, cur,
+        narr: 'p2B = p1B = ' + newP2 + '.',
+        changed: ['p2'],
+        prev2: newP2, prev1: p1, caseA,
+        slice: { lo: 1, hi: n - 1 },
+        marks: nums.map((_, idx) => (idx < 1) ? 'excluded' : (idx === i ? 'cur' : '')),
+      });
+
+      steps.push({
+        line: 18, phaseLbl: 'caseB', n, i, x, cur,
+        narr: 'p1B = curB = ' + newP1 + '.',
+        changed: ['p1'],
+        prev2: newP2, prev1: newP1, caseA,
+        slice: { lo: 1, hi: n - 1 },
+        marks: nums.map((_, idx) => (idx < 1) ? 'excluded' : (idx === i ? 'cur' : '')),
+      });
+
+      p2 = newP2; p1 = newP1;
+    }
+    const caseB = p1;
+
+    // line 19 — end of Case B loop
+    steps.push({
+      line: 19, phaseLbl: 'caseB', n,
+      narr: 'Case B loop done. caseB = p1B = ' + caseB + '.',
+      changed: ['caseB'],
+      prev2: p2, prev1: p1, caseA, caseB,
+      slice: { lo: 1, hi: n - 1 },
+      marks: nums.map((_, idx) => (idx < 1) ? 'excluded' : 'done'),
+    });
+
+    // line 21 — return max(p1A, p1B);
+    const answer = Math.max(caseA, caseB);
+    steps.push({
+      line: 21, phaseLbl: 'combine', n,
+      narr: 'return max(p1A, p1B) = max(' + caseA + ', ' + caseB + ') = ' + answer + '. Answer.',
+      changed: [], phase: 'done',
+      prev2: p2, prev1: p1, caseA, caseB, answer,
+      slice: null,
+      marks: nums.map(() => 'done'),
+    });
+
+    return steps;
+  }
+
+  function cvSetCard(id, val, changed, isMatch) {
+    const c = document.getElementById('cv-v-' + id); if (!c) return;
+    c.classList.remove('hl', 'hl-match', 'dim');
+    const valEl = c.querySelector('.cv-var-val');
+    if (val === undefined || val === null) { valEl.textContent = '—'; c.classList.add('dim'); return; }
+    valEl.textContent = String(val);
+    if (isMatch) c.classList.add('hl-match');
+    else if (changed) c.classList.add('hl');
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const lineEl = document.getElementById('cvL' + st.line);
+    if (lineEl) lineEl.classList.add(st.phase === 'match' || st.phase === 'done' ? 'active-match' : 'active');
+
+    const chg = new Set(st.changed || []);
+    const isMatchStep = st.phase === 'match' || st.phase === 'done';
+
+    cvSetCard('n',     st.n,                                  chg.has('n'),     false);
+    cvSetCard('i',     st.i  !== undefined ? st.i  : null,    chg.has('i'),     false);
+    cvSetCard('x',     st.x  !== undefined ? st.x  : null,    chg.has('x'),     false);
+    cvSetCard('p2',    st.prev2 !== undefined ? st.prev2 : null, chg.has('p2'), false);
+    cvSetCard('p1',    st.prev1 !== undefined ? st.prev1 : null, chg.has('p1'), false);
+    cvSetCard('cur',   st.cur !== undefined ? st.cur : null,  chg.has('cur'),   isMatchStep);
+    cvSetCard('caseA', st.caseA !== undefined ? st.caseA : null, chg.has('caseA'), false);
+    cvSetCard('caseB', st.caseB !== undefined ? st.caseB : null, chg.has('caseB'), st.phase === 'done');
+
+    const narr = document.getElementById('cv-narration');
+    narr.classList.remove('is-active', 'is-match');
+    narr.classList.add(isMatchStep ? 'is-match' : 'is-active');
+    narr.textContent = st.narr;
+
+    // Array preview with excluded markers
+    cvNumsRef.forEach((_, i) => {
+      const bar = document.getElementById('cv-houses-bar-' + i);
+      const ptr = document.getElementById('cv-houses-ptr-' + i);
+      const dp  = document.getElementById('cv-houses-dp-' + i);
+      if (!bar || !ptr || !dp) return;
+      bar.classList.remove('cur', 'done', 'skipped', 'excluded');
+      ptr.classList.remove('has-ptr', 'excluded');
+      const m = st.marks ? st.marks[i] : '';
+      if (m) bar.classList.add(m);
+      if (m === 'excluded') { ptr.textContent = 'excluded'; ptr.classList.add('excluded'); }
+      else { ptr.textContent = ''; }
+      dp.textContent = '·';
+    });
+
+    // Result tiles below the array preview
+    document.getElementById('cv-tileAv').textContent = st.caseA  !== undefined && st.caseA  !== null ? String(st.caseA)  : '—';
+    document.getElementById('cv-tileBv').textContent = st.caseB  !== undefined && st.caseB  !== null ? String(st.caseB)  : '—';
+    document.getElementById('cv-tileRv').textContent = st.answer !== undefined && st.answer !== null ? String(st.answer) : '—';
+    const tA = document.getElementById('cv-tile-A'), tB = document.getElementById('cv-tile-B'), tR = document.getElementById('cv-tile-R');
+    [tA, tB, tR].forEach(el => { el.classList.remove('active', 'done', 'dim'); });
+    if      (st.phaseLbl === 'caseA')   { tA.classList.add('active'); tB.classList.add('dim');     tR.classList.add('dim'); }
+    else if (st.phaseLbl === 'caseB')   { tA.classList.add('done');   tB.classList.add('active');  tR.classList.add('dim'); }
+    else if (st.phaseLbl === 'combine') { tA.classList.add('done');   tB.classList.add('done');    tR.classList.add('done'); }
+    else                                { tA.classList.add('dim');    tB.classList.add('dim');     tR.classList.add('dim'); }
+    if (st.caseA  !== undefined && st.caseA  !== null && st.phaseLbl !== 'caseA') tA.classList.remove('dim');
+    if (st.caseB  !== undefined && st.caseB  !== null && st.phaseLbl !== 'caseB') tB.classList.remove('dim');
+
+    // Phase tag
+    const ph = document.getElementById('cv-phase');
+    if (ph) {
+      let label = 'SETUP';
+      if (st.phaseLbl === 'caseA')   label = 'CASE A';
+      if (st.phaseLbl === 'caseB')   label = 'CASE B';
+      if (st.phaseLbl === 'combine') label = 'COMBINE';
+      ph.textContent = label;
+      ph.className = 'si-phase phase-' + (st.phaseLbl || 'setup');
+    }
+
+    document.getElementById('cv-sctr').textContent = 'Step ' + (cvCur + 1) + ' / ' + cvSteps.length;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0)                   { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+  function cvLoadEx(idx) {
+    cvStopPlay();
+    ['cv-ex0', 'cv-ex1', 'cv-ex2'].forEach((id, i) => {
+      const e = document.getElementById(id); if (e) e.classList.toggle('active', i === idx);
+    });
+    cvNumsRef = EX[idx].nums;
+    buildHouses('cv-houses', cvNumsRef);
+    document.getElementById('cv-arr-cap').textContent =
+      'nums = [' + cvNumsRef.join(', ') + ']  →  expected ' + EX[idx].answer + ' (circle adjacency: 0 ↔ ' + (cvNumsRef.length - 1) + ')';
+    cvSteps = cvGenSteps(cvNumsRef);
+    cvCur = 0;
+    cvRender(cvSteps[0]);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // §7 — Dry run. Step generator mirrors §6 but lives on its own simpler panel.
+  // ────────────────────────────────────────────────────────────────────────
+  let drSteps = []; let drCur = 0; let drTimer = null; let drNumsRef = [];
+
+  function drGenSteps(nums) {
+    const steps = [];
+    const n = nums.length;
+
+    if (n === 1) {
+      steps.push({
+        phaseLbl: 'setup', case: '—', i: -1, x: nums[0], cur: nums[0],
+        prev2: 0, prev1: nums[0],
+        caseA: null, caseB: null, answer: nums[0],
+        slice: null, marks: nums.map(() => 'done'),
+        what: 'Single house: n == 1.', why: 'No circle to handle — return nums[0] = ' + nums[0] + '.',
+      });
+      return steps;
+    }
+
+    // CASE A intro
+    steps.push({
+      phaseLbl: 'caseA', case: 'A', i: -1, slice: { lo: 0, hi: n - 2 },
+      prev2: 0, prev1: 0, caseA: null, caseB: null, answer: null,
+      marks: nums.map((_, idx) => (idx > n - 2) ? 'excluded' : 'cur'),
+      what: 'CASE A starts.', why: 'Drop house ' + (n - 1) + '. Run linear House Robber on nums[0..' + (n - 2) + '].',
+    });
+
+    let p2 = 0, p1 = 0;
+    for (let i = 0; i <= n - 2; i++) {
+      const x = nums[i];
+      const cur = Math.max(p1, p2 + x);
+      const choice = (p2 + x >= p1) ? 'rob' : 'skip';
+      steps.push({
+        phaseLbl: 'caseA', case: 'A', i, x, cur,
+        prev2: p2, prev1: p1, caseA: null, caseB: null, answer: null,
+        slice: { lo: 0, hi: n - 2 },
+        marks: nums.map((_, idx) => (idx > n - 2) ? 'excluded' : (idx === i ? 'cur' : '')),
+        what: 'i = ' + i + ': ' + (choice === 'rob' ? 'ROB' : 'SKIP') + ' nums[' + i + '] = ' + x + '. cur = ' + cur + '.',
+        why: 'cur = max(prev1, prev2 + nums[i]) = max(' + p1 + ', ' + p2 + ' + ' + x + ') = ' + cur + '.',
+      });
+      p2 = p1; p1 = cur;
+    }
+    const caseA = p1;
+    steps.push({
+      phaseLbl: 'caseA', case: 'A', i: -2, slice: { lo: 0, hi: n - 2 },
+      prev2: p2, prev1: p1, caseA, caseB: null, answer: null,
+      marks: nums.map((_, idx) => (idx > n - 2) ? 'excluded' : 'done'),
+      what: 'CASE A done. caseA = ' + caseA + '.', why: 'p1A holds the final best for the slice nums[0..' + (n - 2) + '].',
+    });
+
+    // CASE B intro — reset
+    steps.push({
+      phaseLbl: 'caseB', case: 'B', i: -1, slice: { lo: 1, hi: n - 1 },
+      prev2: 0, prev1: 0, caseA, caseB: null, answer: null,
+      marks: nums.map((_, idx) => (idx < 1) ? 'excluded' : 'cur'),
+      what: 'CASE B starts.', why: 'Reset p2 = p1 = 0. Drop house 0. Run linear House Robber on nums[1..' + (n - 1) + '].',
+    });
+
+    p2 = 0; p1 = 0;
+    for (let i = 1; i <= n - 1; i++) {
+      const x = nums[i];
+      const cur = Math.max(p1, p2 + x);
+      const choice = (p2 + x >= p1) ? 'rob' : 'skip';
+      steps.push({
+        phaseLbl: 'caseB', case: 'B', i, x, cur,
+        prev2: p2, prev1: p1, caseA, caseB: null, answer: null,
+        slice: { lo: 1, hi: n - 1 },
+        marks: nums.map((_, idx) => (idx < 1) ? 'excluded' : (idx === i ? 'cur' : '')),
+        what: 'i = ' + i + ': ' + (choice === 'rob' ? 'ROB' : 'SKIP') + ' nums[' + i + '] = ' + x + '. cur = ' + cur + '.',
+        why: 'cur = max(prev1, prev2 + nums[i]) = max(' + p1 + ', ' + p2 + ' + ' + x + ') = ' + cur + '.',
+      });
+      p2 = p1; p1 = cur;
+    }
+    const caseB = p1;
+    steps.push({
+      phaseLbl: 'caseB', case: 'B', i: -2, slice: { lo: 1, hi: n - 1 },
+      prev2: p2, prev1: p1, caseA, caseB, answer: null,
+      marks: nums.map((_, idx) => (idx < 1) ? 'excluded' : 'done'),
+      what: 'CASE B done. caseB = ' + caseB + '.', why: 'p1B holds the final best for the slice nums[1..' + (n - 1) + '].',
+    });
+
+    // COMBINE
+    const answer = Math.max(caseA, caseB);
+    steps.push({
+      phaseLbl: 'combine', case: '—', i: -3,
+      prev2: p2, prev1: p1, caseA, caseB, answer,
+      slice: null, marks: nums.map(() => 'done'),
+      what: 'answer = max(caseA, caseB) = max(' + caseA + ', ' + caseB + ') = ' + answer + '.',
+      why: 'The better of the two endpoint-exclusion plans is the overall answer.',
+    });
+
+    return steps;
+  }
+
+  function drRender(st) {
+    document.getElementById('dr-p2val').textContent = st.prev2 !== undefined ? st.prev2 : 0;
+    document.getElementById('dr-p1val').textContent = st.prev1 !== undefined ? st.prev1 : 0;
+    document.getElementById('dr-mem-p2').classList.toggle('lit', st.phaseLbl === 'caseA' || st.phaseLbl === 'caseB');
+    document.getElementById('dr-mem-p1').classList.toggle('lit', st.phaseLbl === 'caseA' || st.phaseLbl === 'caseB');
+
+    // Show / hide the finalised caseA, caseB pills
+    const aPill = document.getElementById('dr-mem-cA');
+    const bPill = document.getElementById('dr-mem-cB');
+    if (st.caseA !== null && st.caseA !== undefined) {
+      aPill.style.display = '';
+      document.getElementById('dr-cAval').textContent = st.caseA;
+    } else { aPill.style.display = 'none'; }
+    if (st.caseB !== null && st.caseB !== undefined) {
+      bPill.style.display = '';
+      document.getElementById('dr-cBval').textContent = st.caseB;
+    } else { bPill.style.display = 'none'; }
+
+    drNumsRef.forEach((_, i) => {
+      const bar = document.getElementById('dr-houses-bar-' + i);
+      const ptr = document.getElementById('dr-houses-ptr-' + i);
+      const dp  = document.getElementById('dr-houses-dp-' + i);
+      if (!bar || !ptr || !dp) return;
+      bar.classList.remove('cur', 'done', 'skipped', 'excluded');
+      ptr.classList.remove('has-ptr', 'excluded');
+      const m = st.marks ? st.marks[i] : '';
+      if (m) bar.classList.add(m);
+      if (m === 'excluded') { ptr.textContent = 'excluded'; ptr.classList.add('excluded'); }
+      else { ptr.textContent = ''; }
+      dp.textContent = '·';
+    });
+
+    document.getElementById('dr-fcase').textContent = st.case || '—';
+    document.getElementById('dr-fi').textContent    = (st.i !== undefined && st.i >= 0) ? st.i : '—';
+    document.getElementById('dr-fx').textContent    = st.x !== undefined ? st.x : '—';
+    document.getElementById('dr-fcur').textContent  = st.cur !== undefined ? st.cur : '—';
+    document.getElementById('dr-feq').textContent   =
+      (st.cur !== undefined && st.prev1 !== undefined && st.prev2 !== undefined && st.x !== undefined)
+        ? ('cur = max(' + st.prev1 + ', ' + st.prev2 + ' + ' + st.x + ') = ' + st.cur)
+        : (st.answer !== null && st.answer !== undefined)
+            ? ('answer = max(caseA, caseB) = ' + st.answer)
+            : 'cur = max(prev1, prev2 + nums[i]) = —';
+
+    const fp = document.getElementById('dr-formula');
+    fp.classList.remove('is-match', 'is-squeeze');
+    if (st.phaseLbl === 'combine') fp.classList.add('is-match');
+    else if (st.phaseLbl === 'caseA' || st.phaseLbl === 'caseB') fp.classList.add('is-squeeze');
+
+    const sp = document.getElementById('dr-step');
+    sp.classList.remove('match', 'squeeze');
+    if (st.phaseLbl === 'combine') sp.classList.add('match');
+    else if (st.phaseLbl === 'caseA' || st.phaseLbl === 'caseB') sp.classList.add('squeeze');
+
+    document.getElementById('dr-what').textContent = st.what;
+    document.getElementById('dr-why').textContent  = st.why;
+
+    const ph = document.getElementById('dr-phase');
+    if (ph) {
+      let label = 'SETUP';
+      if (st.phaseLbl === 'caseA')   label = 'CASE A';
+      if (st.phaseLbl === 'caseB')   label = 'CASE B';
+      if (st.phaseLbl === 'combine') label = 'COMBINE';
+      ph.textContent = label;
+      ph.className = 'si-phase phase-' + (st.phaseLbl || 'setup');
+    }
+
+    document.getElementById('dr-sctr').textContent = 'Step ' + (drCur + 1) + ' / ' + drSteps.length;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0)                   { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+  function drLoadEx(idx) {
+    drStopPlay();
+    ['dr-ex0', 'dr-ex1', 'dr-ex2'].forEach((id, i) => {
+      const e = document.getElementById(id); if (e) e.classList.toggle('active', i === idx);
+    });
+    drNumsRef = EX[idx].nums;
+    buildHouses('dr-houses', drNumsRef);
+    document.getElementById('dr-cap').textContent =
+      'nums = [' + drNumsRef.join(', ') + ']  →  expected ' + EX[idx].answer;
+    drSteps = drGenSteps(drNumsRef);
+    drCur = 0;
+    drRender(drSteps[0]);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Init
+  // ────────────────────────────────────────────────────────────────────────
+  cvBuildCode(CV_LINES);
+
+  buildHouses('si-houses', SI_NUMS);
+  siSteps = siGenSteps(SI_NUMS);
+  siCur = 0;
+  siRender(siSteps[0]);
+
+  bfLoadEx(0);
+  cvLoadEx(0);
+  drLoadEx(0);
+</script>
+
+</body>
+</html>

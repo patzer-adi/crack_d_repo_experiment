@@ -3,3 +3,6 @@ __pycache__/
 *.pyo
 .DS_Store
 .claude/settings.local.json
+
+# Per-session marker dropped by the lesson skill (PLAN-011 token guard)
+.lesson-design-loaded

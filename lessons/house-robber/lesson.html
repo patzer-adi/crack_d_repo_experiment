@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>House Robber — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* Problem-specific: a row of "house" bars with a money label on top and a dp-value label below */
+  .hr-row { display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; }
+  .hr-house {
+    display:flex; flex-direction:column; align-items:center; min-width:54px;
+    font-family:var(--mono); font-size:13px;
+  }
+  .hr-cash {
+    font-weight:700; color:var(--text2); font-size:13px; margin-bottom:3px;
+  }
+  .hr-bar {
+    width:46px; border-radius:6px 6px 0 0;
+    background:var(--bg2); border:1px solid var(--border2);
+    color:var(--text3); display:flex; align-items:flex-end; justify-content:center;
+    padding-bottom:4px; font-size:13px; font-weight:600;
+    transition:background .15s,border-color .15s;
+  }
+  .hr-bar.cur     { background:var(--bg-info);    border-color:var(--border-info);    color:var(--text-info); }
+  .hr-bar.done    { background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); }
+  .hr-bar.skipped { background:var(--bg-warn);    border-color:var(--border-warn);    color:var(--text-warn); }
+  .hr-idx { color:var(--text3); margin-top:4px; font-size:12px; }
+  .hr-dp  { color:var(--text2); font-weight:700; margin-top:3px; font-size:13px; }
+
+  /* Memory pills above the houses (prev2 / prev1) */
+  .hr-mem { display:flex; gap:16px; margin-bottom:12px; flex-wrap:wrap; }
+  .hr-mempill {
+    display:inline-flex; align-items:baseline; gap:7px;
+    padding:8px 12px; border-radius:8px;
+    background:var(--bg2); border:1px solid var(--border2);
+    font-family:var(--mono); font-size:13px;
+  }
+  .hr-memk { color:var(--text3); font-size:13px; }
+  .hr-memv { color:var(--text2); font-weight:700; font-size:15px; }
+  .hr-mempill.lit { background:var(--bg-info); border-color:var(--border-info); }
+  .hr-mempill.lit .hr-memv { color:var(--text-info); }
+
+  /* Decision panel beside the current house */
+  .hr-dec {
+    display:flex; gap:12px; flex-wrap:wrap; margin-top:12px;
+    font-family:var(--mono); font-size:13px;
+  }
+  .hr-cand {
+    padding:7px 12px; border-radius:8px;
+    background:var(--bg2); border:1px solid var(--border2);
+    color:var(--text2);
+  }
+  .hr-cand.win-rob  { background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); font-weight:700; }
+  .hr-cand.win-skip { background:var(--bg-warn);    border-color:var(--border-warn);    color:var(--text-warn);    font-weight:700; }
+  .hr-cand.lose     { opacity:.55; }
+
+  .hr-cap { font-size:12.5px; color:var(--text3); margin:.5rem 0 .375rem; }
+
+  /* Pointer labels under houses ("↑ prev2" / "↑ prev1") — show which house each pill represents */
+  .hr-ptr {
+    font-family:var(--mono); font-size:12px; font-weight:600;
+    color:var(--text3); margin-top:4px;
+    min-height:16px; text-align:center; line-height:1.3;
+  }
+  .hr-ptr.has-ptr { color:var(--text-info); }
+
+  /* Memory pills get an amber "slid" state when prev2/prev1 just shifted */
+  .hr-mempill.slid {
+    background:var(--bg-warn); border-color:var(--border-warn);
+  }
+  .hr-mempill.slid .hr-memv { color:var(--text-warn); }
+
+  /* Phase tag (DECIDE / SLIDE / DONE) — anchors the reader inside each step */
+  .si-phase {
+    font-family:var(--mono); font-size:12.5px;
+    padding:4px 10px; border-radius:6px;
+    background:var(--bg2); border:1px solid var(--border2);
+    color:var(--text2); font-weight:700; letter-spacing:.5px;
+    margin-left:.5rem;
+  }
+  .si-phase.phase-decide { background:var(--bg-info);    border-color:var(--border-info);    color:var(--text-info); }
+  .si-phase.phase-slide  { background:var(--bg-warn);    border-color:var(--border-warn);    color:var(--text-warn); }
+  .si-phase.phase-done   { background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); }
+
+  /* Color legend strip — three states the bars can take */
+  .hr-legend {
+    display:flex; gap:16px; margin:.375rem 0 .75rem; flex-wrap:wrap;
+    font-family:var(--mono); font-size:12.5px; color:var(--text2);
+  }
+  .hr-leg { display:inline-flex; align-items:center; gap:7px; }
+  .hr-legchip {
+    width:16px; height:16px; border-radius:4px; border:1px solid;
+  }
+  .hr-legchip.cur     { background:var(--bg-info);    border-color:var(--border-info); }
+  .hr-legchip.done    { background:var(--bg-success); border-color:var(--border-success); }
+  .hr-legchip.skipped { background:var(--bg-warn);    border-color:var(--border-warn); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>House Robber</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/house-robber/" target="_blank">LC #198</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Dynamic Programming</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Are the houses in a line or in a circle?</div>
+      <div class="acard-a">A line. (The circular variant is LC 213 — House Robber II.)</div>
+      <div class="acard-u">→ unlocks: no wrap-around; only consecutive indices are forbidden</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Can <code>nums[i]</code> be zero or negative?</div>
+      <div class="acard-a">Constraint says <code>0 ≤ nums[i] ≤ 400</code>. Non-negative.</div>
+      <div class="acard-u">→ unlocks: skipping never costs money; max handles ties at 0 naturally</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">What is <code>n</code>? Can the array be empty?</div>
+      <div class="acard-a"><code>1 ≤ n ≤ 100</code>. Always at least one house.</div>
+      <div class="acard-u">→ unlocks: no empty-array branch; single house is the base case</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Return the list of houses robbed, or only the total?</div>
+      <div class="acard-a">Only the maximum total money.</div>
+      <div class="acard-u">→ unlocks: track a running best, not the chosen set — enables O(1) memory</div>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:1rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Linear array of <code>n ≥ 1</code> non-negative integers; forbid two adjacent indices; return the max sum. No need to reconstruct the chosen subset.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">At every house: rob it (pair with two-back) or skip it (carry one-back). The whole history collapses to two scalars.</p>
+
+  <p class="body">Standing at house <code>i</code>, you face exactly two mutually-exclusive choices because adjacent houses are off-limits: <b>rob</b> it (collect <code>nums[i]</code>, plus the best total you could have gotten up to <i>two</i> houses ago) or <b>skip</b> it (keep the best you had <i>one</i> house ago). Take the bigger. The clever bit: each decision only consults the two prior best totals, so you never build a length-<code>n</code> table — you slide two scalars <code>prev2</code> and <code>prev1</code> across the array.</p>
+
+  <!-- Foundational visual: animated houses + memory pills + decision panel -->
+  <div style="margin:1.25rem 0">
+    <div class="hr-cap" id="si-setup">Walking through <code>nums = [2, 7, 9, 3]</code> — each step does <b>one</b> thing: either DECIDE (rob vs skip) or SLIDE (advance the rolling pair).</div>
+
+    <div class="hr-legend">
+      <span class="hr-leg"><span class="hr-legchip cur"></span> current house under decision</span>
+      <span class="hr-leg"><span class="hr-legchip done"></span> robbed in the best plan so far</span>
+      <span class="hr-leg"><span class="hr-legchip skipped"></span> skipped in the best plan so far</span>
+    </div>
+
+    <div class="hr-mem">
+      <div class="hr-mempill" id="si-mem-p2"><span class="hr-memk">prev2 =</span><span class="hr-memv" id="si-p2val">0</span></div>
+      <div class="hr-mempill" id="si-mem-p1"><span class="hr-memk">prev1 =</span><span class="hr-memv" id="si-p1val">0</span></div>
+    </div>
+
+    <div class="hr-row" id="si-houses"></div>
+
+    <div class="hr-dec" id="si-dec">
+      <div class="hr-cand" id="si-rob">rob &nbsp;= prev2 + nums[i] = <span id="si-robv">–</span></div>
+      <div class="hr-cand" id="si-skip">skip = prev1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = <span id="si-skipv">–</span></div>
+      <div class="hr-cand" id="si-cur">→ cur = max(rob, skip) = <span id="si-curv">–</span></div>
+    </div>
+
+    <div class="hr-cap" id="si-note" style="margin-top:.625rem;color:var(--text2);">Press <b>▶ Auto</b> or step through with <b>Next →</b>. The "↑ prev2" / "↑ prev1" labels under each house show which past answer the pills are holding right now.</div>
+
+    <div class="ctrl-row" style="margin-top:.625rem">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+      <span class="si-phase" id="si-phase">START</span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">For each <code>i</code>, compute <code>best[i] = max(best[i-1], best[i-2] + nums[i])</code> with <code>best[-1] = best[-2] = 0</code>. The recurrence only reads its last two values, so two scalars <code>prev2, prev1</code> replace the array. After the loop, <code>prev1</code> holds the answer. One pass, no auxiliary memory.</p>
+  </div>
+
+  <!-- Equivalence chain -->
+  <p class="body" style="margin-top:1rem">Why the answer collapses from a table to two variables:</p>
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">Pick a subset of indices from <code>nums</code>, no two adjacent, maximising the sum.</div>
+        <div class="chain-note">the problem, in subset terms</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">At each <code>i</code>, the optimal subset either contains <code>i</code> or it doesn't. If it does, the rest of the subset lies entirely in <code>nums[0..i-2]</code> (because <code>i-1</code> is forbidden). If it doesn't, the rest lies in <code>nums[0..i-1]</code>.</div>
+        <div class="chain-note">case-split on the last decision</div>
+        <div class="chain-example">
+          <span class="pill n">rob i</span><span class="arrow">→</span><span class="pill n">best of [0..i-2] + nums[i]</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">skip i</span><span class="arrow">→</span><span class="pill n">best of [0..i-1]</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><code>best[i] = max(best[i-1], best[i-2] + nums[i])</code> &nbsp;— a 1-D recurrence with two seeds <code>best[-1]=best[-2]=0</code>.</div>
+        <div class="chain-note">subsets disappear; we keep only the running best per index</div>
+        <div class="chain-example">
+          <span class="pill n">nums=[2,7,9]</span><span class="arrow">→</span>
+          <span class="pill ok">best=[2,7,11]</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">Only <code>best[i-1]</code> and <code>best[i-2]</code> are ever read.</span> Keep <code>prev1, prev2</code>; throw the array away.</div>
+        <div class="chain-note">the dependency window has width 2 — that's the whole optimisation</div>
+        <div class="chain-example">
+          <span class="pill n">need best[i-1], best[i-2]</span><span class="arrow">→</span><span class="pill ok">two ints suffice</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill bad">length-n dp[] array</span><span class="arrow">→</span><span class="pill ok">O(1) memory</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">We don't yet know any clever trick, so the safest first move is to <b>try every possible plan</b> and keep the best legal one.</p>
+  <p class="body">A "plan" is one yes/no decision per house: <b>rob it</b> or <b>leave it</b>. With <code>n</code> houses that's <code>n</code> independent yes/no decisions, so the total number of plans is <code>2 × 2 × … × 2 = 2^n</code>. For 4 houses → 16 plans, for 5 → 32, for 6 → 64, and the LeetCode constraint allows <code>n = 100</code> which is hopeless.</p>
+  <p class="body">For each plan we ask two questions: <b>(1)&nbsp;Is it legal?</b> — no two robbed houses sit next to each other. <b>(2)&nbsp;If legal, what's the total money?</b> — just add up the values of the robbed houses. Keep the best legal total seen so far.</p>
+  <p class="body">The widget below shows each plan as a <b>binary mask</b>: a string of <code>0</code>s and <code>1</code>s, one bit per house, where <code>1</code> means "rob this house" and <code>0</code> means "leave it". Watch the counter at the bottom — every new house <i>doubles</i> the number of plans we have to try.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">n=4</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">n=5</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">n=6</button>
+  </div>
+
+  <div style="margin-top:.75rem">
+    <div class="hr-cap" id="bf-cap">subset mask · adjacency check · running best</div>
+    <div class="hr-row" id="bf-strip"></div>
+    <div style="margin-top:.5rem;font-family:var(--mono);font-size:12px;color:var(--text2)">
+      <span id="bf-state">mask = 0000 &nbsp;·&nbsp; sum = 0 &nbsp;·&nbsp; legal = — &nbsp;·&nbsp; best = 0</span>
+    </div>
+    <div style="margin-top:.375rem;font-family:var(--mono);font-size:12px;color:var(--text-danger)">
+      Subsets tried: <span id="bf-checks">0</span> / 2<sup>n</sup>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(2^n · n) time, O(n) space</p>
+    <p class="infobox-d"><b>Why this is too slow.</b> Each new house <i>doubles</i> the count of plans. <code>n = 20</code> already means ~1 million plans; <code>n = 30</code> means a billion; <code>n = 100</code> is more plans than there are atoms in the visible universe. Even worse, most plans we try are <b>illegal</b> (they pick two next-door houses) so the work is mostly wasted. We need a smarter approach — one that never enumerates plans at all.</p>
+  </div>
+
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal Code</button>
+  <div id="code-bf" class="code-block"><pre class="cb"><span class="kw">int</span> <span class="fn">robBrute</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.size();
+    <span class="kw">int</span> best = <span class="nu">0</span>;
+    <span class="cm">// enumerate all 2^n subsets via bitmask</span>
+    <span class="kw">for</span> (<span class="kw">int</span> mask = <span class="nu">0</span>; mask &lt; (<span class="nu">1</span> &lt;&lt; n); mask++) {
+        <span class="kw">bool</span> legal = <span class="kw">true</span>;
+        <span class="kw">int</span> sum = <span class="nu">0</span>;
+        <span class="kw">int</span> prevBit = -<span class="nu">2</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+            <span class="kw">if</span> ((mask &gt;&gt; i) &amp; <span class="nu">1</span>) {
+                <span class="kw">if</span> (i - prevBit == <span class="nu">1</span>) { legal = <span class="kw">false</span>; <span class="kw">break</span>; }
+                sum += nums[i];
+                prevBit = i;
+            }
+        }
+        <span class="kw">if</span> (legal) { best = <span class="fn">max</span>(best, sum); }
+    }
+    <span class="kw">return</span> best;
+}</pre></div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">The brute force is correct but tries <code>2^n</code> plans. We fix it in <b>five small steps</b>. Each step introduces one idea and assumes nothing from the previous step except its end result. By step 5, an exponential search has become a left-to-right loop that uses two integers of memory.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Step 1 — Stop listing plans. Decide one house at a time.</div>
+        <div class="wt-desc">Instead of generating all <code>2^n</code> plans up front, walk the houses from left to right and ask one question per house: <b>rob this house, or skip it?</b> If we rob house <code>i</code> we collect <code>nums[i]</code> and must skip house <code>i+1</code> (adjacency rule); the rest of the problem is the same kind of "best total from here onward" question on houses <code>i+2 …</code>. If we skip house <code>i</code>, the rest is the same question on houses <code>i+1 …</code>. Write that as a function: <code>best(i) = max(<b>nums[i] + best(i+2)</b>, <b>best(i+1)</b>)</code> — the first branch is "rob i", the second is "skip i". A function defined in terms of smaller calls to itself like this is called a <b>recurrence</b>.</div>
+        <div class="wt-gain">→ O(2^n · n) → O(2^n) &nbsp; (adjacency is now built into the recursion; no rescans)</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Step 2 — Save the answers you've already computed (memoisation).</div>
+        <div class="wt-desc">The recursion above is wasteful. <code>best(i+2)</code> gets called from <i>two</i> different paths: from the "rob i" branch directly, and from the "skip i, then rob i+1" branch a step later. Both paths arrive at the same subproblem and solve it from scratch — so the same value is recomputed many times, and the total work stays exponential. The fix is mechanical: the first time we compute <code>best(i)</code>, store it in <code>memo[i]</code>; every later call for <code>best(i)</code> returns the cached value instead of recursing. This caching trick is called <b>memoisation</b>. Now there are exactly <code>n</code> distinct subproblems, each solved once.</div>
+        <div class="wt-gain">→ O(2^n) → O(n) time, plus O(n) memo array + O(n) recursion stack</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">Step 3 — Flip the direction: build the table bottom-up.</div>
+        <div class="wt-desc">Memoisation works, but it relies on recursion — function calls, an extra call stack, and the headache of figuring out which subproblem to compute first. We can avoid all that by iterating. Rewrite the recurrence as <code>dp[i] = max(dp[i-1], dp[i-2] + nums[i])</code> and fill the <code>dp</code> array left to right starting from seeds <code>dp[-1] = dp[-2] = 0</code> (meaning "no houses considered yet, best total is 0"). By the time we compute <code>dp[i]</code>, both <code>dp[i-1]</code> and <code>dp[i-2]</code> are already there waiting. Same complexity as memoisation, but it's just a plain for-loop you can print and trace by hand. This pattern — solving small subproblems first and combining them into bigger ones — is the heart of <b>dynamic programming</b>.</div>
+        <div class="wt-gain">→ same O(n) time and O(n) memory, but no recursion stack</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">4</div>
+      <div class="wt-body">
+        <div class="wt-name">Step 4 — Notice we only ever read the last two cells.</div>
+        <div class="wt-desc">Look hard at <code>dp[i] = max(dp[i-1], dp[i-2] + nums[i])</code>. The right-hand side mentions <code>dp[i-1]</code> and <code>dp[i-2]</code> — <i>and nothing else</i> from the <code>dp</code> array. Once we've finished computing <code>dp[i]</code>, the value at <code>dp[i-2]</code> is never read again (the next iteration needs <code>dp[i-1]</code> and <code>dp[i]</code>, not <code>dp[i-2]</code>). So we're carrying around an array of <code>n</code> numbers but at any moment only <b>two</b> of them are actually used. The middle of the array is dead weight. This is just an observation — no code change yet — but it sets up step 5.</div>
+        <div class="wt-gain">→ no change yet; this is the insight that enables the final step</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">5</div>
+      <div class="wt-body">
+        <div class="wt-name">Step 5 — Throw away the array; keep just two variables.</div>
+        <div class="wt-desc">Replace the whole <code>dp</code> array with two integers: <code>prev2</code> (the value that used to live at <code>dp[i-2]</code>) and <code>prev1</code> (the value that used to live at <code>dp[i-1]</code>). For each new house <code>i</code> we compute <code>cur = max(prev1, prev2 + nums[i])</code>, then "<b>slide</b>" the two memory slots one position to the right: <code>prev2 = prev1; prev1 = cur</code>. <span class="chain-hl"><b>Slide order matters.</b></span> If you accidentally write <code>prev1 = cur</code> <i>before</i> <code>prev2 = prev1</code>, then <code>prev2</code> will pick up the new <code>cur</code> instead of the old <code>prev1</code>, and the next iteration uses the wrong value. Always save the old <code>prev1</code> before overwriting it.</div>
+        <div class="wt-gain">→ O(n) time, <b>O(1) memory</b> &nbsp;— this is the final answer</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step"><div class="algo-n">1</div><div class="algo-t"><b>Initialise</b> <code>prev2 = 0</code> and <code>prev1 = 0</code>. They stand for "best up to two houses before the first" and "best up to the house before the first" — both empty, both zero.</div></div>
+    <div class="algo-step"><div class="algo-n">2</div><div class="algo-t"><b>For each</b> house <code>x</code> in <code>nums</code> (left to right):</div></div>
+    <div class="algo-step"><div class="algo-n">3</div><div class="algo-t"><b>Compute the two candidates:</b> <code>rob_it = prev2 + x</code> (take this house, plus the best from two back) and <code>skip = prev1</code> (leave it, keep the best from one back).</div></div>
+    <div class="algo-step"><div class="algo-n">4</div><div class="algo-t"><b>Take</b> <code>cur = max(rob_it, skip)</code> — the new best up to this house.</div></div>
+    <div class="algo-step"><div class="algo-n">5</div><div class="algo-t"><b>Slide</b> the window: <code>prev2 = prev1</code> first, then <code>prev1 = cur</code>. Order matters — capture the old <code>prev1</code> before overwriting it.</div></div>
+    <div class="algo-step"><div class="algo-n">6</div><div class="algo-t"><b>Return</b> <code>prev1</code> after the loop. By the slide rule it holds <code>best[n-1]</code> — the answer.</div></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block"><pre class="cb"><span class="kw">int</span> <span class="fn">rob</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> prev2 = <span class="nu">0</span>;
+    <span class="kw">int</span> prev1 = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> x : nums) {
+        <span class="kw">int</span> rob_it = prev2 + x;
+        <span class="kw">int</span> skip   = prev1;
+        <span class="kw">int</span> cur    = <span class="fn">max</span>(rob_it, skip);
+        prev2 = prev1;
+        prev1 = cur;
+    }
+    <span class="kw">return</span> prev1;
+}</pre></div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Watch the rolling pair slide across the array. The active code line lights up, and the variable cards on the right show the values as the algorithm assigns them. Try all three example inputs.</p>
+
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-i"><div class="cv-var-name">i</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-x"><div class="cv-var-name">x = nums[i]</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-p2"><div class="cv-var-name">prev2</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-p1"><div class="cv-var-name">prev1</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-rob"><div class="cv-var-name">rob_it</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-skip"><div class="cv-var-name">skip</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-cur"><div class="cv-var-name">cur</div><div class="cv-var-val">—</div></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+
+  <!-- Optional per-step array preview -->
+  <div id="cv-arr-con" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0;">
+    <div class="hr-cap" id="cv-arr-cap">array view</div>
+    <div class="hr-row" id="cv-houses"></div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">[1,2,3,1] → 4</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">[2,7,9,3,1] → 12</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">10-house run → 17</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through three different inputs</p>
+  <p class="body">Pick an input and step through the algorithm yourself. The state panel shows what each iteration computes; the decision panel shows whether the optimum at this index is "rob" or "skip".</p>
+
+  <div style="margin-top:.75rem">
+    <div class="hr-cap" id="dr-cap">nums = …</div>
+
+    <div class="hr-mem">
+      <div class="hr-mempill" id="dr-mem-p2"><span class="hr-memk">prev2 =</span><span class="hr-memv" id="dr-p2val">0</span></div>
+      <div class="hr-mempill" id="dr-mem-p1"><span class="hr-memk">prev1 =</span><span class="hr-memv" id="dr-p1val">0</span></div>
+    </div>
+
+    <div class="hr-row" id="dr-houses"></div>
+
+    <div class="panels-fixed" style="margin-top:.75rem">
+      <div id="dr-formula" class="formula-panel">
+        <div class="formula-grid">
+          <div class="fitem-label">i</div>          <div class="fitem-val" id="dr-fi">—</div>
+          <div class="fitem-label">nums[i]</div>    <div class="fitem-val" id="dr-fx">—</div>
+          <div class="fitem-label">rob_it</div>     <div class="fitem-val" id="dr-frob">—</div>
+          <div class="fitem-label">skip</div>       <div class="fitem-val" id="dr-fskip">—</div>
+        </div>
+        <div class="formula-eq" id="dr-feq">cur = max(rob_it, skip) = —</div>
+      </div>
+      <div id="dr-step" class="step-panel">
+        <div class="step-what" id="dr-what">Press Next → to start.</div>
+        <div class="step-why"  id="dr-why">Each step decides the new <code>cur</code> and slides the rolling pair.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">[1,2,3,1] → 4</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">[2,7,9,3,1] → 12</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">10-house run → 17</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div>
+      <div class="corner-title">Single house — <code>[5]</code> → <code>5</code></div>
+      <div class="corner-body">The loop body runs exactly once. <code>rob_it = 0 + 5 = 5</code>, <code>skip = 0</code>, <code>cur = 5</code>. Both seeds being <code>0</code> is what makes the single-house case return the house's own value without a special branch.</div>
+    </div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div>
+      <div class="corner-title">Two houses — <code>[3, 10]</code> → <code>10</code></div>
+      <div class="corner-body">Adjacency makes them mutually exclusive. At <code>i=1</code>: <code>rob_it = 0 + 10 = 10</code> (because <code>prev2</code> is still <code>0</code> from the seed), <code>skip = 3</code>. The algorithm correctly picks the larger.</div>
+    </div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div>
+      <div class="corner-title">Tie between rob and skip — <code>[4, 4]</code> → <code>4</code></div>
+      <div class="corner-body">At <code>i=1</code>: <code>rob_it = 0 + 4 = 4</code> and <code>skip = 4</code>. <code>max</code> resolves the tie either way; the answer is still <code>4</code>. No tie-break logic needed.</div>
+    </div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div>
+      <div class="corner-title">All zeros — <code>[0, 0, 0, 0]</code> → <code>0</code></div>
+      <div class="corner-body">Every iteration gives <code>rob_it = skip = cur = 0</code>. Because the constraint forbids negatives, "rob it" is never worse than "skip it" at zero, but it doesn't matter — both branches return the same number.</div>
+    </div>
+  </div>
+
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div>
+      <div class="corner-title">Bait at position 1 — <code>[1, 100, 1, 1, 100]</code> → <code>200</code></div>
+      <div class="corner-body">A greedy "rob every other house starting at index 0" picks <code>{0, 2, 4} → 102</code> and misses the optimum. The DP correctly skips house 0 entirely and robs <code>{1, 4} → 200</code>. The running table is <code>dp = [1, 100, 100, 101, 200]</code> — proof that the rolling pair handles non-greedy interleavings.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Empty input</b> — guard with <code>if (nums.empty()) return 0;</code> if the problem allows it; the loop already does the right thing on an empty range.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Single-element input</b> — handled by the <code>prev2 = prev1 = 0</code> seeds; no special branch needed.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Slide-order bug</b> — write <code>prev2 = prev1</code> <i>before</i> <code>prev1 = cur</code>; otherwise <code>prev2</code> picks up the new value and the next iteration is wrong.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Integer overflow</b> — constraints cap each <code>nums[i] ≤ 400</code> and <code>n ≤ 100</code>, so the sum fits in an <code>int</code>; if a variant relaxes either bound, switch to <code>long long</code>.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Greedy intuition trap</b> — "rob every other house" fails on inputs like <code>[1,100,1,1,100]</code>; only the DP recurrence is correct.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Subset reconstruction</b> — if the problem asks <i>which</i> houses, you must keep the DP array (not just two scalars) and walk back from <code>dp[n-1]</code> comparing to <code>dp[n-2]</code>.</div></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><div class="chk-text"><b>Variant awareness</b> — name the related problems (House Robber II/III, Delete and Earn) before the interviewer does; it signals you recognise the pattern.</div></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Rolling pair (optimal)</button>
+    <button class="tab-btn"        id="tab1" onclick="switchTab(1)">Bottom-up DP array</button>
+    <button class="tab-btn"        id="tab2" onclick="switchTab(2)">Top-down recursion + memo</button>
+  </div>
+
+  <div class="tab-pane active" id="pane0">
+    <div style="margin-bottom:.5rem">
+      <span class="tag tag-time">O(n) time</span>
+      <span class="tag tag-space">O(1) space</span>
+    </div>
+    <p class="body">The expected production answer. Same loop body as the DP array, but only the last two <code>dp</code> values are kept as scalars. Hardest to write correctly the first time (the slide order traps everyone once), easiest to defend in an interview after you've written the array version on the whiteboard and pointed at the two cells you actually use.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-roll',this)">▶ Reveal Code</button>
+    <div id="code-roll" class="code-block"><pre class="cb"><span class="kw">int</span> <span class="fn">rob</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> prev2 = <span class="nu">0</span>, prev1 = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> x : nums) {
+        <span class="kw">int</span> cur = <span class="fn">max</span>(prev1, prev2 + x);
+        prev2 = prev1;
+        prev1 = cur;
+    }
+    <span class="kw">return</span> prev1;
+}</pre></div>
+  </div>
+
+  <div class="tab-pane" id="pane1">
+    <div style="margin-bottom:.5rem">
+      <span class="tag tag-time">O(n) time</span>
+      <span class="tag tag-space">O(n) space</span>
+    </div>
+    <p class="body">The version you'd write first on the whiteboard. Iterative, easy to print step-by-step, makes the recurrence completely visible. Linear extra memory is the only downside — and it's the natural stepping stone to the rolling-pair optimisation.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-table',this)">▶ Reveal Code</button>
+    <div id="code-table" class="code-block"><pre class="cb"><span class="kw">int</span> <span class="fn">rob</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.size();
+    <span class="kw">if</span> (n == <span class="nu">0</span>) { <span class="kw">return</span> <span class="nu">0</span>; }
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; dp(n, <span class="nu">0</span>);
+    dp[<span class="nu">0</span>] = nums[<span class="nu">0</span>];
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">1</span>; i &lt; n; i++) {
+        <span class="kw">int</span> rob_it = (i &gt;= <span class="nu">2</span> ? dp[i - <span class="nu">2</span>] : <span class="nu">0</span>) + nums[i];
+        <span class="kw">int</span> skip   = dp[i - <span class="nu">1</span>];
+        dp[i] = <span class="fn">max</span>(rob_it, skip);
+    }
+    <span class="kw">return</span> dp[n - <span class="nu">1</span>];
+}</pre></div>
+  </div>
+
+  <div class="tab-pane" id="pane2">
+    <div style="margin-bottom:.5rem">
+      <span class="tag tag-time">O(n) time</span>
+      <span class="tag tag-space">O(n) memo + O(n) stack</span>
+    </div>
+    <p class="body">Most natural translation of the recurrence — write it as a function and cache. Useful pedagogically: the two recursive calls map exactly to "rob this" and "skip this". Pays an extra <code>O(n)</code> recursion stack on top of the memo and is therefore never the production answer, but it's the version interviewers ask you to write when they want to see if you can derive the recurrence cold.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-memo',this)">▶ Reveal Code</button>
+    <div id="code-memo" class="code-block"><pre class="cb"><span class="kw">class</span> Solution {
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; memo;
+    <span class="kw">int</span> <span class="fn">solve</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums, <span class="kw">int</span> i) {
+        <span class="kw">if</span> (i &gt;= (<span class="kw">int</span>)nums.size()) { <span class="kw">return</span> <span class="nu">0</span>; }
+        <span class="kw">if</span> (memo[i] != -<span class="nu">1</span>) { <span class="kw">return</span> memo[i]; }
+        <span class="kw">int</span> rob_it = nums[i] + <span class="fn">solve</span>(nums, i + <span class="nu">2</span>);
+        <span class="kw">int</span> skip   = <span class="fn">solve</span>(nums, i + <span class="nu">1</span>);
+        <span class="kw">return</span> memo[i] = <span class="fn">max</span>(rob_it, skip);
+    }
+<span class="kw">public</span>:
+    <span class="kw">int</span> <span class="fn">rob</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+        memo.<span class="fn">assign</span>(nums.size(), -<span class="nu">1</span>);
+        <span class="kw">return</span> <span class="fn">solve</span>(nums, <span class="nu">0</span>);
+    }
+};</pre></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(n)</div>
+      <div class="ccard-n">One pass through <code>nums</code>; every iteration does constant work — two additions, one <code>max</code>, two assignments.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(1)</div>
+      <div class="ccard-n">Two integers <code>prev2, prev1</code> plus a per-iteration temporary <code>cur</code>. No array, no recursion stack.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><b>LC 213 — House Robber II</b> — houses arranged in a circle; first and last are adjacent. Solve linear House Robber twice (exclude last, then exclude first) and take the max.</p>
+    <p><b>LC 337 — House Robber III</b> — houses on a binary tree; each node returns a pair <code>(robThis, dontRobThis)</code>. Same recurrence, post-order traversal.</p>
+    <p><b>LC 740 — Delete and Earn</b> — bucket values: index <i>is</i> the value, weight <i>is</i> the total occurrences. Once reframed, it's House Robber verbatim on the bucket array.</p>
+    <p><b>LC 198 / 70 / 746 — Climbing Stairs / Min Cost Climbing Stairs</b> — same <code>dp[i] = f(dp[i-1], dp[i-2])</code> shape; different operation (sum vs. max), same rolling-pair trick.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  // ────────────────────────────────────────────────────────────────────────
+  // Shared problem data
+  // ────────────────────────────────────────────────────────────────────────
+  const EX = [
+    { nums: [1, 2, 3, 1],                 label: '[1,2,3,1]',          answer: 4  },
+    { nums: [2, 7, 9, 3, 1],              label: '[2,7,9,3,1]',        answer: 12 },
+    { nums: [2, 1, 1, 2, 3, 1, 5, 4, 6, 2], label: 'long mixed run',   answer: 17 },
+  ];
+  const BF_EX = [
+    { nums: [1, 2, 3, 1] },
+    { nums: [2, 7, 9, 3, 1] },
+    { nums: [1, 100, 1, 1, 100, 5] },
+  ];
+
+  // Build a row of "house" bars into a container element.
+  // Every house gets a .hr-ptr slot below the best=X label; §1 uses it to
+  // print "↑ prev2" / "↑ prev1" tags showing which past answer each pill holds.
+  // §6 / §7 leave it blank (their pointer story lives in their own state panels).
+  function buildHouses(containerId, nums) {
+    const c = document.getElementById(containerId); if (!c) return;
+    c.innerHTML = '';
+    nums.forEach((v, i) => {
+      const cell = document.createElement('div'); cell.className = 'hr-house';
+      cell.innerHTML =
+        '<div class="hr-cash">$' + v + '</div>' +
+        '<div class="hr-bar" id="' + containerId + '-bar-' + i + '" style="height:' + (24 + v * 2) + 'px">' + v + '</div>' +
+        '<div class="hr-idx">i=' + i + '</div>' +
+        '<div class="hr-dp" id="' + containerId + '-dp-' + i + '">·</div>' +
+        '<div class="hr-ptr" id="' + containerId + '-ptr-' + i + '"></div>';
+      c.appendChild(cell);
+    });
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // §1 — Insight animation
+  // ────────────────────────────────────────────────────────────────────────
+  // Shorter example (4 houses) keeps the step count tight after we split
+  // each iteration into a DECIDE step and a SLIDE step.
+  const SI_NUMS = [2, 7, 9, 3];   // expected answer: 11
+  let siSteps = []; let siCur = 0; let siTimer = null;
+
+  // Each step also carries prev2_idx / prev1_idx — the house each pill is
+  // currently "holding the answer for". The renderer prints "↑ prev2" / "↑ prev1"
+  // under those houses, giving the abstract pills a concrete anchor in the array.
+  function siGenSteps(nums) {
+    const steps = [];
+    steps.push({
+      phase: 'init', i: -1, prev2: 0, prev1: 0,
+      prev2_idx: -1, prev1_idx: -1,
+      dp: nums.map(() => null), skipped: nums.map(() => false),
+      note: 'Start: prev2 = prev1 = 0. No houses processed yet — both rolling memories are empty.',
+    });
+    let prev2 = 0, prev1 = 0;
+    const dp = nums.map(() => null);
+    const skipped = nums.map(() => false);
+    for (let i = 0; i < nums.length; i++) {
+      const x = nums[i];
+      const rob = prev2 + x;
+      const skip = prev1;
+      const cur = Math.max(rob, skip);
+      const choice = rob >= skip ? 'rob' : 'skip';
+
+      // DECIDE step — pills hold best[i-2] and best[i-1]
+      steps.push({
+        phase: 'decide', i, x, prev2, prev1, rob, skip, cur, choice,
+        prev2_idx: i - 2 >= 0 ? i - 2 : -1,
+        prev1_idx: i - 1 >= 0 ? i - 1 : -1,
+        dp: [...dp], skipped: [...skipped],
+        note: 'DECIDE i=' + i + ' (nums[' + i + ']=' + x + '). '
+            + 'rob = prev2 + nums[i] = ' + prev2 + ' + ' + x + ' = ' + rob + '. '
+            + 'skip = prev1 = ' + prev1 + '. '
+            + 'Winner: ' + choice.toUpperCase() + ', so cur = ' + cur + '.',
+      });
+
+      dp[i] = cur;
+      skipped[i] = (choice === 'skip');
+      const newP2 = prev1;
+      const newP1 = cur;
+
+      // SLIDE step — pills shift right by one: now hold best[i-1] and best[i]
+      steps.push({
+        phase: 'slide', i, x, prev2: newP2, prev1: newP1, rob, skip, cur, choice,
+        prev2_idx: i - 1 >= 0 ? i - 1 : -1,
+        prev1_idx: i,
+        dp: [...dp], skipped: [...skipped],
+        note: 'SLIDE. prev2 ← old prev1 (=' + newP2 + ').  prev1 ← cur (=' + newP1 + '). '
+            + 'Both labels under the houses move one step to the right — we\'re ready for i=' + (i + 1) + '.',
+      });
+      prev2 = newP2; prev1 = newP1;
+    }
+    steps.push({
+      phase: 'done', i: nums.length - 1, prev2, prev1,
+      prev2_idx: nums.length - 2 >= 0 ? nums.length - 2 : -1,
+      prev1_idx: nums.length - 1,
+      dp: [...dp], skipped: [...skipped],
+      note: 'DONE. prev1 = ' + prev1 + ' is the answer — the best total respecting the adjacency rule.',
+    });
+    return steps;
+  }
+
+  function siRender(st) {
+    document.getElementById('si-p2val').textContent = st.prev2;
+    document.getElementById('si-p1val').textContent = st.prev1;
+    const p2pill = document.getElementById('si-mem-p2');
+    const p1pill = document.getElementById('si-mem-p1');
+    p2pill.classList.remove('lit', 'slid');
+    p1pill.classList.remove('lit', 'slid');
+    if (st.phase === 'decide') {
+      p2pill.classList.add('lit'); p1pill.classList.add('lit');
+    } else if (st.phase === 'slide') {
+      p2pill.classList.add('slid'); p1pill.classList.add('slid');
+    } else if (st.phase === 'done') {
+      p1pill.classList.add('lit');
+    }
+
+    // Houses: cur/done/skipped color + pointer labels showing what each pill holds
+    SI_NUMS.forEach((_, i) => {
+      const bar = document.getElementById('si-houses-bar-' + i);
+      const dp  = document.getElementById('si-houses-dp-' + i);
+      const ptr = document.getElementById('si-houses-ptr-' + i);
+      if (!bar || !dp || !ptr) return;
+      bar.classList.remove('cur', 'done', 'skipped');
+      if (st.phase === 'decide' && i === st.i) {
+        bar.classList.add('cur');
+      } else if (st.dp[i] !== null) {
+        bar.classList.add(st.skipped[i] ? 'skipped' : 'done');
+      }
+      dp.textContent = st.dp[i] === null ? '·' : ('best=' + st.dp[i]);
+
+      const labels = [];
+      if (i === st.prev2_idx) labels.push('↑ prev2');
+      if (i === st.prev1_idx) labels.push('↑ prev1');
+      ptr.textContent = labels.join('   ');
+      ptr.classList.toggle('has-ptr', labels.length > 0);
+    });
+
+    const robEl  = document.getElementById('si-rob');
+    const skipEl = document.getElementById('si-skip');
+    robEl.classList.remove('win-rob', 'win-skip', 'lose');
+    skipEl.classList.remove('win-rob', 'win-skip', 'lose');
+    if (st.phase === 'decide') {
+      document.getElementById('si-robv').textContent  = st.rob;
+      document.getElementById('si-skipv').textContent = st.skip;
+      document.getElementById('si-curv').textContent  = st.cur;
+      if (st.choice === 'rob') { robEl.classList.add('win-rob');   skipEl.classList.add('lose'); }
+      else                     { skipEl.classList.add('win-skip'); robEl.classList.add('lose');  }
+    } else if (st.phase === 'slide') {
+      // Keep the decision values visible but dimmed; the slide is about the pills, not new math
+      document.getElementById('si-robv').textContent  = st.rob;
+      document.getElementById('si-skipv').textContent = st.skip;
+      document.getElementById('si-curv').textContent  = st.cur;
+      robEl.classList.add('lose');
+      skipEl.classList.add('lose');
+    } else {
+      document.getElementById('si-robv').textContent  = '–';
+      document.getElementById('si-skipv').textContent = '–';
+      document.getElementById('si-curv').textContent  = st.phase === 'done' ? st.prev1 : '–';
+    }
+    document.getElementById('si-note').textContent = st.note;
+
+    const ph = document.getElementById('si-phase');
+    if (ph) {
+      let label = 'START';
+      if (st.phase === 'decide') label = 'DECIDE  i=' + st.i;
+      else if (st.phase === 'slide')  label = 'SLIDE   i=' + st.i;
+      else if (st.phase === 'done')   label = 'DONE';
+      ph.textContent = label;
+      ph.className = 'si-phase phase-' + st.phase;
+    }
+    const ctr = document.getElementById('si-sctr');
+    if (ctr) ctr.textContent = 'step ' + (siCur + 1) + ' / ' + siSteps.length;
+  }
+
+  function siNext()   { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()   { if (siCur > 0)                   { siCur--; siRender(siSteps[siCur]); } }
+  function siReset()  { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay(){ clearInterval(siTimer); siTimer = null;
+                         const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => {
+      if (siCur < siSteps.length - 1) siNext(); else siStopPlay();
+    }, 1400);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // §2 — Brute force (subset enumeration)
+  // ────────────────────────────────────────────────────────────────────────
+  let bfSteps = []; let bfCur = 0; let bfTimer = null; let bfNumsRef = [];
+
+  function bfGenSteps(nums) {
+    const n = nums.length;
+    const steps = [];
+    let best = 0;
+    for (let mask = 0; mask < (1 << n); mask++) {
+      let legal = true, sum = 0, prevBit = -2;
+      const picked = new Array(n).fill(false);
+      for (let i = 0; i < n; i++) {
+        if ((mask >> i) & 1) {
+          picked[i] = true;
+          if (i - prevBit === 1) { legal = false; }
+          sum += nums[i];
+          prevBit = i;
+        }
+      }
+      if (legal) best = Math.max(best, sum);
+      steps.push({
+        mask, picked, legal, sum, best,
+        maskStr: mask.toString(2).padStart(n, '0').split('').reverse().join(''),
+        idx: mask + 1, total: (1 << n),
+      });
+    }
+    steps.push({ phase: 'done', best, idx: (1 << n), total: (1 << n) });
+    return steps;
+  }
+
+  function bfRender(st) {
+    bfNumsRef.forEach((_, i) => {
+      const bar = document.getElementById('bf-strip-bar-' + i);
+      if (!bar) return;
+      bar.classList.remove('cur', 'done', 'skipped');
+      if (st.phase === 'done') {
+        // leave default
+      } else if (st.picked && st.picked[i]) {
+        bar.classList.add(st.legal ? 'done' : 'skipped');
+      }
+    });
+    const state = document.getElementById('bf-state');
+    if (st.phase === 'done') {
+      state.textContent = 'done · best = ' + st.best;
+    } else {
+      const legalColor = st.legal ? 'var(--text-success)' : 'var(--text-danger)';
+      const legalLabel = st.legal ? 'yes' : 'NO (adjacent)';
+      state.innerHTML = 'mask = <b>' + st.maskStr + '</b> &nbsp;·&nbsp; sum = ' + st.sum
+                     + ' &nbsp;·&nbsp; legal = <b style="color:' + legalColor + '">' + legalLabel + '</b>'
+                     + ' &nbsp;·&nbsp; best = ' + st.best;
+    }
+    document.getElementById('bf-checks').textContent = st.idx;
+    document.getElementById('bf-sctr').textContent = 'Step ' + (bfCur + 1) + ' / ' + bfSteps.length;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0)                   { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+  function bfLoadEx(idx) {
+    bfStopPlay();
+    ['bf-ex0', 'bf-ex1', 'bf-ex2'].forEach((id, i) => {
+      const e = document.getElementById(id); if (e) e.classList.toggle('active', i === idx);
+    });
+    bfNumsRef = BF_EX[idx].nums;
+    buildHouses('bf-strip', bfNumsRef);
+    document.getElementById('bf-cap').textContent =
+      'Enumerating 2^' + bfNumsRef.length + ' = ' + (1 << bfNumsRef.length) + ' subsets · adjacency check · running best';
+    bfSteps = bfGenSteps(bfNumsRef);
+    bfCur = 0;
+    bfRender(bfSteps[0]);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // §6 — Code visualization
+  // ────────────────────────────────────────────────────────────────────────
+  const CV_LINES = [
+    { n: 1,  c: 'int rob(vector<int>& nums) {' },
+    { n: 2,  c: '    int prev2 = 0;' },
+    { n: 3,  c: '    int prev1 = 0;' },
+    { n: 4,  c: '    for (int x : nums) {' },
+    { n: 5,  c: '        int rob_it = prev2 + x;' },
+    { n: 6,  c: '        int skip   = prev1;' },
+    { n: 7,  c: '        int cur    = max(rob_it, skip);' },
+    { n: 8,  c: '        prev2 = prev1;' },
+    { n: 9,  c: '        prev1 = cur;' },
+    { n: 10, c: '    }' },
+    { n: 11, c: '    return prev1;' },
+    { n: 12, c: '}' },
+  ];
+
+  let cvSteps = []; let cvCur = 0; let cvTimer = null; let cvNumsRef = [];
+
+  // cvGenSteps visits EVERY code line in order so the line-by-line viz never
+  // jumps over rows. Six steps per loop iteration (lines 4-9), plus the two
+  // init lines (2, 3) and the return (line 11).
+  function cvGenSteps(nums) {
+    const steps = [];
+
+    // line 2 — init prev2
+    steps.push({
+      line: 2, prev2: 0, prev1: 0, i: -1,
+      dp: nums.map(() => null), skipped: nums.map(() => false),
+      changed: ['p2'],
+      narr: 'prev2 = 0. (Rolling memory for "best total up to two houses ago".)',
+    });
+    // line 3 — init prev1
+    steps.push({
+      line: 3, prev2: 0, prev1: 0, i: -1,
+      dp: nums.map(() => null), skipped: nums.map(() => false),
+      changed: ['p1'],
+      narr: 'prev1 = 0. (Rolling memory for "best total up to one house ago".)',
+    });
+
+    let prev2 = 0, prev1 = 0;
+    const dp = nums.map(() => null);
+    const skipped = nums.map(() => false);
+
+    for (let i = 0; i < nums.length; i++) {
+      const x = nums[i];
+      const rob_it = prev2 + x;
+      const skip   = prev1;
+      const cur    = Math.max(rob_it, skip);
+      const choice = rob_it >= skip ? 'rob' : 'skip';
+
+      // Snapshot helpers: during lines 4/5/6, dp[i] is not yet decided
+      const dpPre      = dp.map((v, idx) => idx < i ? v : null);
+      const skippedPre = skipped.map((v, idx) => idx < i ? v : false);
+
+      // line 4 — for (int x : nums) { ... }  → fetch the next x
+      steps.push({
+        line: 4, i, x, prev2, prev1,
+        dp: [...dpPre], skipped: [...skippedPre],
+        changed: ['i', 'x'],
+        narr: 'Iteration ' + (i + 1) + ' of ' + nums.length + ': take the next house, x = nums[' + i + '] = ' + x + '.',
+      });
+
+      // line 5 — int rob_it = prev2 + x
+      steps.push({
+        line: 5, i, x, prev2, prev1, rob_it,
+        dp: [...dpPre], skipped: [...skippedPre],
+        changed: ['rob'],
+        narr: 'rob_it = prev2 + x = ' + prev2 + ' + ' + x + ' = ' + rob_it + '. (Money if we ROB house ' + i + '.)',
+      });
+
+      // line 6 — int skip = prev1
+      steps.push({
+        line: 6, i, x, prev2, prev1, rob_it, skip,
+        dp: [...dpPre], skipped: [...skippedPre],
+        changed: ['skip'],
+        narr: 'skip = prev1 = ' + skip + '. (Money if we SKIP house ' + i + '.)',
+      });
+
+      // line 7 — int cur = max(rob_it, skip)
+      dp[i] = cur;
+      skipped[i] = (choice === 'skip');
+      steps.push({
+        line: 7, i, x, prev2, prev1, rob_it, skip, cur,
+        dp: [...dp], skipped: [...skipped],
+        changed: ['cur'],
+        phase: 'match',
+        narr: 'cur = max(' + rob_it + ', ' + skip + ') = ' + cur + '.  Winner: ' + choice.toUpperCase() + '.',
+      });
+
+      const newP2 = prev1;
+      const newP1 = cur;
+
+      // line 8 — prev2 = prev1  (save the old prev1 BEFORE we overwrite it)
+      steps.push({
+        line: 8, i, x, prev2: newP2, prev1, rob_it, skip, cur,
+        dp: [...dp], skipped: [...skipped],
+        changed: ['p2'],
+        narr: 'prev2 = prev1 = ' + newP2 + '. (Save old prev1 before line 9 overwrites it.)',
+      });
+
+      // line 9 — prev1 = cur
+      steps.push({
+        line: 9, i, x, prev2: newP2, prev1: newP1, rob_it, skip, cur,
+        dp: [...dp], skipped: [...skipped],
+        changed: ['p1'],
+        narr: 'prev1 = cur = ' + newP1 + '. The rolling pair has slid one house to the right.',
+      });
+
+      prev2 = newP2; prev1 = newP1;
+    }
+
+    // line 11 — return prev1
+    steps.push({
+      line: 11, i: nums.length - 1, prev2, prev1,
+      dp: [...dp], skipped: [...skipped],
+      changed: [],
+      phase: 'done',
+      narr: 'return prev1 = ' + prev1 + '. That is the answer.',
+    });
+    return steps;
+  }
+
+  function cvSetCard(id, val, changed, isMatch) {
+    const c = document.getElementById('cv-v-' + id); if (!c) return;
+    c.classList.remove('hl', 'hl-match', 'dim');
+    const valEl = c.querySelector('.cv-var-val');
+    if (val === undefined || val === null) { valEl.textContent = '—'; c.classList.add('dim'); return; }
+    valEl.textContent = String(val);
+    if (isMatch) c.classList.add('hl-match');
+    else if (changed) c.classList.add('hl');
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const lineEl = document.getElementById('cvL' + st.line);
+    if (lineEl) lineEl.classList.add(st.phase === 'match' || st.phase === 'done' ? 'active-match' : 'active');
+
+    const chg = new Set(st.changed || []);
+    const isMatchStep = st.phase === 'match' || st.phase === 'done';
+    cvSetCard('i',    st.i  >= 0 ? st.i  : null,            chg.has('i'),    false);
+    cvSetCard('x',    st.x !== undefined ? st.x : null,     chg.has('x'),    false);
+    cvSetCard('p2',   st.prev2,                              chg.has('p2'),   false);
+    cvSetCard('p1',   st.prev1,                              chg.has('p1'),   st.phase === 'done');
+    cvSetCard('rob',  st.rob_it !== undefined ? st.rob_it : null, chg.has('rob'),  false);
+    cvSetCard('skip', st.skip   !== undefined ? st.skip   : null, chg.has('skip'), false);
+    cvSetCard('cur',  st.cur    !== undefined ? st.cur    : null, chg.has('cur'),  isMatchStep);
+
+    const narr = document.getElementById('cv-narration');
+    narr.classList.remove('is-active', 'is-match');
+    narr.classList.add(isMatchStep ? 'is-match' : 'is-active');
+    narr.textContent = st.narr;
+
+    cvNumsRef.forEach((_, i) => {
+      const bar = document.getElementById('cv-houses-bar-' + i);
+      const dp  = document.getElementById('cv-houses-dp-' + i);
+      if (!bar || !dp) return;
+      bar.classList.remove('cur', 'done', 'skipped');
+      if (i === st.i && (st.phase !== 'done')) bar.classList.add('cur');
+      else if (st.dp[i] !== null) bar.classList.add(st.skipped[i] ? 'skipped' : 'done');
+      dp.textContent = st.dp[i] === null ? '·' : ('best=' + st.dp[i]);
+    });
+
+    document.getElementById('cv-sctr').textContent = 'Step ' + (cvCur + 1) + ' / ' + cvSteps.length;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0)                   { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+  function cvLoadEx(idx) {
+    cvStopPlay();
+    ['cv-ex0', 'cv-ex1', 'cv-ex2'].forEach((id, i) => {
+      const e = document.getElementById(id); if (e) e.classList.toggle('active', i === idx);
+    });
+    cvNumsRef = EX[idx].nums;
+    buildHouses('cv-houses', cvNumsRef);
+    document.getElementById('cv-arr-cap').textContent =
+      'nums = [' + cvNumsRef.join(', ') + ']  →  expected ' + EX[idx].answer;
+    cvSteps = cvGenSteps(cvNumsRef);
+    cvCur = 0;
+    cvRender(cvSteps[0]);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // §7 — Dry run
+  // ────────────────────────────────────────────────────────────────────────
+  let drSteps = []; let drCur = 0; let drTimer = null; let drNumsRef = [];
+
+  function drGenSteps(nums) {
+    const steps = [];
+    steps.push({
+      phase: 'init', i: -1, prev2: 0, prev1: 0,
+      dp: nums.map(() => null), skipped: nums.map(() => false),
+      what: 'Initialise the rolling pair.',
+      why:  'Both prev2 and prev1 start at 0 — empty prefix has best total 0.',
+    });
+    let prev2 = 0, prev1 = 0;
+    const dp = nums.map(() => null);
+    const skipped = nums.map(() => false);
+    for (let i = 0; i < nums.length; i++) {
+      const x = nums[i];
+      const rob_it = prev2 + x;
+      const skip = prev1;
+      const cur = Math.max(rob_it, skip);
+      const choice = rob_it >= skip ? 'rob' : 'skip';
+      dp[i] = cur;
+      skipped[i] = (choice === 'skip');
+      steps.push({
+        phase: choice, i, x, prev2, prev1, rob_it, skip, cur,
+        dp: [...dp], skipped: [...skipped],
+        what: choice === 'rob'
+          ? 'i=' + i + ': ROB nums[' + i + '] = ' + x + '.'
+          : 'i=' + i + ': SKIP nums[' + i + '] = ' + x + '.',
+        why: choice === 'rob'
+          ? 'rob_it = prev2(' + prev2 + ') + ' + x + ' = ' + rob_it + ' ≥ skip = prev1(' + prev1 + ') = ' + skip + '.'
+          : 'skip = prev1(' + prev1 + ') > rob_it = prev2(' + prev2 + ') + ' + x + ' = ' + rob_it + '.',
+      });
+      prev2 = prev1;
+      prev1 = cur;
+    }
+    steps.push({
+      phase: 'done', i: nums.length - 1, prev2, prev1,
+      dp: [...dp], skipped: [...skipped],
+      what: 'Return prev1 = ' + prev1 + '.',
+      why:  'After the slide, prev1 always holds the best up to the last seen house.',
+    });
+    return steps;
+  }
+
+  function drRender(st) {
+    document.getElementById('dr-p2val').textContent = st.prev2;
+    document.getElementById('dr-p1val').textContent = st.prev1;
+    document.getElementById('dr-mem-p2').classList.toggle('lit', st.phase === 'rob' || st.phase === 'skip');
+    document.getElementById('dr-mem-p1').classList.toggle('lit', st.phase === 'rob' || st.phase === 'skip' || st.phase === 'done');
+
+    drNumsRef.forEach((_, i) => {
+      const bar = document.getElementById('dr-houses-bar-' + i);
+      const dp  = document.getElementById('dr-houses-dp-' + i);
+      if (!bar || !dp) return;
+      bar.classList.remove('cur', 'done', 'skipped');
+      if ((st.phase === 'rob' || st.phase === 'skip') && i === st.i) bar.classList.add('cur');
+      else if (st.dp[i] !== null) bar.classList.add(st.skipped[i] ? 'skipped' : 'done');
+      dp.textContent = st.dp[i] === null ? '·' : ('best=' + st.dp[i]);
+    });
+
+    document.getElementById('dr-fi').textContent    = st.i >= 0 ? st.i : '—';
+    document.getElementById('dr-fx').textContent    = st.x !== undefined ? st.x : '—';
+    document.getElementById('dr-frob').textContent  = st.rob_it !== undefined ? st.rob_it : '—';
+    document.getElementById('dr-fskip').textContent = st.skip   !== undefined ? st.skip   : '—';
+    document.getElementById('dr-feq').textContent   =
+      (st.cur !== undefined) ? ('cur = max(' + st.rob_it + ', ' + st.skip + ') = ' + st.cur) : 'cur = max(rob_it, skip) = —';
+
+    const fp = document.getElementById('dr-formula');
+    fp.classList.remove('is-match', 'is-squeeze');
+    if (st.phase === 'rob' || st.phase === 'done') fp.classList.add('is-match');
+    else if (st.phase === 'skip') fp.classList.add('is-squeeze');
+
+    const sp = document.getElementById('dr-step');
+    sp.classList.remove('match', 'squeeze');
+    if (st.phase === 'rob' || st.phase === 'done') sp.classList.add('match');
+    else if (st.phase === 'skip') sp.classList.add('squeeze');
+
+    document.getElementById('dr-what').textContent = st.what;
+    document.getElementById('dr-why').innerHTML    = st.why;
+
+    document.getElementById('dr-sctr').textContent = 'Step ' + (drCur + 1) + ' / ' + drSteps.length;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0)                   { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+  function drLoadEx(idx) {
+    drStopPlay();
+    ['dr-ex0', 'dr-ex1', 'dr-ex2'].forEach((id, i) => {
+      const e = document.getElementById(id); if (e) e.classList.toggle('active', i === idx);
+    });
+    drNumsRef = EX[idx].nums;
+    buildHouses('dr-houses', drNumsRef);
+    document.getElementById('dr-cap').textContent =
+      'nums = [' + drNumsRef.join(', ') + ']  →  expected ' + EX[idx].answer;
+    drSteps = drGenSteps(drNumsRef);
+    drCur = 0;
+    drRender(drSteps[0]);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Init
+  // ────────────────────────────────────────────────────────────────────────
+  cvBuildCode(CV_LINES);
+
+  buildHouses('si-houses', SI_NUMS);
+  siSteps = siGenSteps(SI_NUMS);
+  siCur = 0;
+  siRender(siSteps[0]);
+
+  bfLoadEx(0);
+  cvLoadEx(0);
+  drLoadEx(0);
+</script>
+
+</body>
+</html>
