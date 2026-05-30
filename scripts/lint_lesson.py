@@ -36,6 +36,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LESSONS = ROOT / "lessons"
+VERIFY_SCRIPT = ROOT / "scripts" / "verify_animation.mjs"
 
 # Legacy carve-out, retained as an empty set so the surrounding code paths
 # (severity = "warn" if slug in LEGACY_GOLDENS else "fail") still resolve.
@@ -522,62 +523,6 @@ def lint_section2(report: LintReport, html: str, slug: str = "") -> None:
         report.add("§2:no drift anti-patterns", False, "; ".join(anti_patterns))
     else:
         report.add("§2:no drift anti-patterns", True)
-
-
-def lint_animation(report: LintReport, slug: str) -> None:
-    """Correctness gate: run the animation step-generators headlessly and check
-    the computed answer against each example's declared answer.
-
-    Delegates to scripts/verify_animation.mjs (Node). The dry-run generator
-    (drGenSteps) is the oracle; see lessons/design/sec7_dry_run.md "Correctness
-    contract". A lesson that cannot be verified (no oracle, impure generator,
-    missing answers, or a wrong answer) FAILS — it must not reach
-    lesson_status=generated.
-    """
-    node = shutil.which("node")
-    if node is None:
-        report.add("§animation:correct", False,
-                   "node not found on PATH — cannot run verify_animation.mjs; "
-                   "install Node to enforce the animation-correctness gate",
-                   severity="warn")
-        return
-    if not VERIFY_SCRIPT.exists():
-        report.add("§animation:correct", False,
-                   f"{VERIFY_SCRIPT} missing", severity="warn")
-        return
-
-    try:
-        proc = subprocess.run(
-            [node, str(VERIFY_SCRIPT), slug, "--json"],
-            capture_output=True, text=True, timeout=30,
-        )
-        data = json.loads(proc.stdout or "{}")
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as e:
-        report.add("§animation:correct", False,
-                   f"verify_animation.mjs failed to run: {e}")
-        return
-
-    cases = data.get("cases", [])
-    errors = data.get("errors", [])
-    matched = [c for c in cases if c.get("ok") is True]
-    wrong = [c for c in cases if c.get("ok") is False and "computed" in c]
-    unverifiable = [c for c in cases if "computed" not in c and c.get("ok") is False]
-
-    if wrong:
-        c = wrong[0]
-        report.add("§animation:correct", False,
-                   f"{c['gen']} on {c['example']} computed {c.get('computed')!r} "
-                   f"≠ expected {c.get('expected')!r}"
-                   + (f" (+{len(wrong) - 1} more)" if len(wrong) > 1 else ""))
-    elif not matched:
-        detail = errors[0] if errors else (
-            unverifiable[0].get("reason", "no oracle") if unverifiable else "nothing verifiable")
-        report.add("§animation:correct", False,
-                   f"no checkable oracle — {detail}. See sec7_dry_run.md "
-                   f"'Correctness contract' (needs EX[].answer + terminal result:)")
-    else:
-        report.add("§animation:correct", True,
-                   f"{len(matched)} example(s) verified")
 
 
 def lint_animation(report: LintReport, slug: str) -> None:

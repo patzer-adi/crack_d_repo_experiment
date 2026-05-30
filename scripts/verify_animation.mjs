@@ -39,7 +39,14 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
-const GEN_NAMES = ["siGenSteps", "drGenSteps", "cvGenSteps", "bfGenSteps"];
+// Two authoring conventions coexist in the corpus:
+//   A (newer): function drGenSteps(arg, ...) driven by `const EX = [...]`
+//   B (older): function drGen(ex)            driven by `const EXAMPLES = [...]`
+// We extract the generators of both so the oracle can be found either way.
+const GEN_NAMES = [
+  "siGenSteps", "drGenSteps", "cvGenSteps", "bfGenSteps",
+  "siGen", "drGen", "cvGen", "bfGen",
+];
 
 // ── source extraction ──────────────────────────────────────────────────────
 
@@ -109,17 +116,29 @@ function deepEqual(a, b) {
 // Run one generator over one example. Returns {ok, computed, expected, reason}.
 function runCase(ctx, genName, fnSource, ex) {
   const params = paramNames(fnSource);
-  // Build the argument list: match each param name to a key on the example.
-  // Fall back to the first array-valued field for a single unmatched param.
+  // Convention B generators (drGen, siGen, …) take the WHOLE example object,
+  // e.g. drGen(ex) reads ex.nums / ex.target itself. Convention A generators
+  // (drGenSteps, …) take unpacked arguments mapped from the example's keys.
+  // Pass the whole example object when either (a) the generator is a
+  // convention-B "*Gen" (drGen(ex)), or (b) the generator destructures its
+  // single argument, e.g. drGenSteps({nums}) or drGenSteps({s1, s2}).
+  const endsInGen = /(?<!Steps)Gen$/.test(genName);
+  const destructures = params.length === 1 && params[0].startsWith("{");
   let args;
-  const matched = params.map((p) => (p in ex ? ex[p] : undefined));
-  if (matched.every((v) => v !== undefined) && params.length > 0) {
-    args = matched;
+  if (endsInGen || destructures) {
+    args = [ex];
   } else {
-    const firstArrayKey = Object.keys(ex).find((k) => Array.isArray(ex[k]));
-    if (params.length === 1 && firstArrayKey) args = [ex[firstArrayKey]];
-    else if (matched.some((v) => v !== undefined)) args = matched.map((v) => v ?? null);
-    else return { ok: false, reason: `cannot map args ${JSON.stringify(params)} to example keys ${JSON.stringify(Object.keys(ex))}` };
+    // Match each param name to a key on the example. Fall back to the first
+    // array-valued field for a single unmatched param.
+    const matched = params.map((p) => (p in ex ? ex[p] : undefined));
+    if (matched.every((v) => v !== undefined) && params.length > 0) {
+      args = matched;
+    } else {
+      const firstArrayKey = Object.keys(ex).find((k) => Array.isArray(ex[k]));
+      if (params.length === 1 && firstArrayKey) args = [ex[firstArrayKey]];
+      else if (matched.some((v) => v !== undefined)) args = matched.map((v) => v ?? null);
+      else return { ok: false, reason: `cannot map args ${JSON.stringify(params)} to example keys ${JSON.stringify(Object.keys(ex))}` };
+    }
   }
 
   let steps;
@@ -151,10 +170,11 @@ function verify(slug) {
   }
   const src = fs.readFileSync(htmlPath, "utf8");
 
-  // examples: prefer EX (the dry-run examples that carry answers)
-  const exLit = extractArrayLiteral(src, "EX");
+  // examples: prefer EX (convention A); fall back to EXAMPLES (convention B).
+  const exName = new RegExp("const\\s+EX\\s*=\\s*\\[").test(src) ? "EX" : "EXAMPLES";
+  const exLit = extractArrayLiteral(src, exName);
   if (!exLit) {
-    report.errors.push("no `const EX = [...]` example array found");
+    report.errors.push("no `const EX = [...]` or `const EXAMPLES = [...]` example array found");
     return report;
   }
 
@@ -195,10 +215,10 @@ function verify(slug) {
   // pedagogical inputs (SI_NUMS, BF_EX) that carry no answer AND are not built
   // to run on EX shapes — running them here risks infinite loops, so we never
   // do. The contract requires drGenSteps to exist and expose a terminal result.
-  const oracle = "drGenSteps";
-  if (!gens[oracle]) {
+  const oracle = gens["drGenSteps"] ? "drGenSteps" : gens["drGen"] ? "drGen" : null;
+  if (!oracle) {
     report.errors.push(
-      `no pure ${oracle} generator found — it is the required correctness oracle`
+      "no pure drGenSteps / drGen generator found — one is the required correctness oracle"
     );
     for (const n of Object.keys(gens)) report.skipped.push({ gen: n, reason: "not the oracle" });
     return report;
