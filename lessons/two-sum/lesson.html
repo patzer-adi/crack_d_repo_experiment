@@ -611,9 +611,9 @@
    DATA — shared examples (cv + dr); bf has a smaller set
 ══════════════════════════════ */
 const EXAMPLES=[
-  {nums:[2,7,11,15],                       target:9,  label:'fast'},
-  {nums:[1,5,9,3,8,11,4,7,2,6,10],         target:20, label:'slow'},
-  {nums:[3,3],                             target:6,  label:'edge'},
+  {nums:[2,7,11,15],                       target:9,  label:'fast', answer:[0,1]},
+  {nums:[1,5,9,3,8,11,4,7,2,6,10],         target:20, label:'slow', answer:[2,5]},
+  {nums:[3,3],                             target:6,  label:'edge', answer:[0,1]},
 ];
 const BF_EXAMPLES=[
   {nums:[2,7,11,15], target:9},
@@ -859,7 +859,7 @@ function drGen(ex){
     out.push({nums,n,target,i:curI,complement:curC,hit,
       seen:Object.assign({},seen),
       matchKey:matchKey||null,
-      what,why,phase, ans});
+      what,why,phase, ans, result:ans});
 
   snap(-1,null,null,
     `nums = [${nums.join(', ')}], target = ${target}`,

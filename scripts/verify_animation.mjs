@@ -119,23 +119,32 @@ function runCase(ctx, genName, fnSource, ex) {
   // Convention B generators (drGen, siGen, …) take the WHOLE example object,
   // e.g. drGen(ex) reads ex.nums / ex.target itself. Convention A generators
   // (drGenSteps, …) take unpacked arguments mapped from the example's keys.
-  // Pass the whole example object when either (a) the generator is a
-  // convention-B "*Gen" (drGen(ex)), or (b) the generator destructures its
-  // single argument, e.g. drGenSteps({nums}) or drGenSteps({s1, s2}).
-  const endsInGen = /(?<!Steps)Gen$/.test(genName);
-  const destructures = params.length === 1 && params[0].startsWith("{");
+  // Decide how to call the generator from its PARAMETER shape, not its name —
+  // both drGen and drGenSteps appear with either unpacked args or a single
+  // whole-object arg in the corpus:
+  //   • single param named `ex`/`e`, or a destructured `{a,b}` → pass the whole
+  //     example object   (drGen(ex), drGenSteps({nums}), drGen({n,reqs}))
+  //   • params that match example keys                        → unpack them
+  //     (drGen(nums), drGen(h), drGenSteps(coins, amount))
+  //   • single unmatched param + one array field              → pass that array
+  const wholeObject =
+    params.length === 1 &&
+    (params[0].startsWith("{") || params[0] === "ex" || params[0] === "e");
   let args;
-  if (endsInGen || destructures) {
+  if (wholeObject) {
     args = [ex];
   } else {
-    // Match each param name to a key on the example. Fall back to the first
-    // array-valued field for a single unmatched param.
     const matched = params.map((p) => (p in ex ? ex[p] : undefined));
     if (matched.every((v) => v !== undefined) && params.length > 0) {
       args = matched;
     } else {
-      const firstArrayKey = Object.keys(ex).find((k) => Array.isArray(ex[k]));
+      const inputKeys = Object.keys(ex).filter((k) => k !== "answer" && k !== "label");
+      const firstArrayKey = inputKeys.find((k) => Array.isArray(ex[k]));
       if (params.length === 1 && firstArrayKey) args = [ex[firstArrayKey]];
+      // Positional fallback: param names don't match keys (e.g. drGen(Aorig,
+      // Borig) over {A, B}); if the count of input fields equals the param
+      // count, map them in declaration order.
+      else if (inputKeys.length === params.length) args = inputKeys.map((k) => ex[k]);
       else if (matched.some((v) => v !== undefined)) args = matched.map((v) => v ?? null);
       else return { ok: false, reason: `cannot map args ${JSON.stringify(params)} to example keys ${JSON.stringify(Object.keys(ex))}` };
     }
