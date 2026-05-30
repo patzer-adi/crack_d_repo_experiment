@@ -1125,6 +1125,7 @@
     steps.push({
       phase: 'done', i: nums.length - 1, prev2, prev1,
       dp: [...dp], skipped: [...skipped],
+      result: prev1,
       what: 'Return prev1 = ' + prev1 + '.',
       why:  'After the slide, prev1 always holds the best up to the last seen house.',
     });
