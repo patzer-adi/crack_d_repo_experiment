@@ -978,6 +978,13 @@ const DR_EXAMPLES = [
 let drNums = DR_EXAMPLES[0];
 let drSteps = [], drCur = 0;
 
+// Gate oracle examples — answers hand-derived (brute force), independent of the generator.
+// [2,3,-2,4] → 2·3 = 6 · [-2,3,-4] → (-2)·3·(-4) = 24 · [-2,0,-1] → best is 0
+const EX = [
+  { nums: [2, 3, -2, 4], answer: 6 },
+  { nums: [-2, 3, -4], answer: 24 },
+  { nums: [-2, 0, -1], answer: 0 },
+];
 function drGenSteps(nums) {
   const steps = [];
   let cm = nums[0], cn = nums[0], bs = nums[0];
@@ -1025,6 +1032,7 @@ function drGenSteps(nums) {
     what: `Return best = ${bs}.`,
     why: `Linear scan complete; the global answer carries the largest cur_max seen.`,
     phase: 'done',
+    result: bs,
   });
   return steps;
 }
