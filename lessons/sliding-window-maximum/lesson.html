@@ -1084,6 +1084,14 @@
   let drTimer = null;
   let drActive = 0;
 
+  // Gate oracle examples — max arrays hand-derived (each window by hand), independent of the generator.
+  // [1,3,-1,-3,5,3,6,7],k3 → [3,3,5,5,6,7] · [5,4,3,2,1],k3 → [5,4,3] · [1,2,3,4,5],k3 → [3,4,5] · [7,7,7,7],k2 → [7,7,7]
+  const EX = [
+    { nums: [1, 3, -1, -3, 5, 3, 6, 7], k: 3, answer: [3, 3, 5, 5, 6, 7] },
+    { nums: [5, 4, 3, 2, 1], k: 3, answer: [5, 4, 3] },
+    { nums: [1, 2, 3, 4, 5], k: 3, answer: [3, 4, 5] },
+    { nums: [7, 7, 7, 7], k: 2, answer: [7, 7, 7] },
+  ];
   function drGenSteps(nums, k) {
     const steps = [];
     const dq = [];
@@ -1129,6 +1137,7 @@
         dq: [...dq], poppedBack: [...poppedBack], poppedFront,
         winStart, winEnd, curMax, out: [...out],
         action, what, why,
+        result: [...out],
       });
     }
     return steps;
