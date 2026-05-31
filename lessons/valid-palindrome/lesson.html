@@ -664,9 +664,9 @@
 
 <script>
   const EXAMPLES = [
-    { input: "a.", expected: true },
-    { input: "A man, a plan, a canal: Panama", expected: true },
-    { input: "0P", expected: false },
+    { input: "a.", expected: true, answer: true },
+    { input: "A man, a plan, a canal: Panama", expected: true, answer: true },
+    { input: "0P", expected: false, answer: false },
   ];
 
   // ═══ BRUTE FORCE ═══ (stepped: build cleaned, then reverse, then compare)
@@ -937,7 +937,8 @@
           sRight: cR,
           what: 'Return false',
           why: 'Mismatch found — not a palindrome',
-          phase: 'fail'
+          phase: 'fail',
+          result: false
         });
         return steps;
       }
@@ -953,7 +954,8 @@
       sRight: '—',
       what: 'Return true',
       why: 'All alphanumeric pairs matched — palindrome',
-      phase: 'success'
+      phase: 'success',
+      result: true
     });
 
     return steps;

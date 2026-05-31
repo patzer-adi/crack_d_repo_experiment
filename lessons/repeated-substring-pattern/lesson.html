@@ -686,9 +686,9 @@ function drTogglePlay(){if(drTimer){drStopPlay();}else{document.getElementById('
    SHARED DATA
 ══════════════════════════════ */
 const EXAMPLES=[
-  {s:'abab'},
-  {s:'abcdabcdabcd'},
-  {s:'abcabcabd'},
+  {s:'abab', answer:true},
+  {s:'abcdabcdabcd', answer:true},
+  {s:'abcabcabd', answer:false},
 ];
 
 /* tiny helper: build a strip of character cells with index labels */
@@ -991,12 +991,13 @@ function drGenSteps({s}){
     what: opts.what,
     why:  opts.why,
     found: opts.found ?? null,
+    result: opts.result ?? null,
     log: [...log],
   });
 
   if(n < 2){
     log.push({c:'sk', t:`n = ${n} < 2 → false (no candidates)`});
-    snap({phase:'done', what:`n = ${n} < 2 — no possible period.`, why:'Return false immediately.', found:false});
+    snap({phase:'done', what:`n = ${n} < 2 — no possible period.`, why:'Return false immediately.', found:false, result:false});
     return out;
   }
 
@@ -1040,11 +1041,11 @@ function drGenSteps({s}){
       log.push({c:'ok', t:`d=${d}: ✓ all match → s is ${n/d} copies of "${s.slice(0,d)}"`});
       snap({d, mod:0, periodEnd:d-1, matched, doneAll:true, phase:'match',
         what:`d = ${d}: all ${n-d} comparisons passed. s is ${n/d} copies of "${s.slice(0,d)}".`,
-        why:`Return true.`, found:true});
+        why:`Return true.`, found:true, result:true});
       return out;
     }
   }
-  snap({phase:'done', what:'No divisor produced a clean periodicity check.', why:'Return false.', found:false});
+  snap({phase:'done', what:'No divisor produced a clean periodicity check.', why:'Return false.', found:false, result:false});
   return out;
 }
 
