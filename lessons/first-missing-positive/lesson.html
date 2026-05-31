@@ -930,13 +930,13 @@
     for (let i = 0; i < n; i++) {
       const expected = i + 1;
       if (arr[i] !== expected) {
-        steps.push({arr: [...arr], i, phase: 'done', action: 'found', foundAt: i, answer: expected,
+        steps.push({arr: [...arr], i, phase: 'done', action: 'found', foundAt: i, answer: expected, result: expected,
                     narr: `nums[${i}] = ${arr[i]} ≠ expected ${expected}. Return ${expected} — the first missing positive.`});
         return steps;
       }
     }
 
-    steps.push({arr: [...arr], i: n - 1, phase: 'done', action: 'return', answer: n + 1,
+    steps.push({arr: [...arr], i: n - 1, phase: 'done', action: 'return', answer: n + 1, result: n + 1,
                 narr: `All n positions hold their expected value. Return n + 1 = ${n + 1}.`});
     return steps;
   }

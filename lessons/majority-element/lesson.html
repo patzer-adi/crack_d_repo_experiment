@@ -789,7 +789,7 @@ function drGenSteps({nums}) {
     }
   }
 
-  out.push({i:'—', num:'—', candidate, count, active:-1, phase:'done',
+  out.push({i:'—', num:'—', candidate, count, active:-1, phase:'done', result: candidate,
     what:`Return candidate = ${candidate}.`,
     why:`Majority element always survives vote cancellation.`,
     eq:`→ ${candidate}`});
