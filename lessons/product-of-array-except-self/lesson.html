@@ -593,6 +593,7 @@
 <script>
   /* ─── DATA ─── */
   const EXAMPLES    = [[1,2,3,4], [-1,1,0,-3,3], [2,3,4,5]];
+  const EX = [{nums:[1,2,3,4],answer:[24,12,8,6]},{nums:[-1,1,0,-3,3],answer:[0,0,9,0,0]},{nums:[2,3,4,5],answer:[60,40,30,24]}];
   const BF_EXAMPLES = [[1,2,3,4], [2,3,4,5]];
 
   /* ─── BRUTE FORCE ─── */
@@ -800,7 +801,7 @@
       nums, out:[...out], n,
       written:[...written], finalised:[...finalised],
       i: vars.i, left: vars.left, right: vars.right, outi: vars.outi,
-      what, why, phase,
+      what, why, phase, result: vars.result,
     });
     snap('Start: out[] = [1,1,…], left = 1, right = 1.', 'Two passes: L→R writes prefix products, R→L folds in suffix products.', 'init', {i:null,left,right,outi:null});
     for(let i=0;i<n;i++){
@@ -823,7 +824,7 @@
       );
       right *= nums[i];
     }
-    snap(`Done. answer = [${out.join(', ')}].`, 'Two passes, no division, O(1) extra space beyond the output.', 'done', {i:null,left,right,outi:null});
+    snap(`Done. answer = [${out.join(', ')}].`, 'Two passes, no division, O(1) extra space beyond the output.', 'done', {i:null,left,right,outi:null,result:[...out]});
     return steps;
   }
   function drRenderStrip(st){
