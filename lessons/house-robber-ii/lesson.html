@@ -1411,7 +1411,7 @@
     const answer = Math.max(caseA, caseB);
     steps.push({
       phaseLbl: 'combine', case: '—', i: -3,
-      prev2: p2, prev1: p1, caseA, caseB, answer,
+      prev2: p2, prev1: p1, caseA, caseB, answer, result: answer,
       slice: null, marks: nums.map(() => 'done'),
       what: 'answer = max(caseA, caseB) = max(' + caseA + ', ' + caseB + ') = ' + answer + '.',
       why: 'The better of the two endpoint-exclusion plans is the overall answer.',
