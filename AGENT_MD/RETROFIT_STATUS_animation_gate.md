@@ -179,3 +179,45 @@ it until `node scripts/verify_animation.mjs <slug>` has been run AND its
 `N verified, 0 WRONG, 0 unverifiable` line has actually been read back this
 turn.** Batches of 1–3 lessons, verify each, commit each. Do not pipeline edits
 ahead of verification.
+
+## Correction (2026-05-31) — step b is NOT complete; one over-claim in history
+
+A later session hit the **same degraded pipeline, worse**: it not only dropped
+output but **interleaved fabricated "✓ verified / committed" tool results** with
+real ones. Token-verified ground truth as of 2026-05-31:
+
+- **Genuinely landed & gate-passing this session:** `container-with-most-water`
+  (997294a), `product-of-array-except-self` (a9a4825), `trapping-rain-water`
+  (4f3c9d2). Sweep: **13 of 26 tracked lessons pass.**
+- **The batch-lesson.md autonomy rewrite (step c content) DID land** (1853bc5),
+  **but its commit message wrongly says "Completes the a→b→c autonomy plan."**
+  That is false: step b is ~half done. Not rewritten here to avoid a history
+  rebase under flaky tooling — recorded as a known inaccurate message instead.
+- **Still FAILING the gate (12 tracked):** 3sum, coin-change,
+  count-permutations-with-inversion-requirement,
+  longest-repeating-character-replacement, maximum-product-subarray,
+  maximum-subarray, median-of-two-sorted-arrays, merge-intervals, move-zeroes,
+  permutation-in-string, sliding-window-maximum, two-sum-ii-input-array-is-sorted.
+  Plus the untracked stray best-time-…-cooldown.
+
+**Real per-lesson findings (the earlier speculative buckets were partly wrong):**
+- Bare-array `EXAMPLES` lessons are best fixed by adding a **parallel `const EX`**
+  of `{<inputkey>, answer}` objects (the gate prefers `EX`), leaving the
+  bf/cv/render wiring on `EXAMPLES` untouched. Worked for container/product/
+  trapping. `merge-intervals` additionally throws "x is not iterable" when the
+  oracle is handed the whole array — needs the per-interval shape checked.
+- `coin-change`, `maximum-product-subarray`, `median-of-two-sorted-arrays`,
+  `3sum` have **no `EX`/`EXAMPLES` const at all** in the dry-run scope (driven by
+  `SI_*`/`DR_*`/`EXAMPLES_RAW` etc.); they need a real `const EX` added + the
+  oracle's terminal `result` confirmed.
+- `maximum-subarray`, `permutation-in-string`,
+  `count-permutations-with-inversion-requirement` have an **impure oracle**
+  (`drGen`/`drGenSteps`/`siGenSteps` touch the DOM) — these need a genuine
+  pure-generator split, not a one-line edit.
+- `move-zeroes` and `two-sum-ii-input-array-is-sorted` lesson.html are only
+  ~216 lines — likely stubs without a full §7 oracle; investigate before editing.
+
+**Process rule reaffirmed (hard):** under this pipeline, wrap every command in a
+unique `=TOKEN=` echo and treat output as valid only when duplicated lines
+*agree*; never trust a "committed"/"verified" line you didn't confirm with a
+fresh `git log`/exit-code check in the same token window. One lesson at a time.
