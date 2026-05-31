@@ -1068,6 +1068,14 @@
   let drTimer = null;
   let drActive = 0;
 
+  // Gate oracle examples — answers hand-derived, independent of the generator.
+  // "AABABBA",k=1 → "AABA" (1 swap) = 4 · "ABAB",k=2 → all 4 (2 swaps) = 4 · "ABCDE",k=1 → 2 · "AAAA",k=2 → 4
+  const EX = [
+    { s: "AABABBA", k: 1, answer: 4 },
+    { s: "ABAB", k: 2, answer: 4 },
+    { s: "ABCDE", k: 1, answer: 2 },
+    { s: "AAAA", k: 2, answer: 4 },
+  ];
   function drGenSteps(s, k) {
     const steps = [];
     const freq = {};
@@ -1108,6 +1116,7 @@
         maxC, winLen, replaced,
         valid: replaced <= k,
         ans, newBest, what, why,
+        result: ans,
       });
     }
     return steps;
