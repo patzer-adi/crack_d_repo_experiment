@@ -80,6 +80,21 @@ function extractFunction(src, name) {
   return null;
 }
 
+// Blank out string-literal contents, template literals, and comments so a
+// textual code scan (e.g. the DOM-purity check) never matches a keyword that
+// only appears in prose. Real code like `window.foo` survives; the word
+// "window" inside a narration string does not. This keeps the purity heuristic
+// honest without ever letting a wrong *answer* through (answers are checked
+// separately by deep-equality on the terminal step's result).
+function stripStringsAndComments(code) {
+  return code
+    .replace(/`(?:\\[\s\S]|\$\{[^}]*\}|[^\\`])*`/g, "``")
+    .replace(/'(?:\\.|[^'\\])*'/g, "''")
+    .replace(/"(?:\\.|[^"\\])*"/g, '""')
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+}
+
 // Parse the parameter names of `function name(a, b)` from its source.
 function paramNames(fnSource) {
   const m = /function\s+\w+\s*\(([^)]*)\)/.exec(fnSource);
@@ -191,7 +206,8 @@ function verify(slug) {
   for (const name of GEN_NAMES) {
     const fnSrc = extractFunction(src, name);
     if (fnSrc) {
-      if (/\b(document|getElementById|querySelector|window)\b/.test(fnSrc))
+      // scan code only — strings/comments are prose and must not trip the check
+      if (/\b(document|getElementById|querySelector|window)\b/.test(stripStringsAndComments(fnSrc)))
         report.errors.push(`${name} is impure (touches the DOM) — cannot verify headlessly`);
       else gens[name] = fnSrc;
     }
