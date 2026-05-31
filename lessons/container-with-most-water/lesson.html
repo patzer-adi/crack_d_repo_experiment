@@ -516,7 +516,7 @@
 
 <script src="../../static/lesson.js"></script>
 <script>
-const EXAMPLES=[[1,8,6,2,5,4,8,3,7],[1,1],[4,3,2,1,4]];
+const EXAMPLES=[{h:[1,8,6,2,5,4,8,3,7],answer:49},{h:[1,1],answer:1},{h:[4,3,2,1,4],answer:16}];
 const BF_EXAMPLES=[[1,8,6,2,5],[4,3,2,1,4]];
 
 /* ── BRUTE FORCE ── */
@@ -682,7 +682,7 @@ function cvReset(){cvStopPlay();cvCur=0;cvRender(cvSteps[0]);}
 function cvLoadEx(idx){
   cvStopPlay();cvCur=0;
   [0,1,2].forEach(i=>document.getElementById('cv-ex'+i).classList.toggle('active',i===idx));
-  cvSteps=cvGen(EXAMPLES[idx]);cvBuildCode(CV_LINES);cvRender(cvSteps[0]);
+  cvSteps=cvGen(EXAMPLES[idx].h);cvBuildCode(CV_LINES);cvRender(cvSteps[0]);
 }
 
 /* ── DRY RUN ── */
@@ -710,9 +710,10 @@ function drGen(h){
       isBest?'best':'squeeze',isBest);
     if(h[L]<=h[R])L++;else R--;
   }
-  snap(`Done. Maximum area = ${best}.`,
-    'L ≥ R — all useful pairs evaluated. O(n) time, O(1) space.',
-    'done',false);
+  out.push({h,L,R,best,cap:null,width:null,
+    what:`Done. Maximum area = ${best}.`,
+    why:'L ≥ R — all useful pairs evaluated. O(n) time, O(1) space.',
+    phase:'done',isBest:false,result:best});
   return out;
 }
 function drRenderStrip(st){
@@ -769,7 +770,7 @@ function drReset(){drStopPlay();drCur=0;drRender(drSteps[0]);}
 function drLoadEx(idx){
   drStopPlay();drCur=0;
   [0,1,2].forEach(i=>document.getElementById('dr-ex'+i).classList.toggle('active',i===idx));
-  drSteps=drGen(EXAMPLES[idx]);drRender(drSteps[0]);
+  drSteps=drGen(EXAMPLES[idx].h);drRender(drSteps[0]);
 }
 
 
