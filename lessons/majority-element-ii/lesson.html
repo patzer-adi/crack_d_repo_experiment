@@ -548,9 +548,9 @@
    SHARED DATA
 ═══════════════════════════════════ */
 const EXAMPLES = [
-  {nums: [3,2,3]},
-  {nums: [1,2,3,1,2,3,1,2]},
-  {nums: [1,2,2,3,1]},
+  {nums: [3,2,3], answer: [3]},
+  {nums: [1,2,3,1,2,3,1,2], answer: [1,2]},
+  {nums: [1,2,2,3,1], answer: [1,2]},
 ];
 const BF_EXAMPLES = [
   {nums: [1,1,2,2,3]},
@@ -858,7 +858,7 @@ function drGenSteps({nums}) {
   const result = [];
   if (res1) { result.push(c1); }
   if (res2) { result.push(c2); }
-  out.push({i:'—', num:'—', c1,k1,c2,k2, active:-1, phase:'done',
+  out.push({i:'—', num:'—', c1,k1,c2,k2, active:-1, phase:'done', result: [...result],
     what:`Return [${result.join(', ')}].`,
     why:`All elements appearing > n/3 times.`,
     eq:`→ [${result.join(', ')}]`});
