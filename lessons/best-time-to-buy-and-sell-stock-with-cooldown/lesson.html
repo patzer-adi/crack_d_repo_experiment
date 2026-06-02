@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Best Time to Buy and Sell Stock with Cooldown — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC CSS ONLY — bar charts, freq arrays, panel-height overrides */
+  /* Do not redefine any class already in static/lesson.css */
+  .bs-strip { display:flex; gap:6px; flex-wrap:wrap; margin:.5rem 0; }
+  .bs-cell  { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .bs-box   { width:42px; height:42px; display:flex; align-items:center; justify-content:center;
+              border:1px solid var(--border); border-radius:6px; font-family:var(--mono); font-size:15px;
+              background:var(--bg2); color:var(--text); transition:all .15s ease; }
+  .bs-box.cur { background:var(--bg-info); border-color:var(--border-info); color:var(--text-info); }
+  .bs-box.past{ opacity:.5; }
+  .bs-idx   { font-family:var(--mono); font-size:10px; color:var(--text3); }
+  .bs-states{ display:flex; gap:10px; flex-wrap:wrap; margin:.6rem 0; }
+  .bs-card  { flex:1; min-width:96px; border:1px solid var(--border); border-radius:8px;
+              padding:.5rem .65rem; background:var(--bg2); transition:all .15s ease; }
+  .bs-card.hold { background:var(--bg-warn);    border-color:var(--border-warn); }
+  .bs-card.sold { background:var(--bg-success); border-color:var(--border-success); }
+  .bs-card.rest { background:var(--bg-info);    border-color:var(--border-info); }
+  .bs-card.up   { box-shadow:0 0 0 2px var(--border-success) inset; }
+  .bs-cname { font-family:var(--mono); font-size:11px; color:var(--text3); }
+  .bs-cval  { font-family:var(--mono); font-size:18px; color:var(--text); }
+  .bs-card.hold .bs-cval { color:var(--text-warn); }
+  .bs-card.sold .bs-cval { color:var(--text-success); }
+  .bs-card.rest .bs-cval { color:var(--text-info); }
+  .bs-badge { display:inline-block; font-family:var(--mono); font-size:11px; padding:1px 8px; border-radius:10px;
+              border:1px solid var(--border); }
+  .bs-badge.hold { background:var(--bg-warn);    border-color:var(--border-warn);    color:var(--text-warn); }
+  .bs-badge.free { background:var(--bg-info);    border-color:var(--border-info);    color:var(--text-info); }
+  .bs-badge.cool { background:var(--bg2); color:var(--text3); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Best Time to Buy and Sell Stock with Cooldown</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/" target="_blank">LC #309</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Dynamic Programming</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <p class="acard-q">Can I hold more than one share at once?</p>
+      <p class="acard-a">No — at most one share at a time; you must sell before buying again.</p>
+      <p class="acard-u">→ the day's state is one of three labels, not a share count</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">What exactly does "cooldown" mean?</p>
+      <p class="acard-a">The day immediately after a sell, you may not buy.</p>
+      <p class="acard-u">→ a "just sold" state must be distinct from "free to buy"</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">How many transactions are allowed?</p>
+      <p class="acard-a">As many as you like, subject to the one-share and cooldown rules.</p>
+      <p class="acard-u">→ the buy/sell cycle must be allowed to repeat</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">What are the input bounds?</p>
+      <p class="acard-a"><code>1 ≤ n ≤ 5000</code>, <code>0 ≤ prices[i] ≤ 1000</code>.</p>
+      <p class="acard-u">→ an O(n) pass with three running ints is plenty fast</p>
+    </div>
+  </div>
+  <div class="infobox">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">One share at a time, unlimited transactions, a one-day cooldown after every sell, and small bounds. The answer is a single number — the maximum achievable profit — and we never need to end the timeline still holding a share.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Three states per day; carry the best profit in each</p>
+
+  <p class="body">Forget about tracking which specific days you bought and sold. On any given day you are in exactly one of three situations: you <strong>hold</strong> a share, you have <strong>just sold</strong> today (so tomorrow is a forced cooldown), or you are <strong>resting</strong> with no share and free to buy. The transitions between these are completely fixed — from resting you may stay or buy, from holding you may stay or sell, and from just-sold you can only drift into resting. So instead of searching over buy/sell schedules, carry the best profit reachable in each of the three states from one day to the next; cooldown is captured simply by routing "just sold" only into "rest", never straight back into a buy.</p>
+
+  <!-- Foundational visual: animated three-state machine over the prices -->
+  <div style="margin:1.1rem 0 .25rem">
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:var(--text3);margin-bottom:.4rem">
+      prices = [1, 2, 3, 0, 2] &nbsp;·&nbsp; profit ending each day in each state
+    </div>
+    <div id="si-strip" class="bs-strip"></div>
+    <div id="si-cards" class="bs-states"></div>
+    <div class="legend" style="margin-top:.2rem">
+      <span class="leg-item"><span class="leg-dot" style="background:var(--bg-warn);border:1px solid var(--border-warn)"></span><span class="leg-label">hold (own a share)</span></span>
+      <span class="leg-item"><span class="leg-dot" style="background:var(--bg-success);border:1px solid var(--border-success)"></span><span class="leg-label">sold (cooldown next)</span></span>
+      <span class="leg-item"><span class="leg-dot" style="background:var(--bg-info);border:1px solid var(--border-info)"></span><span class="leg-label">rest (free to buy)</span></span>
+    </div>
+    <div id="si-note" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin:.5rem 0;min-height:2.4em"></div>
+    <div class="ctrl-row" style="margin-top:.625rem">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Track three running values: <code>hold</code> (best profit while owning a share), <code>sold</code> (best profit if you sell <em>today</em>), and <code>rest</code> (best profit while idle and free to buy). Each new day: <code>hold = max(hold, rest − p)</code>, <code>sold = hold + p</code>, <code>rest = max(rest, sold)</code> — all computed from yesterday's snapshot. The cooldown lives entirely in that last line: today's <code>rest</code> can absorb yesterday's <code>sold</code>, so a freshly-sold position is never allowed to buy on the very next day. Answer: <code>max(sold, rest)</code>.</p>
+  </div>
+
+  <p class="body" style="margin-top:1rem">Why three states, and where the cooldown hides:</p>
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">Maximise profit with unlimited trades, one share at a time, and a one-day cooldown after each sell.</div>
+        <div class="chain-note">the problem</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">Each day ends in one of three states: hold, sold (today), or rest.</div>
+        <div class="chain-note">"not holding" must split into "sold today" and "resting" so the cooldown has somewhere to live</div>
+        <div class="chain-example">
+          <span class="pill n">own a share → hold</span><span class="arrow">→</span>
+          <span class="pill ok">sell → sold</span><span class="arrow">→</span><span class="pill n">tomorrow → rest</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">Transitions are fixed; carry the best profit in each state day to day.</div>
+        <div class="chain-note">hold = max(hold, rest−p); sold = hold+p; rest = max(rest, sold)</div>
+        <div class="chain-example">
+          <span class="pill n">rest, buy at p</span><span class="arrow">→</span><span class="pill n">hold − p</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">hold, sell at p</span><span class="arrow">→</span><span class="pill ok">sold + p</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">rest = max(rest, yesterday's sold)</span> — the only place the cooldown is encoded.</div>
+        <div class="chain-note">a just-sold position can become "rest" tomorrow, but never "buy" tomorrow</div>
+        <div class="chain-example">
+          <span class="pill n">sold yesterday</span><span class="arrow">→</span><span class="pill bad">no buy today</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill ok">rest today → buy tomorrow OK</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">Without the state insight, the only sure way is to try every decision at every day: when free, branch into <em>buy</em> or <em>skip</em>; when holding, branch into <em>sell</em> or <em>hold</em>; after a sell, the next day is forced cooldown. That is a binary decision tree of depth n — roughly 2ⁿ paths. Watch the "States explored" counter detonate even on a five-day input; the same sub-situations are re-derived over and over, which is exactly the redundancy the three running variables eliminate.</p>
+
+  <div class="bs-strip" id="bf-strip" style="margin-top:.5rem"></div>
+  <div class="panels-fixed" style="margin-top:.6rem">
+    <div class="formula-panel" id="bf-formula">
+      <div class="formula-grid">
+        <div><p class="fitem-label">day</p><p class="fitem-val" id="bf-f-day">—</p></div>
+        <div><p class="fitem-label">state</p><p class="fitem-val" id="bf-f-state">—</p></div>
+        <div><p class="fitem-label">profit</p><p class="fitem-val" id="bf-f-profit">0</p></div>
+        <div><p class="fitem-label">States</p><p class="fitem-val" id="bf-f-calls">0</p></div>
+      </div>
+      <div class="formula-eq" id="bf-eq"></div>
+    </div>
+    <div class="step-panel" id="bf-step">
+      <div class="step-what" id="bf-what"></div>
+      <div class="step-why" id="bf-why"></div>
+    </div>
+  </div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">[1,2,4]</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">[2,1,4,5]</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">[3,2,1]</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-bp"   onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-bn"   onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+
+  <button class="reveal-btn" onclick="toggleEl('code-bf', this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="tp">int</span> <span class="fn">rec</span>(vector&lt;<span class="tp">int</span>&gt;&amp; prices, <span class="tp">int</span> day, <span class="tp">int</span> state) {  <span class="cm">// state: 0 free, 1 hold, 2 cooldown</span>
+    <span class="kw">if</span> (day &gt;= (<span class="tp">int</span>)prices.size()) {
+        <span class="kw">return</span> <span class="nu">0</span>;
+    }
+    <span class="kw">if</span> (state == <span class="nu">1</span>) {                    <span class="cm">// holding</span>
+        <span class="kw">return</span> max(prices[day] + <span class="fn">rec</span>(prices, day + <span class="nu">1</span>, <span class="nu">2</span>),  <span class="cm">// sell</span>
+                   <span class="fn">rec</span>(prices, day + <span class="nu">1</span>, <span class="nu">1</span>));            <span class="cm">// keep holding</span>
+    } <span class="kw">else if</span> (state == <span class="nu">0</span>) {             <span class="cm">// free to buy</span>
+        <span class="kw">return</span> max(-prices[day] + <span class="fn">rec</span>(prices, day + <span class="nu">1</span>, <span class="nu">1</span>), <span class="cm">// buy</span>
+                   <span class="fn">rec</span>(prices, day + <span class="nu">1</span>, <span class="nu">0</span>));            <span class="cm">// skip</span>
+    } <span class="kw">else</span> {                            <span class="cm">// cooldown</span>
+        <span class="kw">return</span> <span class="fn">rec</span>(prices, day + <span class="nu">1</span>, <span class="nu">0</span>);
+    }
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">From the exponential search to three O(1) variables, each step squeezes out a layer of redundant work.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Name the day's situation: hold / sold / rest</p>
+        <p class="wt-desc">Replace "which days did I trade?" with "which of three states does today end in?" Each state stores the best profit achievable ending the day that way — the entire history collapses into one of three numbers.</p>
+        <p class="wt-gain">2ⁿ paths → 3 states per day</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Encode the cooldown by splitting "not holding"</p>
+        <p class="wt-desc">A single "no share" state can't express "but you can't buy yet". Splitting it into <code>sold</code> (today) and <code>rest</code> (later) makes the rule a one-liner: <code>rest = max(rest, sold)</code> routes yesterday's sale into today's idle state, never into a buy.</p>
+        <p class="wt-gain">O(n) DP table, O(n) time</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <p class="wt-name">Only yesterday matters → three rolling ints</p>
+        <p class="wt-desc">Every transition reads only the previous day's three values, so there is no need to keep the whole table. Snapshot the trio, compute the new trio, assign together.</p>
+        <p class="wt-gain">O(n) space → O(1) space</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t"><b>Seed</b> <code>hold = −prices[0]</code>, <code>sold = 0</code>, <code>rest = 0</code> for day 0.</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t"><b>For</b> each day from 1 to n−1, read <code>p = prices[day]</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t"><b>Compute</b> <code>new_hold = max(hold, rest − p)</code> — keep holding, or buy today out of rest.</span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t"><b>Compute</b> <code>new_sold = hold + p</code> and <code>new_rest = max(rest, sold)</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t"><b>Assign</b> all three at once, from the snapshot — never mix today's and yesterday's values.</span></div>
+    <div class="algo-step"><span class="algo-n">6.</span><span class="algo-t"><b>Return</b> <code>max(sold, rest)</code> — the best profit ending without a share.</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main', this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="tp">int</span> <span class="fn">maxProfit</span>(vector&lt;<span class="tp">int</span>&gt;&amp; prices) {
+    <span class="tp">int</span> n = prices.size();
+    <span class="tp">int</span> hold = -prices[<span class="nu">0</span>], sold = <span class="nu">0</span>, rest = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> day = <span class="nu">1</span>; day &lt; n; day++) {
+        <span class="tp">int</span> p = prices[day];
+        <span class="tp">int</span> nh = max(hold, rest - p);
+        <span class="tp">int</span> ns = hold + p;
+        <span class="tp">int</span> nr = max(rest, sold);
+        hold = nh; sold = ns; rest = nr;
+    }
+    <span class="kw">return</span> max(sold, rest);
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-day"><p class="cv-var-name">day · p</p><p class="cv-var-val" id="cv-vv-day">—</p></div>
+        <div class="cv-var-card dim" id="cv-v-hold"><p class="cv-var-name">hold</p><p class="cv-var-val" id="cv-vv-hold">—</p></div>
+        <div class="cv-var-card dim" id="cv-v-sold"><p class="cv-var-name">sold</p><p class="cv-var-val" id="cv-vv-sold">—</p></div>
+        <div class="cv-var-card dim" id="cv-v-rest"><p class="cv-var-name">rest</p><p class="cv-var-val" id="cv-vv-rest">—</p></div>
+      </div>
+      <div id="cv-narration" class="cv-narration"><!-- per-step narration --></div>
+    </div>
+  </div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">[1,2,3,0,2]</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">[6,1,3,2,4,7]</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">[3,2,1]</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+
+  <div id="dr-strip" class="bs-strip"></div>
+  <div id="dr-cards" class="bs-states"></div>
+  <div class="legend" style="margin:.2rem 0 .2rem">
+    <span class="leg-item"><span class="leg-dot" style="background:var(--bg-warn);border:1px solid var(--border-warn)"></span><span class="leg-label">hold</span></span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--bg-success);border:1px solid var(--border-success)"></span><span class="leg-label">sold</span></span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--bg-info);border:1px solid var(--border-info)"></span><span class="leg-label">rest</span></span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid">
+        <div><p class="fitem-label">day · price</p><p class="fitem-val" id="dr-f-day">0</p></div>
+        <div><p class="fitem-label">max(sold,rest)</p><p class="fitem-val" id="dr-f-best">0</p><p class="fitem-sub">best so far</p></div>
+      </div>
+      <div class="formula-eq" id="dr-eq"></div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what" id="dr-what"></div>
+      <div class="step-why" id="dr-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">[1,2,3,0,2]</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">[6,1,3,2,4,7]</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">[3,2,1]</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner">
+    <span class="cnum">1</span>
+    <div>
+      <p class="corner-title">Single day</p>
+      <p class="corner-body"><code>[5]</code> → <code>0</code>. The loop body never runs; <code>max(sold, rest) = max(0, 0) = 0</code>. No special-casing needed beyond seeding day 0.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <span class="cnum">2</span>
+    <div>
+      <p class="corner-title">Monotonically decreasing</p>
+      <p class="corner-body"><code>[3,2,1]</code> → <code>0</code>. <code>hold</code> stays negative and <code>sold</code> never beats 0, so <code>rest</code> holds the no-trade baseline. Don't seed <code>sold</code> to −∞ — <code>0</code> is correct.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <span class="cnum">3</span>
+    <div>
+      <p class="corner-title">All same price</p>
+      <p class="corner-body"><code>[4,4,4,4]</code> → <code>0</code>. Any sell exactly cancels its buy: <code>sold = hold + p = −p + p = 0</code>. The algorithm returns 0 without a guard.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <span class="cnum">4</span>
+    <div>
+      <p class="corner-title">Cooldown forbids the greedy chain</p>
+      <p class="corner-body">On <code>[1,2,3]</code> the answer is <code>2</code> (buy day 0, sell day 2). A "sum every up-step" greedy would want to also sell day 1 and re-buy — but that buy is illegal during cooldown. The state machine rejects it automatically.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <span class="cnum">5</span>
+    <div>
+      <p class="corner-title">Forgetting to snapshot</p>
+      <p class="corner-body">Using the just-updated <code>hold</code> inside the <code>sold</code> formula mixes today's value with yesterday's. Always compute <code>nh, ns, nr</code> first, then assign all three together.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Empty / single input:</b> <code>n == 0</code> returns 0; <code>n == 1</code> seeds and returns <code>max(0,0)=0</code>.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Baseline initialisation:</b> <code>sold</code> and <code>rest</code> start at 0 (the no-trade outcome), not −∞ — losing inputs correctly yield 0.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Snapshot discipline:</b> compute all three new values before assigning any, so transitions read a consistent previous day.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Cooldown correctness:</b> the rule lives solely in <code>rest = max(rest, sold)</code>; there is no path from a same-day sell straight into a buy.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Overflow:</b> values fit comfortably in <code>int</code> at these bounds; use <code>long long</code> if bounds widen.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Answer state:</b> return <code>max(sold, rest)</code>, never <code>hold</code> — ending while holding an unsold share is never optimal.</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Three rolling ints</button>
+    <button class="tab-btn"        id="tab1" onclick="switchTab(1)">2-D DP table</button>
+    <button class="tab-btn"        id="tab2" onclick="switchTab(2)">Recursive brute force</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body">The chosen answer. Only the previous day matters, so the DP collapses to three variables. One pass, constant space — the interview answer.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-a0', this)">▶ Reveal code</button>
+    <div id="code-a0" class="code-block">
+      <pre class="cb"><span class="tp">int</span> hold = -prices[<span class="nu">0</span>], sold = <span class="nu">0</span>, rest = <span class="nu">0</span>;
+<span class="kw">for</span> (<span class="tp">int</span> day = <span class="nu">1</span>; day &lt; n; day++) {
+    <span class="tp">int</span> p = prices[day];
+    <span class="tp">int</span> nh = max(hold, rest - p), ns = hold + p, nr = max(rest, sold);
+    hold = nh; sold = ns; rest = nr;
+}
+<span class="kw">return</span> max(sold, rest);</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body">The same recurrence tabulated in <code>dp[day][state]</code>. Easy to debug because you can print the whole table, but it keeps memory you never re-read at this n.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-a1', this)">▶ Reveal code</button>
+    <div id="code-a1" class="code-block">
+      <pre class="cb">vector&lt;array&lt;<span class="tp">int</span>,<span class="nu">3</span>&gt;&gt; dp(n);
+dp[<span class="nu">0</span>] = {-prices[<span class="nu">0</span>], <span class="nu">0</span>, <span class="nu">0</span>};   <span class="cm">// hold, sold, rest</span>
+<span class="kw">for</span> (<span class="tp">int</span> d = <span class="nu">1</span>; d &lt; n; d++) {
+    dp[d][<span class="nu">0</span>] = max(dp[d-<span class="nu">1</span>][<span class="nu">0</span>], dp[d-<span class="nu">1</span>][<span class="nu">2</span>] - prices[d]);
+    dp[d][<span class="nu">1</span>] = dp[d-<span class="nu">1</span>][<span class="nu">0</span>] + prices[d];
+    dp[d][<span class="nu">2</span>] = max(dp[d-<span class="nu">1</span>][<span class="nu">2</span>], dp[d-<span class="nu">1</span>][<span class="nu">1</span>]);
+}
+<span class="kw">return</span> max(dp[n-<span class="nu">1</span>][<span class="nu">1</span>], dp[n-<span class="nu">1</span>][<span class="nu">2</span>]);</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">Time O(2ⁿ)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body">Recurse over every buy/sell/hold decision. Correct but exponential — useless past n≈20. It is the search space the "feel the cost" counter visualises, and memoising it is exactly how you arrive at the DP.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-a2', this)">▶ Reveal code</button>
+    <div id="code-a2" class="code-block">
+      <pre class="cb"><span class="tp">int</span> <span class="fn">rec</span>(<span class="tp">int</span> day, <span class="tp">int</span> state) {
+    <span class="kw">if</span> (day &gt;= n) <span class="kw">return</span> <span class="nu">0</span>;
+    <span class="kw">if</span> (state == <span class="nu">1</span>) <span class="kw">return</span> max(prices[day] + <span class="fn">rec</span>(day+<span class="nu">1</span>,<span class="nu">2</span>), <span class="fn">rec</span>(day+<span class="nu">1</span>,<span class="nu">1</span>));
+    <span class="kw">if</span> (state == <span class="nu">0</span>) <span class="kw">return</span> max(-prices[day] + <span class="fn">rec</span>(day+<span class="nu">1</span>,<span class="nu">1</span>), <span class="fn">rec</span>(day+<span class="nu">1</span>,<span class="nu">0</span>));
+    <span class="kw">return</span> <span class="fn">rec</span>(day+<span class="nu">1</span>, <span class="nu">0</span>);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(n)</div>
+      <div class="ccard-n">One pass over the prices; constant work per day.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(1)</div>
+      <div class="ccard-n">Three running integers; no table retained.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><b>LC 121 — Best Time to Buy and Sell Stock:</b> single transaction, no cooldown — the same running-variable template with just one tracked value.</p>
+    <p><b>LC 122 — Best Time to Buy and Sell Stock II:</b> unlimited transactions, no cooldown — collapses to a one-line "add every up-step" greedy.</p>
+    <p><b>LC 714 — with Transaction Fee:</b> same machine reduced to two states (hold / cash); each sell deducts a fee.</p>
+    <p><b>LC 198 — House Robber:</b> the same "DP with a forbidden adjacency" shape — rob/skip mirrors hold/rest, and skipping the next house is the cooldown.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  /* PROBLEM-SPECIFIC SCRIPT ONLY */
+
+  /* ─── shared data ─── */
+  const EXAMPLES = [
+    {prices:[1,2,3,0,2]},
+    {prices:[6,1,3,2,4,7]},
+    {prices:[3,2,1]},
+  ];
+  const EX = [
+    {prices:[1,2,3,0,2],   answer:3},
+    {prices:[6,1,3,2,4,7], answer:6},
+    {prices:[3,2,1],       answer:0},
+  ];
+  const BF_EXAMPLES = [
+    {prices:[1,2,4]},
+    {prices:[2,1,4,5]},
+    {prices:[3,2,1]},
+  ];
+  const CV_LINES = [
+    {n:1,  c:'int maxProfit(vector<int>& prices) {'},
+    {n:2,  c:'    int n = prices.size();'},
+    {n:3,  c:'    int hold = -prices[0], sold = 0, rest = 0;'},
+    {n:4,  c:'    for (int day = 1; day < n; day++) {'},
+    {n:5,  c:'        int p = prices[day];'},
+    {n:6,  c:'        int nh = max(hold, rest - p);'},
+    {n:7,  c:'        int ns = hold + p;'},
+    {n:8,  c:'        int nr = max(rest, sold);'},
+    {n:9,  c:'        hold = nh; sold = ns; rest = nr;'},
+    {n:10, c:'    }'},
+    {n:11, c:'    return max(sold, rest);'},
+    {n:12, c:'}'},
+  ];
+
+  /* ─── shared renderers ─── */
+  function renderPrices(containerId, prices, cur){
+    const con = document.getElementById(containerId);
+    con.innerHTML = '';
+    prices.forEach((v, i) => {
+      const cell = document.createElement('div'); cell.className = 'bs-cell';
+      const box = document.createElement('div'); box.className = 'bs-box' + (i===cur?' cur':(i<cur?' past':''));
+      box.textContent = v;
+      const idx = document.createElement('div'); idx.className = 'bs-idx'; idx.textContent = 'd'+i;
+      cell.appendChild(box); cell.appendChild(idx);
+      con.appendChild(cell);
+    });
+  }
+  function renderStateCards(containerId, hold, sold, rest, changed){
+    const con = document.getElementById(containerId);
+    con.innerHTML = '';
+    const mk = (cls, name, val, up) => {
+      const c = document.createElement('div'); c.className = 'bs-card ' + cls + (up?' up':'');
+      const nm = document.createElement('p'); nm.className = 'bs-cname'; nm.textContent = name;
+      const vv = document.createElement('p'); vv.className = 'bs-cval'; vv.textContent = val;
+      c.appendChild(nm); c.appendChild(vv); con.appendChild(c);
+    };
+    mk('hold', 'hold', hold, changed && changed.hold);
+    mk('sold', 'sold', sold, changed && changed.sold);
+    mk('rest', 'rest', rest, changed && changed.rest);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     §1 INSIGHT ANIMATION — three-state machine over the prices
+     ══════════════════════════════════════════════════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+
+  function siGenSteps(input){
+    const prices = input.prices, n = prices.length, steps = [];
+    let hold = -prices[0], sold = 0, rest = 0;
+    steps.push({prices, day:0, hold, sold, rest, changed:null,
+      note:`Day 0 (price ${prices[0]}): seed hold = −${prices[0]}, sold = 0, rest = 0.`});
+    for (let day = 1; day < n; day++){
+      const p = prices[day];
+      const nh = Math.max(hold, rest - p), ns = hold + p, nr = Math.max(rest, sold);
+      const changed = {hold:nh!==hold, sold:ns!==sold, rest:nr!==rest};
+      hold = nh; sold = ns; rest = nr;
+      steps.push({prices, day, hold, sold, rest, changed,
+        note:`Day ${day} (price ${p}): hold=${hold}, sold=${sold}, rest=${rest}. Best so far = ${Math.max(sold,rest)}.`});
+    }
+    steps.push({prices, day:n-1, hold, sold, rest, changed:null,
+      note:`Answer = max(sold ${sold}, rest ${rest}) = ${Math.max(sold,rest)}.`});
+    return steps;
+  }
+  function siRender(st){
+    renderPrices('si-strip', st.prices, st.day);
+    renderStateCards('si-cards', st.hold, st.sold, st.rest, st.changed);
+    document.getElementById('si-note').textContent = st.note;
+    siUpdateCtr();
+  }
+  function siNext(){ if(siCur<siSteps.length-1){ siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev(){ if(siCur>0){ siCur--; siRender(siSteps[siCur]); } }
+  function siReset(){ siStopPlay(); siCur=0; siRender(siSteps[0]); }
+  function siStopPlay(){ clearInterval(siTimer); siTimer=null;
+    document.getElementById('si-bplay').textContent='▶ Auto'; }
+  function siTogglePlay(){
+    if(siTimer){ siStopPlay(); }
+    else{
+      document.getElementById('si-bplay').textContent='⏸ Pause';
+      siTimer=setInterval(()=>{ if(siCur<siSteps.length-1) siNext(); else siStopPlay(); }, 1400);
+    }
+  }
+  function siUpdateCtr(){
+    const c=document.getElementById('si-sctr');
+    if(c) c.textContent=`step ${siCur+1} / ${siSteps.length}`;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     §2 BRUTE FORCE — recursive search over every decision
+     ══════════════════════════════════════════════════════════════ */
+  let bfSteps = [], bfCur = 0, bfTimer = null;
+
+  function bfGenSteps(input){
+    const prices = input.prices, n = prices.length, steps = [];
+    const label = s => s===1 ? 'hold' : s===0 ? 'free' : 'cool';
+    let calls = 0, best = -Infinity;
+    function rec(day, state, profit){
+      calls++;
+      if (day >= n){
+        best = Math.max(best, profit);
+        steps.push({prices, day:n, state, profit, calls, best, leaf:true,
+          what:`End of timeline, profit ${profit}.`, why:`best so far = ${best}.`, eq:`leaf profit = ${profit}`});
+        return;
+      }
+      steps.push({prices, day, state, profit, calls, best:(best===-Infinity?0:best), leaf:false,
+        what:`Day ${day} (price ${prices[day]}), state = ${label(state)}, profit so far ${profit}.`,
+        why: state===1 ? 'Holding: branch into sell or keep.'
+            : state===0 ? 'Free: branch into buy or skip.'
+            : 'Cooldown: forced to rest, no choice.',
+        eq:`states explored = ${calls}`});
+      if (state === 1){
+        rec(day+1, 2, profit + prices[day]);  // sell → cooldown tomorrow
+        rec(day+1, 1, profit);                // keep holding
+      } else if (state === 0){
+        rec(day+1, 1, profit - prices[day]);  // buy
+        rec(day+1, 0, profit);                // skip
+      } else {
+        rec(day+1, 0, profit);                // cooldown → free
+      }
+    }
+    rec(0, 0, 0);
+    steps.push({prices, day:n, state:'done', profit:best, calls, best, leaf:true, done:true,
+      what:`Explored ${calls} states; best profit = ${best}.`,
+      why:'Exponential branching — the DP collapses this to O(n).', eq:`answer = ${best}`});
+    return steps;
+  }
+  function bfRender(st){
+    renderPrices('bf-strip', st.prices, st.leaf ? -1 : st.day);
+    document.getElementById('bf-f-day').textContent = st.day >= st.prices.length ? 'end' : st.day;
+    document.getElementById('bf-f-state').textContent = st.state;
+    document.getElementById('bf-f-profit').textContent = st.profit;
+    document.getElementById('bf-f-calls').textContent = st.calls;
+    document.getElementById('bf-eq').textContent = st.eq;
+    document.getElementById('bf-what').textContent = st.what;
+    document.getElementById('bf-why').textContent = st.why;
+    document.getElementById('bf-formula').className = 'formula-panel' + (st.done?' is-match':'');
+    document.getElementById('bf-step').className = 'step-panel' + (st.done?' match':st.leaf?' squeeze':'');
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur+1} / ${bfSteps.length}`;
+    document.getElementById('bf-bp').disabled = bfCur===0;
+    document.getElementById('bf-bn').disabled = bfCur===bfSteps.length-1;
+  }
+  function bfNext(){ if(bfCur<bfSteps.length-1){ bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev(){ if(bfCur>0){ bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset(){ bfStopPlay(); bfCur=0; bfRender(bfSteps[0]); }
+  function bfLoadEx(idx){
+    bfStopPlay(); bfCur=0;
+    [0,1,2].forEach(i=>document.getElementById('bf-ex'+i).classList.toggle('active', i===idx));
+    bfSteps = bfGenSteps(BF_EXAMPLES[idx]);
+    bfRender(bfSteps[0]);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     §6 CODE VISUALIZATION
+     ══════════════════════════════════════════════════════════════ */
+  let cvSteps = [], cvCur = 0, cvTimer = null;
+
+  function cvGenSteps(input){
+    const prices = input.prices, n = prices.length, steps = [];
+    const snap = (line, day, p, hold, sold, rest, narration, match) =>
+      steps.push({line, prices, day, p, hold, sold, rest, narration, match:!!match});
+    let hold = -prices[0], sold = 0, rest = 0;
+    snap(3, 0, prices[0], hold, sold, rest, `Seed day 0: hold = −prices[0] = ${hold}, sold = 0, rest = 0.`, false);
+    for (let day = 1; day < n; day++){
+      const p = prices[day];
+      snap(5, day, p, hold, sold, rest, `Day ${day}: p = prices[${day}] = ${p}.`, false);
+      const nh = Math.max(hold, rest - p);
+      snap(6, day, p, hold, sold, rest, `nh = max(hold ${hold}, rest−p ${rest-p}) = ${nh}.`, false);
+      const ns = hold + p;
+      snap(7, day, p, hold, sold, rest, `ns = hold + p = ${hold} + ${p} = ${ns}.`, false);
+      const nr = Math.max(rest, sold);
+      snap(8, day, p, hold, sold, rest, `nr = max(rest ${rest}, sold ${sold}) = ${nr}.`, false);
+      hold = nh; sold = ns; rest = nr;
+      snap(9, day, p, hold, sold, rest, `Commit together: hold=${hold}, sold=${sold}, rest=${rest}.`, false);
+    }
+    const ans = Math.max(sold, rest);
+    snap(11, n-1, prices[n-1], hold, sold, rest, `Return max(sold ${sold}, rest ${rest}) = ${ans}.`, true);
+    return steps;
+  }
+  function cvRender(st){
+    document.querySelectorAll('.cv-line').forEach(el=>el.classList.remove('active','active-match'));
+    const ln = document.getElementById('cvL'+st.line);
+    if(ln) ln.classList.add(st.match ? 'active-match' : 'active');
+    const setCard=(id,val,on,match)=>{
+      const card=document.getElementById('cv-v-'+id);
+      document.getElementById('cv-vv-'+id).textContent = val;
+      card.classList.toggle('dim', !on);
+      card.classList.toggle('hl', on && !match);
+      card.classList.toggle('hl-match', on && match);
+    };
+    setCard('day', st.day + ' · ' + st.p, true, st.match);
+    setCard('hold', st.hold, true, false);
+    setCard('sold', st.sold, true, st.match);
+    setCard('rest', st.rest, true, st.match);
+    const nar=document.getElementById('cv-narration');
+    nar.textContent=st.narration;
+    nar.className='cv-narration'+(st.match?' is-match':' is-active');
+    document.getElementById('cv-sctr').textContent=`Step ${cvCur+1} / ${cvSteps.length}`;
+    document.getElementById('cv-bprev').disabled=cvCur===0;
+    document.getElementById('cv-bnext').disabled=cvCur===cvSteps.length-1;
+  }
+  function cvNext(){ if(cvCur<cvSteps.length-1){ cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev(){ if(cvCur>0){ cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset(){ cvStopPlay(); cvCur=0; cvRender(cvSteps[0]); }
+  function cvLoadEx(idx){
+    cvStopPlay(); cvCur=0;
+    [0,1,2].forEach(i=>document.getElementById('cv-ex'+i).classList.toggle('active', i===idx));
+    cvSteps = cvGenSteps(EXAMPLES[idx]);
+    cvRender(cvSteps[0]);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     §7 DRY RUN — drGenSteps is the correctness oracle
+     ══════════════════════════════════════════════════════════════ */
+  let drSteps = [], drCur = 0, drTimer = null;
+
+  function drGenSteps(prices){
+    const n = prices.length, steps = [];
+    let hold = -prices[0], sold = 0, rest = 0;
+    steps.push({prices, day:0, hold, sold, rest, changed:null, phase:'init',
+      what:`Day 0 (price ${prices[0]}): seed the three states.`,
+      why:`hold = −prices[0] = ${hold}; sold = 0; rest = 0.`, eq:`best = ${Math.max(sold,rest)}`});
+    for (let day = 1; day < n; day++){
+      const p = prices[day];
+      const nh = Math.max(hold, rest - p), ns = hold + p, nr = Math.max(rest, sold);
+      const changed = {hold:nh!==hold, sold:ns!==sold, rest:nr!==rest};
+      hold = nh; sold = ns; rest = nr;
+      steps.push({prices, day, hold, sold, rest, changed, phase:'day',
+        what:`Day ${day} (price ${p}): hold=${hold}, sold=${sold}, rest=${rest}.`,
+        why:`hold=max(prev hold, rest−p); sold=prev hold+p; rest=max(prev rest, prev sold).`,
+        eq:`best so far = max(${sold}, ${rest}) = ${Math.max(sold,rest)}`});
+    }
+    const ans = Math.max(sold, rest);
+    steps.push({prices, day:n-1, hold, sold, rest, changed:null, phase:'done',
+      what:`Done. Best profit = max(sold ${sold}, rest ${rest}) = ${ans}.`,
+      why:'Never end while still holding a share.', eq:`answer = ${ans}`, result:ans});
+    return steps;
+  }
+  function drRender(st){
+    renderPrices('dr-strip', st.prices, st.phase==='done' ? -1 : st.day);
+    renderStateCards('dr-cards', st.hold, st.sold, st.rest, st.changed);
+    document.getElementById('dr-f-day').textContent = (st.phase==='done') ? 'end' : (st.day + ' · ' + st.prices[st.day]);
+    document.getElementById('dr-f-best').textContent = Math.max(st.sold, st.rest);
+    document.getElementById('dr-eq').textContent = st.eq;
+    document.getElementById('dr-what').textContent = st.what;
+    document.getElementById('dr-why').textContent = st.why;
+    document.getElementById('dr-formula').className = 'formula-panel' + (st.phase==='done'?' is-match':st.phase==='day'?' is-squeeze':'');
+    document.getElementById('dr-step').className = 'step-panel' + (st.phase==='done'?' match':st.phase==='day'?' squeeze':'');
+    document.getElementById('dr-sctr').textContent = `Step ${drCur+1} / ${drSteps.length}`;
+    document.getElementById('dr-bp').disabled = drCur===0;
+    document.getElementById('dr-bn').disabled = drCur===drSteps.length-1;
+  }
+  function drNext(){ if(drCur<drSteps.length-1){ drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev(){ if(drCur>0){ drCur--; drRender(drSteps[drCur]); } }
+  function drReset(){ drStopPlay(); drCur=0; drRender(drSteps[0]); }
+  function drLoadEx(idx){
+    drStopPlay(); drCur=0;
+    [0,1,2].forEach(i=>document.getElementById('dr-ex'+i).classList.toggle('active', i===idx));
+    drSteps = drGenSteps(EXAMPLES[idx].prices);
+    drRender(drSteps[0]);
+  }
+
+  /* ─── INIT ─── */
+  siSteps = siGenSteps(EXAMPLES[0]); siRender(siSteps[0]);
+  cvBuildCode(CV_LINES); cvLoadEx(0); drLoadEx(0); bfLoadEx(0);
+</script>
+
+</body>
+</html>
