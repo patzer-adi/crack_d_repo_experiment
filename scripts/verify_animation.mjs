@@ -96,13 +96,25 @@ function stripStringsAndComments(code) {
 }
 
 // Parse the parameter names of `function name(a, b)` from its source.
+// Split only at brace-depth 0 so a destructured param like `{s1, s2}` stays a
+// SINGLE param (a naive comma split would shatter it into `{s1` / `s2}` and
+// defeat whole-object detection below).
 function paramNames(fnSource) {
   const m = /function\s+\w+\s*\(([^)]*)\)/.exec(fnSource);
   if (!m) return [];
-  return m[1]
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const out = [];
+  let depth = 0,
+    cur = "";
+  for (const c of m[1]) {
+    if (c === "{" || c === "[") depth++;
+    else if (c === "}" || c === "]") depth--;
+    if (c === "," && depth === 0) {
+      out.push(cur.trim());
+      cur = "";
+    } else cur += c;
+  }
+  out.push(cur.trim());
+  return out.filter(Boolean);
 }
 
 // Extract `const EX = [ ... ];` (array literal) source by brace-matching.
