@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pacific Atlantic Water Flow — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC CSS ONLY — the grid of height cells + ocean legend */
+  .paw-grid { display:inline-grid; gap:5px; margin:.25rem 0; }
+  .paw-cell {
+    width:48px; height:48px; display:flex; align-items:center; justify-content:center;
+    border-radius:var(--r2); font-family:var(--mono); font-weight:600; font-size:15px;
+    border:2px solid var(--border2); background:var(--bg2); color:var(--text2);
+    transition:background .15s, border-color .15s; position:relative;
+  }
+  .paw-cell.pac  { background:var(--bg-info);    border-color:var(--border-info);    color:var(--text-info); }
+  .paw-cell.atl  { background:var(--bg-warn);    border-color:var(--border-warn);    color:var(--text-warn); }
+  .paw-cell.both { background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); }
+  .paw-cell.cur  { outline:3px solid var(--text-danger); outline-offset:1px; z-index:1; }
+  .paw-wrap { display:flex; flex-direction:column; align-items:center; gap:.35rem; }
+  .paw-oceans { display:flex; justify-content:space-between; width:100%;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:11px; color:var(--text3); }
+  .paw-state { font-family:var(--mono); font-size:12px; color:var(--text2); margin:.5rem 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Pacific Atlantic Water Flow</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/pacific-atlantic-water-flow/" target="_blank">LC #417</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Graphs — BFS / DFS</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Can water flow diagonally?</div>
+      <div class="acard-a">No — only to up / down / left / right neighbours.</div>
+      <div class="acard-u">→ unlocks: a 4-direction neighbour step, not 8</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Does water flow between equal heights?</div>
+      <div class="acard-a">Yes — water flows to any neighbour of height ≤ the current cell, so equal cells connect both ways.</div>
+      <div class="acard-u">→ unlocks: the reverse-flood test is <span style="font-family:var(--mono)">&gt;=</span>, not strict &gt;</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">What touches each ocean?</div>
+      <div class="acard-a">Pacific = top row + left column. Atlantic = bottom row + right column. Corners touch both.</div>
+      <div class="acard-u">→ unlocks: the two seed sets for the two floods</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Output order or duplicates?</div>
+      <div class="acard-a">Any order, each cell once. We emit them row-major.</div>
+      <div class="acard-u">→ unlocks: one final grid scan collecting cells in both sets</div>
+    </div>
+  </div>
+  <div class="infobox">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">4-directional movement; a drop flows to neighbours of height ≤ its own; the Pacific is the top/left border and the Atlantic the bottom/right border; output is every cell that can reach both, in any order.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Don't trace every drop downhill — flood uphill from each shore, then keep the overlap</p>
+
+  <p class="body">The naive question — "where does <em>this</em> cell's water end up?" — forces a separate flood from every cell, which is expensive. Flip it around. Stand on an ocean's shore and walk <strong>inland and uphill</strong>: from a cell, step to any neighbour that is <em>as tall or taller</em>, because that taller neighbour can send its water back down to you. Every cell you can reach this way is exactly a cell whose water can drain to that ocean. Do this once for the Pacific shore and once for the Atlantic shore; the cells reached by <em>both</em> floods are the answer.</p>
+
+  <!-- Animated foundational visual: the two reverse-floods + intersection -->
+  <div class="paw-wrap" style="margin:1.25rem 0 .5rem">
+    <div class="paw-oceans" style="max-width:170px">
+      <span>◀ Pacific (top/left)</span>
+    </div>
+    <div id="si-grid" class="paw-grid" aria-label="reverse flood demonstration grid"></div>
+    <div class="paw-oceans" style="max-width:170px">
+      <span style="margin-left:auto">Atlantic (bottom/right) ▶</span>
+    </div>
+  </div>
+  <div id="si-cap" class="paw-state" style="text-align:center;min-height:1.2em"></div>
+  <div class="ctrl-row" style="margin-top:.625rem;justify-content:center">
+    <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" onclick="siNext()">Next →</button>
+    <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+    <span class="step-ctr" id="si-sctr"></span>
+  </div>
+
+  <div class="legend" style="justify-content:center;margin-top:.5rem">
+    <span class="leg-item"><span class="leg-dot" style="background:var(--bg-info);border:1px solid var(--border-info)"></span><span class="leg-label">reaches Pacific</span></span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--bg-warn);border:1px solid var(--border-warn)"></span><span class="leg-label">reaches Atlantic</span></span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--bg-success);border:1px solid var(--border-success)"></span><span class="leg-label">reaches both — answer</span></span>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Reverse the flow. From each ocean's border cells, BFS/DFS inland visiting any neighbour whose height is <strong>≥</strong> the current cell's height. The set this reaches is "all cells that drain to that ocean." Run it twice — once seeded from the Pacific border, once from the Atlantic — and intersect the two visited sets. Two linear floods replace a flood-per-cell: O(m·n) instead of O((m·n)²).</p>
+  </div>
+
+  <p class="body" style="margin-top:1rem">Why reversing the flood is the move that unlocks everything:</p>
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">For every cell, does its water reach both oceans?</div>
+        <div class="chain-note">the problem</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">Forward-flood downhill from each cell and check which borders it touches</div>
+        <div class="chain-note">correct, but a separate flood per cell → O((mn)²)</div>
+        <div class="chain-example">
+          <span class="pill n">mn cells</span><span class="arrow">→</span><span class="pill n">mn floods</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">Reverse it: flood <span class="chain-hl">uphill from each shore</span> (step to neighbours with height ≥ current)</div>
+        <div class="chain-note">one flood per ocean marks every cell that drains to it</div>
+        <div class="chain-example">
+          <span class="pill n">on shore</span><span class="arrow">→</span><span class="pill ok">reaches ocean</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">taller neighbour</span><span class="arrow">→</span><span class="pill ok">drains back into me</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">answer = Pacific-set ∩ Atlantic-set</span></div>
+        <div class="chain-note">two O(mn) floods + one O(mn) intersection scan</div>
+        <div class="chain-example">
+          <span class="pill n">low sink corner</span><span class="arrow">→</span><span class="pill bad">touches one ocean only</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">in both floods</span><span class="arrow">→</span><span class="pill ok">keep it</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">The literal reading: for <em>each</em> cell, flood downhill (to neighbours of height ≤ current) and see whether the flood ever touches the Pacific border and the Atlantic border. Correct — but it runs a fresh flood from every one of the m·n cells, so the total work is O((m·n)²). Watch the flood counter climb.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">3×3 typical</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">3×3 monotone</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">1×3 row</button>
+  </div>
+  <div class="paw-wrap" style="margin:.75rem 0">
+    <div id="bf-grid" class="paw-grid"></div>
+  </div>
+  <div id="bf-state" class="paw-state" style="text-align:center;min-height:1.2em"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O((m·n)²) time, O(m·n) space</p>
+    <p class="infobox-d">Each cell triggers its own flood that can visit the whole grid. On a 200×200 grid that is 40 000 floods of up to 40 000 cells each. The reverse-flood insight does the same job in two floods total.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal Code</button>
+  <div id="code-bf" class="code-block"><pre class="cb"><span class="kw">bool</span> <span class="fn">drains</span>(<span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; h, <span class="kw">int</span> sr, <span class="kw">int</span> sc) {
+    <span class="kw">int</span> m = h.size(), n = h[<span class="nu">0</span>].size();
+    <span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">bool</span>&gt;&gt; seen(m, <span class="tp">vector</span>&lt;<span class="kw">bool</span>&gt;(n));
+    <span class="tp">vector</span>&lt;<span class="tp">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt; st = {{sr, sc}};
+    seen[sr][sc] = <span class="kw">true</span>;
+    <span class="kw">bool</span> pac = <span class="kw">false</span>, atl = <span class="kw">false</span>;
+    <span class="kw">while</span> (!st.empty()) {
+        <span class="kw">auto</span> [r, c] = st.back(); st.pop_back();
+        <span class="kw">if</span> (r == <span class="nu">0</span> || c == <span class="nu">0</span>)       { pac = <span class="kw">true</span>; }
+        <span class="kw">if</span> (r == m-<span class="nu">1</span> || c == n-<span class="nu">1</span>)   { atl = <span class="kw">true</span>; }
+        <span class="kw">int</span> dirs[<span class="nu">4</span>][<span class="nu">2</span>] = {{<span class="nu">1</span>,<span class="nu">0</span>},{-<span class="nu">1</span>,<span class="nu">0</span>},{<span class="nu">0</span>,<span class="nu">1</span>},{<span class="nu">0</span>,-<span class="nu">1</span>}};
+        <span class="kw">for</span> (<span class="kw">auto</span>&amp; d : dirs) {
+            <span class="kw">int</span> nr = r + d[<span class="nu">0</span>], nc = c + d[<span class="nu">1</span>];
+            <span class="kw">if</span> (nr&lt;<span class="nu">0</span>||nr&gt;=m||nc&lt;<span class="nu">0</span>||nc&gt;=n) { <span class="kw">continue</span>; }
+            <span class="kw">if</span> (seen[nr][nc])              { <span class="kw">continue</span>; }
+            <span class="kw">if</span> (h[nr][nc] &gt; h[r][c])       { <span class="kw">continue</span>; }
+            seen[nr][nc] = <span class="kw">true</span>; st.push_back({nr, nc});
+        }
+    }
+    <span class="kw">return</span> pac &amp;&amp; atl;
+}
+<span class="cm">// caller: for every (r,c), push {r,c} if drains(h,r,c) — O((mn)^2)</span></pre></div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">One idea carries the whole optimisation: stop asking the question per cell and ask it per ocean. Here is the chain that gets us from O((mn)²) to O(mn).</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Per-cell forward flood → per-ocean reverse flood</div>
+        <div class="wt-desc">A cell drains to an ocean iff that ocean's shore can climb up to it. So flood once from each shore instead of once from each cell — e.g. from the Pacific border, visiting neighbours of height ≥ current.</div>
+        <div class="wt-gain">→ mn floods → 2 floods</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">"Reaches ocean X" → membership in set X</div>
+        <div class="wt-desc">Replace the per-cell boolean search with a single visited set per ocean, filled by the flood. Checking "does this cell reach the Pacific?" becomes a set lookup.</div>
+        <div class="wt-gain">→ O(mn) search per cell → O(1) lookup</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">Two sets → one intersection scan</div>
+        <div class="wt-desc">Keep two visited grids, <span style="font-family:var(--mono)">pac</span> and <span style="font-family:var(--mono)">atl</span>. The answer is every cell with <span style="font-family:var(--mono)">pac[r][c] &amp;&amp; atl[r][c]</span>, found in one final pass over the grid.</div>
+        <div class="wt-gain">→ O(mn) total to collect the answer</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1</span><span class="algo-t"><b>Seed</b> a Pacific queue with every cell on the top row and left column; seed an Atlantic queue with every cell on the bottom row and right column. Mark each seed visited in its grid.</span></div>
+    <div class="algo-step"><span class="algo-n">2</span><span class="algo-t"><b>Flood</b> each queue: pop a cell, and for each 4-direction neighbour that is unvisited and has height <b>≥</b> the popped cell, mark it visited and enqueue it.</span></div>
+    <div class="algo-step"><span class="algo-n">3</span><span class="algo-t"><b>Run</b> the flood for the Pacific queue, then for the Atlantic queue, filling the two visited grids independently.</span></div>
+    <div class="algo-step"><span class="algo-n">4</span><span class="algo-t"><b>Scan</b> every cell once; whenever it is visited in <b>both</b> grids, append <span style="font-family:var(--mono)">{r, c}</span> to the result.</span></div>
+    <div class="algo-step"><span class="algo-n">5</span><span class="algo-t"><b>Return</b> the collected coordinates.</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block"><pre class="cb"><span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt; <span class="fn">pacificAtlantic</span>(<span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; h) {
+    <span class="kw">int</span> m = h.size(), n = h[<span class="nu">0</span>].size();
+    <span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">bool</span>&gt;&gt; pac(m, <span class="tp">vector</span>&lt;<span class="kw">bool</span>&gt;(n)), atl(m, <span class="tp">vector</span>&lt;<span class="kw">bool</span>&gt;(n));
+    <span class="tp">queue</span>&lt;<span class="tp">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt; qp, qa;
+    <span class="kw">for</span> (<span class="kw">int</span> c = <span class="nu">0</span>; c &lt; n; c++) {
+        pac[<span class="nu">0</span>][c] = atl[m-<span class="nu">1</span>][c] = <span class="kw">true</span>;
+        qp.push({<span class="nu">0</span>, c}); qa.push({m-<span class="nu">1</span>, c});
+    }
+    <span class="kw">for</span> (<span class="kw">int</span> r = <span class="nu">0</span>; r &lt; m; r++) {
+        pac[r][<span class="nu">0</span>] = atl[r][n-<span class="nu">1</span>] = <span class="kw">true</span>;
+        qp.push({r, <span class="nu">0</span>}); qa.push({r, n-<span class="nu">1</span>});
+    }
+    <span class="fn">flood</span>(h, pac, qp);
+    <span class="fn">flood</span>(h, atl, qa);
+    <span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt; res;
+    <span class="kw">for</span> (<span class="kw">int</span> r = <span class="nu">0</span>; r &lt; m; r++) {
+        <span class="kw">for</span> (<span class="kw">int</span> c = <span class="nu">0</span>; c &lt; n; c++) {
+            <span class="kw">if</span> (pac[r][c] &amp;&amp; atl[r][c]) { res.push_back({r, c}); }
+        }
+    }
+    <span class="kw">return</span> res;
+}
+
+<span class="kw">void</span> <span class="fn">flood</span>(<span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; h, <span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">bool</span>&gt;&gt;&amp; seen,
+           <span class="tp">queue</span>&lt;<span class="tp">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt;&amp; q) {
+    <span class="kw">int</span> m = h.size(), n = h[<span class="nu">0</span>].size();
+    <span class="kw">int</span> dirs[<span class="nu">4</span>][<span class="nu">2</span>] = {{<span class="nu">1</span>,<span class="nu">0</span>},{-<span class="nu">1</span>,<span class="nu">0</span>},{<span class="nu">0</span>,<span class="nu">1</span>},{<span class="nu">0</span>,-<span class="nu">1</span>}};
+    <span class="kw">while</span> (!q.empty()) {
+        <span class="kw">auto</span> [r, c] = q.front(); q.pop();
+        <span class="kw">for</span> (<span class="kw">auto</span>&amp; d : dirs) {
+            <span class="kw">int</span> nr = r + d[<span class="nu">0</span>], nc = c + d[<span class="nu">1</span>];
+            <span class="kw">if</span> (nr&lt;<span class="nu">0</span>||nr&gt;=m||nc&lt;<span class="nu">0</span>||nc&gt;=n) { <span class="kw">continue</span>; }
+            <span class="kw">if</span> (seen[nr][nc])              { <span class="kw">continue</span>; }
+            <span class="kw">if</span> (h[nr][nc] &lt; h[r][c])       { <span class="kw">continue</span>; }
+            seen[nr][nc] = <span class="kw">true</span>; q.push({nr, nc});
+        }
+    }
+}</pre></div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Watch the two floods fill their visited grids and then the final scan pick out the overlap. The active code line is on the left; the grid below shows blue (Pacific), orange (Atlantic) and green (both).</p>
+
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-phase"><div class="cv-var-name">phase</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-cell"><div class="cv-var-name">cell (r,c)</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-pac"><div class="cv-var-name">|pac|</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-atl"><div class="cv-var-name">|atl|</div><div class="cv-var-val">—</div></div>
+        <div class="cv-var-card dim" id="cv-v-both"><div class="cv-var-name">in both</div><div class="cv-var-val">—</div></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+
+  <div class="paw-wrap" style="margin:.875rem 0">
+    <div id="cv-grid" class="paw-grid"></div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">3×3 typical</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">3×3 monotone</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">1×3 row</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the two floods</p>
+  <p class="body">Pick an input and step the frontier yourself. Blue grows from the Pacific shore, orange from the Atlantic shore, and a cell turns green the moment it belongs to both. The final step is the answer.</p>
+
+  <div class="paw-wrap" style="margin:.5rem 0">
+    <div id="dr-grid" class="paw-grid"></div>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid">
+        <div><div class="fitem-label">reaches Pacific</div><div class="fitem-val" id="dr-f-pac">0</div></div>
+        <div><div class="fitem-label">reaches Atlantic</div><div class="fitem-val" id="dr-f-atl">0</div></div>
+        <div><div class="fitem-label">reaches both</div><div class="fitem-val" id="dr-f-both">0</div></div>
+      </div>
+      <div class="formula-eq">answer = <span class="eq-hl">pac ∩ atl</span> &nbsp;·&nbsp; flood rule: step to neighbour with height ≥ current</div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what" id="dr-what"></div>
+      <div class="step-why" id="dr-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">3×3 typical</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">3×3 monotone</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">1×3 row</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div><div class="corner-title">Single row or single column — <span style="font-family:var(--mono)">[[1,2,3]]</span></div>
+    <div class="corner-body">The one row is the top <em>and</em> the bottom, so every cell touches both oceans; all cells are in the answer. The seed loops already cover this — no special case needed.</div></div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div><div class="corner-title">1×1 grid — <span style="font-family:var(--mono)">[[5]]</span></div>
+    <div class="corner-body">The single cell touches all four borders, so it is seeded into both queues; the answer is <span style="font-family:var(--mono)">[[0,0]]</span>.</div></div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div><div class="corner-title">A low "sink" corner — (0,0)=1 in <span style="font-family:var(--mono)">[[1,2,2],[3,2,3],[2,4,1]]</span></div>
+    <div class="corner-body">Being on a shore is not enough to reach the <em>other</em> ocean. The top-left cell touches the Pacific but every neighbour is taller, so the Atlantic flood never climbs into it — it is excluded. Same for the bottom-right sink.</div></div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div><div class="corner-title">All-equal plateau — <span style="font-family:var(--mono)">[[7,7],[7,7]]</span></div>
+    <div class="corner-body">Because the flood uses <span style="font-family:var(--mono)">≥</span>, equal neighbours connect freely; both floods reach every cell, so all of them are in the answer. A strict <span style="font-family:var(--mono)">&gt;</span> would wrongly drop them.</div></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Empty grid</b> — guard <span style="font-family:var(--mono)">h.empty() || h[0].empty()</span> and return an empty result before touching <span style="font-family:var(--mono)">h[0].size()</span>.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Equal heights</b> — the comparison is <span style="font-family:var(--mono)">&gt;=</span> (reverse) / <span style="font-family:var(--mono)">&lt;=</span> (forward), never strict, or plateaus break.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Visited before enqueue</b> — mark a cell visited when you push it, not when you pop it, so it is never queued twice.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Bounds first</b> — check <span style="font-family:var(--mono)">nr/nc</span> in range before indexing the grid or the visited array.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Corners seeded once</b> — a corner sits on two borders; the set/visited check keeps it from being processed twice.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Recursion depth</b> — a DFS version can recurse O(m·n) deep on a monotone grid; prefer the iterative BFS/stack shown here for large inputs.</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Reverse BFS (optimal)</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Reverse DFS</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Brute force</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <div><span class="tag tag-time">O(m·n)</span> <span class="tag tag-space">O(m·n)</span></div>
+    <p class="body">Two queue-based floods, one per ocean, then an intersection scan. Iterative, so no stack-overflow risk on large monotone grids. This is the code in Step 4.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-t0',this)">▶ Reveal Code</button>
+    <div id="code-t0" class="code-block"><pre class="cb"><span class="cm">// Same code as Step 4: seed both border queues, flood each with</span>
+<span class="cm">// the height &gt;= rule, then collect cells where pac[r][c] &amp;&amp; atl[r][c].</span></pre></div>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <div><span class="tag tag-time">O(m·n)</span> <span class="tag tag-space">O(m·n)</span></div>
+    <p class="body">Same reverse-flood logic, but recursion instead of a queue: from every border cell call <span style="font-family:var(--mono)">dfs(pac, r, c)</span>. Cleaner to write, but the call stack can reach O(m·n) depth on an all-increasing grid.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-t1',this)">▶ Reveal Code</button>
+    <div id="code-t1" class="code-block"><pre class="cb"><span class="kw">void</span> <span class="fn">dfs</span>(<span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; h, <span class="tp">vector</span>&lt;<span class="tp">vector</span>&lt;<span class="kw">bool</span>&gt;&gt;&amp; seen, <span class="kw">int</span> r, <span class="kw">int</span> c) {
+    <span class="kw">int</span> m = h.size(), n = h[<span class="nu">0</span>].size();
+    seen[r][c] = <span class="kw">true</span>;
+    <span class="kw">int</span> dirs[<span class="nu">4</span>][<span class="nu">2</span>] = {{<span class="nu">1</span>,<span class="nu">0</span>},{-<span class="nu">1</span>,<span class="nu">0</span>},{<span class="nu">0</span>,<span class="nu">1</span>},{<span class="nu">0</span>,-<span class="nu">1</span>}};
+    <span class="kw">for</span> (<span class="kw">auto</span>&amp; d : dirs) {
+        <span class="kw">int</span> nr = r + d[<span class="nu">0</span>], nc = c + d[<span class="nu">1</span>];
+        <span class="kw">if</span> (nr&lt;<span class="nu">0</span>||nr&gt;=m||nc&lt;<span class="nu">0</span>||nc&gt;=n) { <span class="kw">continue</span>; }
+        <span class="kw">if</span> (seen[nr][nc] || h[nr][nc] &lt; h[r][c]) { <span class="kw">continue</span>; }
+        <span class="fn">dfs</span>(h, seen, nr, nc);
+    }
+}</pre></div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <div><span class="tag tag-time">O((m·n)²)</span> <span class="tag tag-space">O(m·n)</span></div>
+    <p class="body">Flood downhill from every cell and test which borders it touches. Easy to reason about and fine for tiny grids, but quadratic in the cell count — the version animated in Step 1.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-t2',this)">▶ Reveal Code</button>
+    <div id="code-t2" class="code-block"><pre class="cb"><span class="cm">// for each (r,c): flood to neighbours with height &lt;= current;</span>
+<span class="cm">// keep (r,c) if the flood touches a Pacific border AND an Atlantic border.</span></pre></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(m·n)</div>
+      <div class="ccard-n">Each cell is enqueued at most once per ocean, so each flood is O(m·n); the final scan is O(m·n) too.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(m·n)</div>
+      <div class="ccard-n">Two visited grids plus the BFS queues, each bounded by the number of cells.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p>LC 994 — Rotting Oranges — multi-source BFS: every rotten cell starts in the queue together, just like seeding a whole shore here.</p>
+    <p>LC 542 — 01 Matrix — multi-source BFS from every 0; the "seed all sources, then flood" skeleton is identical.</p>
+    <p>LC 130 — Surrounded Regions — flood inward from the border to mark the cells you must <em>not</em> flip; same "reverse from the edge" trick.</p>
+    <p>LC 200 — Number of Islands — the plain grid flood-fill this builds on, without the reverse or the intersection.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+/* ───────────────────────── shared data + grid painter ───────────────────────── */
+
+/* Answer-bearing examples — the dry-run oracle (drGenSteps) is verified against
+   these. Answers hand-derived with the independent Python reference /tmp/paw.py
+   (and cross-checked against the forward brute force /tmp/paw_bf.py). */
+const EX = [
+  { label: '3×3 typical',  heights: [[1,2,2],[3,2,3],[2,4,1]],
+    answer: [[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1]] },
+  { label: '3×3 monotone', heights: [[5,4,3],[4,3,2],[3,2,1]],
+    answer: [[0,0],[0,1],[0,2],[1,0],[2,0]] },
+  { label: '1×3 row',      heights: [[1,2,3]],
+    answer: [[0,0],[0,1],[0,2]] },
+];
+
+/* Paint a height grid into a container from a step's {m,n,grid,pac,atl,cur}. */
+function pawPaint(id, st) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const n = st.n;
+  const pacSet = new Set(st.pac.map(([r, c]) => r * n + c));
+  const atlSet = new Set(st.atl.map(([r, c]) => r * n + c));
+  el.style.gridTemplateColumns = `repeat(${n}, 48px)`;
+  el.innerHTML = '';
+  for (let r = 0; r < st.m; r++) {
+    for (let c = 0; c < n; c++) {
+      const d = document.createElement('div');
+      d.className = 'paw-cell';
+      const inP = pacSet.has(r * n + c), inA = atlSet.has(r * n + c);
+      if (inP && inA) d.classList.add('both');
+      else if (inP)   d.classList.add('pac');
+      else if (inA)   d.classList.add('atl');
+      if (st.cur && st.cur[0] === r && st.cur[1] === c) d.classList.add('cur');
+      d.textContent = st.grid[r][c];
+      el.appendChild(d);
+    }
+  }
+}
+function pawBothCount(st) {
+  const n = st.n;
+  const atlSet = new Set(st.atl.map(([r, c]) => r * n + c));
+  return st.pac.reduce((acc, [r, c]) => acc + (atlSet.has(r * n + c) ? 1 : 0), 0);
+}
+
+/* ───────────────────────── §1 insight (si*) ───────────────────────── */
+
+let siSteps = [], siCur = 0, siTimer = null;
+
+function siGenSteps(heights) {
+  const m = heights.length, n = heights[0].length;
+  const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+  const inB = (r,c) => r>=0 && r<m && c>=0 && c<n;
+  const dump = (set) => {
+    const a = []; set.forEach(k => a.push([Math.floor(k/n), k%n]));
+    a.sort((p,q) => p[0]-q[0] || p[1]-q[1]); return a;
+  };
+  const flood = (seeds) => {
+    const seen = new Set(), q = [];
+    for (const [r,c] of seeds) { const k=r*n+c; if(!seen.has(k)){seen.add(k); q.push([r,c]);} }
+    let i = 0;
+    while (i < q.length) {
+      const [r,c] = q[i++];
+      for (const [dr,dc] of DIRS) {
+        const nr=r+dr, nc=c+dc, k=nr*n+nc;
+        if (inB(nr,nc) && !seen.has(k) && heights[nr][nc] >= heights[r][c]) { seen.add(k); q.push([nr,nc]); }
+      }
+    }
+    return seen;
+  };
+  const pacSeeds = [], atlSeeds = [];
+  for (let c=0;c<n;c++){ pacSeeds.push([0,c]); atlSeeds.push([m-1,c]); }
+  for (let r=0;r<m;r++){ pacSeeds.push([r,0]); atlSeeds.push([r,n-1]); }
+  const pacSeedSet = new Set(pacSeeds.map(([r,c])=>r*n+c));
+  const atlSeedSet = new Set(atlSeeds.map(([r,c])=>r*n+c));
+  const pac = flood(pacSeeds), atl = flood(atlSeeds);
+  const both = [];
+  pac.forEach(k => { if (atl.has(k)) both.push([Math.floor(k/n), k%n]); });
+  both.sort((p,q) => p[0]-q[0] || p[1]-q[1]);
+
+  return [
+    { m, n, grid:heights, pac:[], atl:[], cur:null,
+      what:'A grid of heights between two oceans.' },
+    { m, n, grid:heights, pac:dump(pacSeedSet), atl:[], cur:null,
+      what:'Seed the Pacific shore — top row + left column (blue).' },
+    { m, n, grid:heights, pac:dump(pac), atl:[], cur:null,
+      what:'Flood uphill: blue marks every cell that drains to the Pacific.' },
+    { m, n, grid:heights, pac:dump(pac), atl:dump(atlSeedSet), cur:null,
+      what:'Now seed the Atlantic shore — bottom row + right column (orange).' },
+    { m, n, grid:heights, pac:dump(pac), atl:dump(atl), cur:null,
+      what:'Flood again: green appears wherever both floods overlap.' },
+    { m, n, grid:heights, pac:dump(pac), atl:dump(atl), cur:null, result:both,
+      what:`Answer = ${both.length} green cells reachable from both oceans.` },
+  ];
+}
+function siRender(st) {
+  pawPaint('si-grid', st);
+  const cap = document.getElementById('si-cap'); if (cap) cap.textContent = st.what;
+  const c = document.getElementById('si-sctr'); if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+}
+function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+function siPrev()  { if (siCur > 0)                  { siCur--; siRender(siSteps[siCur]); } }
+function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+function siStopPlay(){ clearInterval(siTimer); siTimer = null;
+  const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+function siTogglePlay() {
+  if (siTimer) { siStopPlay(); }
+  else {
+    const b = document.getElementById('si-bplay'); if (b) b.textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+}
+
+/* ───────────────────────── §2 brute force (bf*) ───────────────────────── */
+
+let bfSteps = [], bfCur = 0, bfTimer = null;
+
+function bfGenSteps(heights) {
+  const m = heights.length, n = heights[0].length;
+  const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+  const inB = (r,c) => r>=0 && r<m && c>=0 && c<n;
+  const drains = (sr,sc) => {
+    const seen = new Set([sr*n+sc]), stk = [[sr,sc]];
+    let pac = false, atl = false;
+    while (stk.length) {
+      const [r,c] = stk.pop();
+      if (r===0 || c===0) pac = true;
+      if (r===m-1 || c===n-1) atl = true;
+      for (const [dr,dc] of DIRS) {
+        const nr=r+dr, nc=c+dc, k=nr*n+nc;
+        if (inB(nr,nc) && !seen.has(k) && heights[nr][nc] <= heights[r][c]) { seen.add(k); stk.push([nr,nc]); }
+      }
+    }
+    return pac && atl;
+  };
+  const steps = [];
+  const ans = [];
+  let floods = 0;
+  steps.push({ m, n, grid:heights, pac:[], atl:[], cur:null, floods:0,
+    what:'Brute force: run a downhill flood from every cell.' });
+  for (let r=0;r<m;r++) {
+    for (let c=0;c<n;c++) {
+      floods++;
+      const ok = drains(r,c);
+      if (ok) ans.push([r,c]);
+      steps.push({ m, n, grid:heights, pac:ans.slice(), atl:ans.slice(), cur:[r,c], floods,
+        what:`Flood #${floods} from (${r},${c}): ${ok ? 'reaches both → keep' : 'misses an ocean → drop'}.` });
+    }
+  }
+  ans.sort((p,q) => p[0]-q[0] || p[1]-q[1]);
+  steps.push({ m, n, grid:heights, pac:ans.slice(), atl:ans.slice(), cur:null, floods, result:ans,
+    what:`Done after ${floods} floods — that is O((m·n)²) work for ${m*n} cells.` });
+  return steps;
+}
+function bfRender(st) {
+  pawPaint('bf-grid', st);
+  const s = document.getElementById('bf-state');
+  if (s) s.textContent = `floods run: ${st.floods}   ·   ${st.what}`;
+  document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+  const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+  const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+}
+function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+function bfPrev()  { if (bfCur > 0)                  { bfCur--; bfRender(bfSteps[bfCur]); } }
+function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+function bfLoadEx(idx) {
+  bfStopPlay();
+  [0,1,2].forEach(i => document.getElementById('bf-ex'+i).classList.toggle('active', i===idx));
+  bfSteps = bfGenSteps(EX[idx].heights);
+  bfCur = 0; bfRender(bfSteps[0]);
+}
+
+/* ───────────────────────── §6 code visualization (cv*) ───────────────────────── */
+
+let cvSteps = [], cvCur = 0, cvTimer = null;
+
+const CV_LINES = [
+  { n: 1,  c: 'vector<vector<int>> pacificAtlantic(vector<vector<int>>& h) {' },
+  { n: 2,  c: '    int m = h.size(), n = h[0].size();' },
+  { n: 3,  c: '    vector<vector<bool>> pac(m, ...), atl(m, ...);' },
+  { n: 4,  c: '    queue<pair<int,int>> qp, qa;' },
+  { n: 5,  c: '    for (int c = 0; c < n; c++) {' },
+  { n: 6,  c: '        pac[0][c] = atl[m-1][c] = true;' },
+  { n: 7,  c: '        qp.push({0,c}); qa.push({m-1,c});' },
+  { n: 8,  c: '    }' },
+  { n: 9,  c: '    for (int r = 0; r < m; r++) {' },
+  { n: 10, c: '        pac[r][0] = atl[r][n-1] = true;' },
+  { n: 11, c: '        qp.push({r,0}); qa.push({r,n-1});' },
+  { n: 12, c: '    }' },
+  { n: 13, c: '    flood(h, pac, qp);' },
+  { n: 14, c: '    flood(h, atl, qa);' },
+  { n: 15, c: '    vector<vector<int>> res;' },
+  { n: 16, c: '    for (int r = 0; r < m; r++)' },
+  { n: 17, c: '      for (int c = 0; c < n; c++)' },
+  { n: 18, c: '        if (pac[r][c] && atl[r][c]) res.push_back({r,c});' },
+  { n: 21, c: '    return res;' },
+];
+
+function cvGenSteps(heights) {
+  const m = heights.length, n = heights[0].length;
+  const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+  const inB = (r,c) => r>=0 && r<m && c>=0 && c<n;
+  const dump = (set) => {
+    const a = []; set.forEach(k => a.push([Math.floor(k/n), k%n]));
+    a.sort((p,q) => p[0]-q[0] || p[1]-q[1]); return a;
+  };
+  const steps = [];
+  steps.push({ line:2, phase:'init', m, n, grid:heights, pac:[], atl:[], cur:null,
+    phaseLbl:'init', cellLbl:'—', changed:['phase'],
+    narr:`Grid is ${m}×${n}. Build two empty visited grids, pac and atl.` });
+
+  // ---- Pacific flood ----
+  const pac = new Set(), qp = [];
+  for (let c=0;c<n;c++){ const k=c; if(!pac.has(k)){pac.add(k); qp.push([0,c]);} }
+  for (let r=0;r<m;r++){ const k=r*n; if(!pac.has(k)){pac.add(k); qp.push([r,0]);} }
+  steps.push({ line:6, phase:'seedP', m, n, grid:heights, pac:dump(pac), atl:[], cur:null,
+    phaseLbl:'seed Pacific', cellLbl:'border', changed:['phase','pac'],
+    narr:`Seed every Pacific-border cell into qp — ${pac.size} cells, all marked blue.` });
+  let qi = 0;
+  while (qi < qp.length) {
+    const [r,c] = qp[qi++];
+    const added = [];
+    for (const [dr,dc] of DIRS) {
+      const nr=r+dr, nc=c+dc, k=nr*n+nc;
+      if (inB(nr,nc) && !pac.has(k) && heights[nr][nc] >= heights[r][c]) { pac.add(k); qp.push([nr,nc]); added.push([nr,nc]); }
+    }
+    steps.push({ line: added.length?35:29, phase:'floodP', m, n, grid:heights, pac:dump(pac), atl:[], cur:[r,c],
+      phaseLbl:'flood Pacific', cellLbl:`(${r},${c})`, changed: added.length?['cell','pac']:['cell'],
+      narr: added.length ? `Pop (${r},${c}); add taller neighbour(s) ${added.map(a=>`(${a[0]},${a[1]})`).join(', ')} to pac.`
+                         : `Pop (${r},${c}); no unvisited taller neighbour.` });
+  }
+
+  // ---- Atlantic flood ----
+  const atl = new Set(), qa = [];
+  for (let c=0;c<n;c++){ const k=(m-1)*n+c; if(!atl.has(k)){atl.add(k); qa.push([m-1,c]);} }
+  for (let r=0;r<m;r++){ const k=r*n+(n-1); if(!atl.has(k)){atl.add(k); qa.push([r,n-1]);} }
+  steps.push({ line:10, phase:'seedA', m, n, grid:heights, pac:dump(pac), atl:dump(atl), cur:null,
+    phaseLbl:'seed Atlantic', cellLbl:'border', changed:['phase','atl'],
+    narr:`Seed every Atlantic-border cell into qa — ${atl.size} cells, orange. Overlap with blue shows green.` });
+  let qj = 0;
+  while (qj < qa.length) {
+    const [r,c] = qa[qj++];
+    const added = [];
+    for (const [dr,dc] of DIRS) {
+      const nr=r+dr, nc=c+dc, k=nr*n+nc;
+      if (inB(nr,nc) && !atl.has(k) && heights[nr][nc] >= heights[r][c]) { atl.add(k); qa.push([nr,nc]); added.push([nr,nc]); }
+    }
+    steps.push({ line: added.length?35:29, phase:'floodA', m, n, grid:heights, pac:dump(pac), atl:dump(atl), cur:[r,c],
+      phaseLbl:'flood Atlantic', cellLbl:`(${r},${c})`, changed: added.length?['cell','atl']:['cell'],
+      narr: added.length ? `Pop (${r},${c}); add ${added.map(a=>`(${a[0]},${a[1]})`).join(', ')} to atl.`
+                         : `Pop (${r},${c}); no unvisited taller neighbour.` });
+  }
+
+  // ---- intersection ----
+  const both = [];
+  pac.forEach(k => { if (atl.has(k)) both.push(k); });
+  both.sort((a,b) => a-b);
+  const bothCoords = both.map(k => [Math.floor(k/n), k%n]);
+  steps.push({ line:18, phase:'collect', m, n, grid:heights, pac:dump(pac), atl:dump(atl), cur:null,
+    phaseLbl:'collect', cellLbl:'scan', changed:['phase','both'],
+    narr:`Scan the grid: a cell goes into res when pac && atl. ${bothCoords.length} cells qualify.` });
+  steps.push({ line:21, phase:'done', m, n, grid:heights, pac:dump(pac), atl:dump(atl), cur:null,
+    phaseLbl:'done', cellLbl:'—', changed:['both'], both:bothCoords, result:bothCoords,
+    narr:`Return ${bothCoords.length} cells reachable from both oceans (the green cells).` });
+  return steps;
+}
+function cvSetCard(id, val, hl, match) {
+  const card = document.getElementById(id);
+  if (!card) return;
+  card.classList.remove('hl', 'hl-match', 'dim');
+  const v = card.querySelector('.cv-var-val');
+  const empty = (val === '' || val == null || val === '—');
+  if (v) v.textContent = empty ? '—' : val;
+  if (empty) card.classList.add('dim');
+  else if (match) card.classList.add('hl-match');
+  else if (hl) card.classList.add('hl');
+}
+function cvRender(st) {
+  document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+  const lineEl = document.getElementById('cvL' + st.line);
+  if (lineEl) lineEl.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+
+  const ch = st.changed || [];
+  const done = st.phase === 'done';
+  cvSetCard('cv-v-phase', st.phaseLbl, ch.includes('phase'), false);
+  cvSetCard('cv-v-cell',  st.cellLbl,  ch.includes('cell'),  false);
+  cvSetCard('cv-v-pac',   st.pac.length || '—', ch.includes('pac'), false);
+  cvSetCard('cv-v-atl',   st.atl.length || '—', ch.includes('atl'), false);
+  cvSetCard('cv-v-both',  pawBothCount(st) || (done ? 0 : '—'), ch.includes('both'), done);
+
+  const nar = document.getElementById('cv-narration');
+  nar.className = 'cv-narration' + (done ? ' is-match' : ' is-active');
+  nar.textContent = st.narr;
+
+  pawPaint('cv-grid', st);
+
+  document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+  const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+  const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+}
+function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+function cvPrev()  { if (cvCur > 0)                  { cvCur--; cvRender(cvSteps[cvCur]); } }
+function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+function cvLoadEx(idx) {
+  cvStopPlay();
+  [0,1,2].forEach(i => document.getElementById('cv-ex'+i).classList.toggle('active', i===idx));
+  cvSteps = cvGenSteps(EX[idx].heights);
+  cvCur = 0; cvRender(cvSteps[0]);
+}
+
+/* ───────────────────────── §7 dry run (dr*) — the oracle ───────────────────────── */
+
+let drSteps = [], drCur = 0, drTimer = null;
+
+function drGenSteps(heights) {
+  const m = heights.length, n = heights[0].length;
+  const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+  const inB = (r,c) => r>=0 && r<m && c>=0 && c<n;
+  const dump = (set) => {
+    const a = []; set.forEach(k => a.push([Math.floor(k/n), k%n]));
+    a.sort((p,q) => p[0]-q[0] || p[1]-q[1]); return a;
+  };
+  const steps = [];
+  const pac = new Set(), atl = new Set();
+
+  steps.push({ phase:'init', m, n, grid:heights, pac:[], atl:[], cur:null,
+    what:'Two oceans border the grid.',
+    why:'The Pacific touches the top row and left column; the Atlantic touches the bottom row and right column. We flood inland from each shore instead of tracing every cell.' });
+
+  // Pacific flood
+  const qp = [];
+  for (let c=0;c<n;c++){ const k=c; if(!pac.has(k)){pac.add(k); qp.push([0,c]);} }
+  for (let r=0;r<m;r++){ const k=r*n; if(!pac.has(k)){pac.add(k); qp.push([r,0]);} }
+  steps.push({ phase:'pac', m, n, grid:heights, pac:dump(pac), atl:[], cur:null,
+    what:'Seed the Pacific shore (blue).',
+    why:`Every top-row and left-column cell already drains to the Pacific — ${pac.size} seed cells enter the queue.` });
+  let qi = 0;
+  while (qi < qp.length) {
+    const [r,c] = qp[qi++];
+    const added = [];
+    for (const [dr,dc] of DIRS) {
+      const nr=r+dr, nc=c+dc, k=nr*n+nc;
+      if (inB(nr,nc) && !pac.has(k) && heights[nr][nc] >= heights[r][c]) { pac.add(k); qp.push([nr,nc]); added.push([nr,nc]); }
+    }
+    steps.push({ phase:'pac', m, n, grid:heights, pac:dump(pac), atl:[], cur:[r,c],
+      what: added.length ? `From (${r},${c}) climb to ${added.map(a=>`(${a[0]},${a[1]})`).join(', ')}.`
+                         : `From (${r},${c}) — no taller neighbour to add.`,
+      why:'Reverse the flow: a neighbour at least as tall can send water back into this cell, so it also reaches the Pacific.' });
+  }
+
+  // Atlantic flood
+  const qa = [];
+  for (let c=0;c<n;c++){ const k=(m-1)*n+c; if(!atl.has(k)){atl.add(k); qa.push([m-1,c]);} }
+  for (let r=0;r<m;r++){ const k=r*n+(n-1); if(!atl.has(k)){atl.add(k); qa.push([r,n-1]);} }
+  steps.push({ phase:'atl', m, n, grid:heights, pac:dump(pac), atl:dump(atl), cur:null,
+    what:'Seed the Atlantic shore (orange).',
+    why:`Every bottom-row and right-column cell drains to the Atlantic — ${atl.size} seed cells. Blue cells turn green the moment the orange flood reaches them.` });
+  let qj = 0;
+  while (qj < qa.length) {
+    const [r,c] = qa[qj++];
+    const added = [];
+    for (const [dr,dc] of DIRS) {
+      const nr=r+dr, nc=c+dc, k=nr*n+nc;
+      if (inB(nr,nc) && !atl.has(k) && heights[nr][nc] >= heights[r][c]) { atl.add(k); qa.push([nr,nc]); added.push([nr,nc]); }
+    }
+    steps.push({ phase:'atl', m, n, grid:heights, pac:dump(pac), atl:dump(atl), cur:[r,c],
+      what: added.length ? `From (${r},${c}) climb to ${added.map(a=>`(${a[0]},${a[1]})`).join(', ')}.`
+                         : `From (${r},${c}) — no taller neighbour to add.`,
+      why:'Same uphill rule for the Atlantic flood. Green cells already belong to both sets.' });
+  }
+
+  // intersection
+  const both = [];
+  pac.forEach(k => { if (atl.has(k)) both.push(k); });
+  both.sort((a,b) => a-b);
+  const bothCoords = both.map(k => [Math.floor(k/n), k%n]);
+  steps.push({ phase:'done', m, n, grid:heights, pac:dump(pac), atl:dump(atl), cur:null,
+    both:bothCoords, result:bothCoords,
+    what:`${bothCoords.length} cells reach BOTH oceans.`,
+    why:'The green overlap is the answer: every cell flood-reachable from the Pacific shore and from the Atlantic shore.' });
+  return steps;
+}
+function drRender(st) {
+  pawPaint('dr-grid', st);
+  document.getElementById('dr-f-pac').textContent  = st.pac.length;
+  document.getElementById('dr-f-atl').textContent  = st.atl.length;
+  document.getElementById('dr-f-both').textContent = pawBothCount(st);
+  const fp = document.getElementById('dr-formula');
+  if (fp) fp.classList.toggle('is-match', st.phase === 'done');
+  document.getElementById('dr-what').textContent = st.what;
+  document.getElementById('dr-why').textContent  = st.why;
+  document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+  const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+  const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+}
+function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+function drPrev()  { if (drCur > 0)                  { drCur--; drRender(drSteps[drCur]); } }
+function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+function drLoadEx(idx) {
+  drStopPlay();
+  [0,1,2].forEach(i => document.getElementById('dr-ex'+i).classList.toggle('active', i===idx));
+  drSteps = drGenSteps(EX[idx].heights);
+  drCur = 0; drRender(drSteps[0]);
+}
+
+/* ───────────────────────── init ───────────────────────── */
+siSteps = siGenSteps(EX[0].heights); siRender(siSteps[0]);
+cvBuildCode(CV_LINES);
+cvLoadEx(0);
+drLoadEx(0);
+bfLoadEx(0);
+</script>
+
+</body>
+</html>
