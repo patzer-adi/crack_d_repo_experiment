@@ -648,6 +648,11 @@
     [[8,12],[1,4],[14,20],[7,9],[22,25],[2,5],[13,15],[24,28]],
     [[1,4],[4,7]],
   ];
+  const EX = [
+    {intervals:[[1,3],[2,6],[8,10],[15,18]], answer:[[1,6],[8,10],[15,18]]},
+    {intervals:[[8,12],[1,4],[14,20],[7,9],[22,25],[2,5],[13,15],[24,28]], answer:[[1,5],[7,12],[13,20],[22,28]]},
+    {intervals:[[1,4],[4,7]], answer:[[1,7]]},
+  ];
   const BF_EXAMPLES = [
     [[1,3],[2,6],[8,10],[15,18]],
     [[8,12],[1,4],[7,9],[2,5]],
@@ -861,7 +866,7 @@
       input: intervals, sorted, displayInput: displayInput || sorted, n,
       i: vars.i, next: vars.next, open: open ? [...open] : null, dec: vars.dec,
       out: out.map(x=>[...x]),
-      what, why, phase,
+      what, why, phase, result: out.map(x=>[...x]),
     });
     if(!isAlreadySorted){
       snap(`Step 0: input as given (out of order).`,
