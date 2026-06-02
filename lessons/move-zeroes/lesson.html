@@ -8,6 +8,20 @@
 <style>
   /* PROBLEM-SPECIFIC CSS ONLY — bar charts, freq arrays, panel-height overrides */
   /* Do not redefine any class already in static/lesson.css */
+  .mz-strip { display:flex; gap:6px; flex-wrap:wrap; margin:.5rem 0; }
+  .mz-cell  { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .mz-box   { width:42px; height:42px; display:flex; align-items:center; justify-content:center;
+              border:1px solid var(--border); border-radius:6px; font-family:var(--mono); font-size:15px;
+              background:var(--bg2); color:var(--text); transition:all .15s ease; }
+  .mz-box.zero   { color:var(--text3); }
+  .mz-box.settled{ background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); }
+  .mz-box.write  { background:var(--bg-warn);    border-color:var(--border-warn);    color:var(--text-warn); }
+  .mz-box.read   { background:var(--bg-info);    border-color:var(--border-info);    color:var(--text-info); }
+  .mz-idx   { font-family:var(--mono); font-size:10px; color:var(--text3); }
+  .mz-ptr   { font-family:var(--mono); font-size:10px; height:12px; font-weight:600; }
+  .mz-ptr.w { color:var(--text-warn); }
+  .mz-ptr.r { color:var(--text-info); }
+  .mz-out   { display:flex; gap:6px; flex-wrap:wrap; margin:.35rem 0; }
 </style>
 </head>
 <body>
@@ -28,40 +42,165 @@
   <p class="sec-title">Clarifying questions to ask first</p>
   <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
   <div class="asgrid">
-    <!-- PER-PROBLEM: 4 × .acard (Q / A / unlock line). See design/sec0_clarifying.md -->
+    <div class="acard">
+      <p class="acard-q">Must I preserve the order of the non-zero elements?</p>
+      <p class="acard-a">Yes. The relative order of non-zeros must stay the same; only the zeros move to the end.</p>
+      <p class="acard-u">→ rules out sorting; demands a <em>stable</em> compaction</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">In-place, or may I allocate a new array?</p>
+      <p class="acard-a">In-place — O(1) extra space is the target. A copy is allowed only as a brute-force baseline.</p>
+      <p class="acard-u">→ pushes us from "copy non-zeros out" to a two-pointer swap</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">What counts as a zero — only integer 0?</p>
+      <p class="acard-a">Yes, the literal value 0. No negatives-as-zero, no nulls.</p>
+      <p class="acard-u">→ the predicate is simply <code>nums[i] != 0</code></p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can the array be empty or all zeros?</p>
+      <p class="acard-a">Yes to both. Empty returns immediately; all-zeros is a no-op that must not crash.</p>
+      <p class="acard-u">→ the loop body must be safe when no non-zero is ever found</p>
+    </div>
   </div>
-  <!-- PER-PROBLEM (optional): .infobox titled "Assumptions we carry forward" -->
+  <div class="infobox">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Stable order of non-zeros, in-place with O(1) extra space, the predicate is <code>!= 0</code>, and empty / all-zero inputs are valid. Minimise writes: an already-placed element should not be re-written.</p>
+  </div>
 </div>
 
 <!-- ═══ SECTION 1: THE INSIGHT ═══ -->
 <div class="section">
   <p class="sec-label">The Insight</p>
-  <p class="sec-title"><!-- PER-PROBLEM: one-line kernel as title --></p>
+  <p class="sec-title">Keep one slot for "where the next non-zero belongs"</p>
 
-  <p class="body"><!-- PER-PROBLEM: kernel paragraph (one paragraph, algorithm-derivable) --></p>
+  <p class="body">The zeros are noise; the non-zeros are the signal, and their order is sacred. So stop thinking about moving zeros at all. Instead, walk a <strong>read</strong> pointer across the array, and keep a <strong>write</strong> slot pointing at the first position that hasn't yet received a confirmed non-zero. Every time the reader lands on a non-zero, drop it into the write slot and advance the slot by one. Because you visit non-zeros left to right and place them left to right, their relative order is preserved automatically — and every position the write slot leaves behind is, by construction, a finished non-zero. Whatever the write slot never reaches must be zeros, so they end up trailing at the back for free.</p>
 
-  <!-- PER-PROBLEM: foundational concept visual (.number-line, bar chart, freq badges, etc.) -->
+  <!-- Foundational visual: animated read/write compaction on a concrete array -->
+  <div style="margin:1.1rem 0 .25rem">
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:var(--text3);margin-bottom:.4rem">
+      nums = [0, 1, 0, 3, 12] &nbsp;·&nbsp; <span style="color:var(--text-warn)">w</span> = write slot &nbsp;·&nbsp; <span style="color:var(--text-info)">r</span> = reader
+    </div>
+    <div id="si-strip" class="mz-strip"></div>
+    <div class="legend" style="margin-top:.4rem">
+      <span class="leg-item"><span class="leg-dot" style="background:var(--bg-info);border:1px solid var(--border-info)"></span><span class="leg-label">reader (r)</span></span>
+      <span class="leg-item"><span class="leg-dot" style="background:var(--bg-warn);border:1px solid var(--border-warn)"></span><span class="leg-label">write slot (w)</span></span>
+      <span class="leg-item"><span class="leg-dot" style="background:var(--bg-success);border:1px solid var(--border-success)"></span><span class="leg-label">settled non-zero</span></span>
+    </div>
+    <div id="si-note" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin:.5rem 0;min-height:2.4em"></div>
+    <div class="ctrl-row" style="margin-top:.625rem">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
 
   <div class="infobox success">
     <p class="infobox-t">The kernel</p>
-    <p class="infobox-d"><!-- PER-PROBLEM: dense kernel paragraph from which algorithm is derivable --></p>
+    <p class="infobox-d">Maintain <code>slow</code> = the index where the next non-zero should land, starting at 0. Sweep <code>fast</code> from left to right. Whenever <code>nums[fast] != 0</code>, swap it into <code>nums[slow]</code> and increment <code>slow</code>. After the sweep, <code>[0, slow)</code> holds every non-zero in original order and <code>[slow, n)</code> is all zeros — no second pass needed.</p>
   </div>
 
-  <!-- PER-PROBLEM (optional): equivalence chain in a .chain-box with concrete pill examples per row -->
+  <p class="body" style="margin-top:1rem">Why one read pointer plus one write slot is enough:</p>
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">Move every 0 to the end, keep the non-zeros in their original relative order, in place.</div>
+        <div class="chain-note">the problem</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">Compact the non-zeros to the front (stably); the zeros fall to the back as a side effect.</div>
+        <div class="chain-note">moving zeros back ≡ pulling non-zeros forward — one is the complement of the other</div>
+        <div class="chain-example">
+          <span class="pill n">[0,1,0,3,12]</span><span class="arrow">→</span>
+          <span class="pill ok">[1,3,12 | 0,0]</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">Stream the array once; copy each non-zero into the next free front slot.</div>
+        <div class="chain-note">visiting and placing both left-to-right ⇒ order is preserved for free</div>
+        <div class="chain-example">
+          <span class="pill n">read 1 → slot 0</span><span class="arrow">→</span><span class="pill n">read 3 → slot 1</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill ok">read 12 → slot 2</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">Swap</span> instead of overwrite, so the displaced zero is parked at the reader's old spot.</div>
+        <div class="chain-note">swapping keeps it in-place with O(1) space and leaves zeros to coalesce at the tail</div>
+        <div class="chain-example">
+          <span class="pill n">nums[fast] = 0</span><span class="arrow">→</span><span class="pill bad">skip, slot stays</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">nums[fast] ≠ 0</span><span class="arrow">→</span><span class="pill ok">swap into slot, slot++</span>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
 <div class="section">
   <p class="sec-label">Step 1</p>
   <p class="sec-title">Brute force — feel the cost</p>
-  <p class="body"><!-- PER-PROBLEM: one paragraph stating the naive approach and its complexity --></p>
+  <p class="body">The most literal solution allocates a second array: scan the input, append every non-zero to the new array, then pad the remainder with zeros, then copy it back. It is correct and even O(n) time — but it spends O(n) extra memory and writes every element twice. Watch the "Writes" counter: the new array is filled, then copied back, so the work is doubled compared to the one-pass swap we will build next.</p>
 
-  <!-- PER-PROBLEM: brute-force animation panel. For array problems: .bf-nums + .bf-num cells.
-       Live "Checks" counter is mandatory. Controls in .ctrl-row. -->
+  <div class="mz-strip" id="bf-src" style="margin-top:.5rem"></div>
+  <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin:.4rem 0 .15rem">output buffer</div>
+  <div class="mz-out" id="bf-out"></div>
+  <div class="panels-fixed" style="margin-top:.6rem">
+    <div class="formula-panel" id="bf-formula">
+      <div class="formula-grid">
+        <div><p class="fitem-label">reading</p><p class="fitem-val" id="bf-f-read">—</p></div>
+        <div><p class="fitem-label">write pos</p><p class="fitem-val" id="bf-f-w">0</p></div>
+        <div><p class="fitem-label">Writes</p><p class="fitem-val" id="bf-f-writes">0</p></div>
+      </div>
+      <div class="formula-eq" id="bf-eq"></div>
+    </div>
+    <div class="step-panel" id="bf-step">
+      <div class="step-what" id="bf-what"></div>
+      <div class="step-why" id="bf-why"></div>
+    </div>
+  </div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">[0,1,0,3,12]</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">[4,0,5,0,0,3,0,8]</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">[0,0,1]</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-bp"   onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-bn"   onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
 
-  <button class="reveal-btn" onclick="toggleEl('code-bf')">▶ Reveal brute-force code</button>
+  <button class="reveal-btn" onclick="toggleEl('code-bf', this)">▶ Reveal brute-force code</button>
   <div id="code-bf" class="code-block">
-    <pre class="cb"><!-- PER-PROBLEM: brute-force C++ code with explicit braces --></pre>
+    <pre class="cb"><span class="tp">void</span> <span class="fn">moveZeroes</span>(vector&lt;<span class="tp">int</span>&gt;&amp; nums) {
+    <span class="tp">int</span> n = nums.size();
+    vector&lt;<span class="tp">int</span>&gt; out(n, <span class="nu">0</span>);   <span class="cm">// O(n) extra space</span>
+    <span class="tp">int</span> w = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        <span class="kw">if</span> (nums[i] != <span class="nu">0</span>) {
+            out[w] = nums[i];      <span class="cm">// write #1</span>
+            w++;
+        }
+    }
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        nums[i] = out[i];          <span class="cm">// write #2 (copy back)</span>
+    }
+}</pre>
   </div>
 </div>
 
@@ -69,9 +208,32 @@
 <div class="section">
   <p class="sec-label">Step 2</p>
   <p class="sec-title">Translations — every optimisation, named</p>
-  <p class="body"><!-- PER-PROBLEM: one paragraph framing the chain of optimisations --></p>
+  <p class="body">From the copy-based baseline to the one-pass in-place swap, two ideas do all the work: drop the second array, and avoid touching slots that are already correct.</p>
   <div class="skeleton">
-    <!-- PER-PROBLEM: one .wt-item per translation (.wt-num + .wt-body containing .wt-name, .wt-desc, .wt-gain) -->
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Reuse the front of the array as the output buffer</p>
+        <p class="wt-desc">The non-zeros always land in slots <code>0, 1, 2, …</code> — exactly the front of the array we are reading. Since the reader is always at or ahead of the write slot (<code>fast ≥ slow</code>), writing to <code>nums[slow]</code> never clobbers a value we still need to read.</p>
+        <p class="wt-gain">O(n) extra space → O(1)</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Swap instead of overwrite-then-zero-fill</p>
+        <p class="wt-desc">Overwriting forces a second pass to fill the tail with zeros. Swapping sends the zero that was at <code>nums[slow]</code> back to <code>nums[fast]</code>, so zeros accumulate at the tail automatically. One pass, no clean-up.</p>
+        <p class="wt-gain">two passes → one pass</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <p class="wt-name">Skip the no-op swap when slow == fast</p>
+        <p class="wt-desc">Until the first zero is seen, <code>slow</code> and <code>fast</code> move in lockstep and the swap is an element with itself. Guarding with <code>if (slow != fast)</code> turns those into pure increments — fewer memory writes on zero-light inputs.</p>
+        <p class="wt-gain">writes ∝ non-zeros after first 0, not n</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -80,7 +242,11 @@
   <p class="sec-label">Step 3</p>
   <p class="sec-title">The algorithm in plain English</p>
   <div class="algo-steps">
-    <!-- PER-PROBLEM: 4–6 .algo-step rows (.algo-n + .algo-t with <b> emphasis on verbs) -->
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t"><b>Set</b> <code>slow = 0</code> — the index where the next non-zero element belongs.</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t"><b>Sweep</b> <code>fast</code> from <code>0</code> to <code>n − 1</code> over every element.</span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t"><b>If</b> <code>nums[fast]</code> is zero, <b>skip</b> it — leave <code>slow</code> where it is.</span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t"><b>Otherwise swap</b> <code>nums[slow]</code> and <code>nums[fast]</code>, then <b>advance</b> <code>slow</code> by one.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t"><b>Stop</b> when the sweep ends: <code>[0, slow)</code> is the non-zeros in order, <code>[slow, n)</code> is all zeros.</span></div>
   </div>
 </div>
 
@@ -88,9 +254,19 @@
 <div class="section">
   <p class="sec-label">Step 4</p>
   <p class="sec-title">Code</p>
-  <button class="reveal-btn" onclick="toggleEl('code-main')">▶ Reveal Code</button>
+  <button class="reveal-btn" onclick="toggleEl('code-main', this)">▶ Reveal Code</button>
   <div id="code-main" class="code-block">
-    <pre class="cb"><!-- PER-PROBLEM: optimal C++ code with EXPLICIT BRACES (design/code_style.md) --></pre>
+    <pre class="cb"><span class="tp">void</span> <span class="fn">moveZeroes</span>(vector&lt;<span class="tp">int</span>&gt;&amp; nums) {
+    <span class="tp">int</span> slow = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> fast = <span class="nu">0</span>; fast &lt; (<span class="tp">int</span>)nums.size(); fast++) {
+        <span class="kw">if</span> (nums[fast] != <span class="nu">0</span>) {
+            <span class="kw">if</span> (slow != fast) {
+                swap(nums[slow], nums[fast]);
+            }
+            slow++;
+        }
+    }
+}</pre>
   </div>
 </div>
 
@@ -102,14 +278,27 @@
     <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
     <div class="cv-state-panel">
       <div id="cv-var-grid" class="cv-var-grid">
-        <!-- PER-PROBLEM: .cv-var-card per variable (.cv-var-name + .cv-var-val). Start dimmed. -->
+        <div class="cv-var-card dim" id="cv-v-arr"><p class="cv-var-name">nums</p><p class="cv-var-val" id="cv-vv-arr">—</p></div>
+        <div class="cv-var-card dim" id="cv-v-slow"><p class="cv-var-name">slow</p><p class="cv-var-val" id="cv-vv-slow">—</p></div>
+        <div class="cv-var-card dim" id="cv-v-fast"><p class="cv-var-name">fast</p><p class="cv-var-val" id="cv-vv-fast">—</p></div>
+        <div class="cv-var-card dim" id="cv-v-val"><p class="cv-var-name">nums[fast]</p><p class="cv-var-val" id="cv-vv-val">—</p></div>
       </div>
       <div id="cv-narration" class="cv-narration"><!-- per-step narration --></div>
     </div>
   </div>
-  <div class="ctrl-row">
-    <!-- PER-PROBLEM: example switcher buttons (.ex-btn), prev/play/next/reset (.ctrl-btn) -->
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">[0,1,0,3,12]</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">[4,0,5,0,0,3,0,8]</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">[0,0,1]</button>
   </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
 </div>
 
 <!-- ═══ SECTION 7: DRY RUN ═══ -->
@@ -117,28 +306,82 @@
   <p class="sec-label">Step 6</p>
   <p class="sec-title">Dry run — step through the algorithm</p>
 
-  <!-- PER-PROBLEM: visual strip (.num-strip / .arr-strip / .bf-bar-con / problem-specific) -->
+  <div id="dr-strip" class="mz-strip"></div>
+  <div class="legend" style="margin:.35rem 0 .2rem">
+    <span class="leg-item"><span class="leg-dot" style="background:var(--bg-info);border:1px solid var(--border-info)"></span><span class="leg-label">reader (fast)</span></span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--bg-warn);border:1px solid var(--border-warn)"></span><span class="leg-label">write slot (slow)</span></span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--bg-success);border:1px solid var(--border-success)"></span><span class="leg-label">settled non-zero</span></span>
+  </div>
 
   <div class="panels-fixed">
     <div id="dr-formula" class="formula-panel">
-      <!-- PER-PROBLEM: .formula-grid with .fitem-label/.fitem-val cells + .formula-eq -->
+      <div class="formula-grid">
+        <div><p class="fitem-label">slow</p><p class="fitem-val" id="dr-f-slow">0</p><p class="fitem-sub">write slot</p></div>
+        <div><p class="fitem-label">fast</p><p class="fitem-val" id="dr-f-fast">—</p><p class="fitem-sub">reader</p></div>
+        <div><p class="fitem-label">nums[fast]</p><p class="fitem-val" id="dr-f-val">—</p><p class="fitem-sub">current value</p></div>
+      </div>
+      <div class="formula-eq" id="dr-eq"></div>
     </div>
     <div id="dr-step" class="step-panel">
-      <div class="step-what"><!-- per-step what --></div>
-      <div class="step-why"><!-- per-step why --></div>
+      <div class="step-what" id="dr-what"></div>
+      <div class="step-why" id="dr-why"></div>
     </div>
   </div>
 
-  <div class="ctrl-row">
-    <!-- PER-PROBLEM: example switcher + prev/play/next/reset. MUST hard-reset on switch. -->
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">[0,1,0,3,12]</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">[4,0,5,0,0,3,0,8]</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">[0,0,1]</button>
   </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
 </div>
 
 <!-- ═══ SECTION 8: CORNER CASES ═══ -->
 <div class="section">
   <p class="sec-label">Step 7</p>
   <p class="sec-title">Corner cases</p>
-  <!-- PER-PROBLEM: 3–5 × .corner (.cnum + .corner-title + .corner-body) -->
+  <div class="corner">
+    <span class="cnum">1</span>
+    <div>
+      <p class="corner-title">Empty array</p>
+      <p class="corner-body"><code>[]</code> — the loop never runs, <code>slow</code> stays 0, nothing is written. Safe by construction.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <span class="cnum">2</span>
+    <div>
+      <p class="corner-title">All zeros</p>
+      <p class="corner-body"><code>[0,0,0]</code> — every element fails the <code>!= 0</code> test, <code>slow</code> never moves, the array is left untouched. Correct: it is already "all zeros at the end".</p>
+    </div>
+  </div>
+  <div class="corner">
+    <span class="cnum">3</span>
+    <div>
+      <p class="corner-title">No zeros</p>
+      <p class="corner-body"><code>[1,2,3]</code> — every step has <code>slow == fast</code>, so the <code>if (slow != fast)</code> guard skips the swap and the array is unchanged with zero memory writes.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <span class="cnum">4</span>
+    <div>
+      <p class="corner-title">Leading zeros</p>
+      <p class="corner-body"><code>[0,0,1]</code> — the reader skips both zeros, then swaps <code>1</code> into slot 0. The two zeros it passed over slide to the tail via that single swap.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <span class="cnum">5</span>
+    <div>
+      <p class="corner-title">Single element</p>
+      <p class="corner-body"><code>[0]</code> or <code>[7]</code> — one iteration, at most one self-swap. Nothing to reorder; returns immediately.</p>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
@@ -146,7 +389,12 @@
   <p class="sec-label">Step 8</p>
   <p class="sec-title">Production readiness</p>
   <div class="checklist">
-    <!-- PER-PROBLEM: 5–8 × .chk-item (.chk-icon + .chk-text with <b> label) -->
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Stability:</b> non-zeros are visited and placed left-to-right, so their relative order is provably preserved.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>In-place:</b> only two integer pointers are allocated — O(1) auxiliary space regardless of input size.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Empty / all-zero inputs:</b> handled without special-casing; the loop body is a no-op when no non-zero is found.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Index type:</b> compare <code>fast</code> against <code>(int)nums.size()</code> (or use <code>size_t</code>) to avoid signed/unsigned mismatch warnings.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Write minimisation:</b> the <code>slow != fast</code> guard avoids redundant self-swaps on zero-free prefixes.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Generality:</b> the predicate is the only problem-specific part — swap <code>!= 0</code> for any "keep these, push the rest back" rule.</span></div>
   </div>
 </div>
 
@@ -155,9 +403,47 @@
   <p class="sec-label">Step 9</p>
   <p class="sec-title">Approaches — trade-offs</p>
   <div class="tab-bar">
-    <!-- PER-PROBLEM: 2–3 × .tab-btn (first .active) -->
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Two-pointer swap</button>
+    <button class="tab-btn"        id="tab1" onclick="switchTab(1)">Overwrite + zero-fill</button>
+    <button class="tab-btn"        id="tab2" onclick="switchTab(2)">Copy to new array</button>
   </div>
-  <!-- PER-PROBLEM: matching .tab-pane blocks, each with tags + paragraph + reveal-btn + code-block -->
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body">The optimal answer. One pass, in place, stable, with the fewest writes when the <code>slow != fast</code> guard is used. This is what to write in an interview.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-a0', this)">▶ Reveal code</button>
+    <div id="code-a0" class="code-block">
+      <pre class="cb"><span class="tp">int</span> slow = <span class="nu">0</span>;
+<span class="kw">for</span> (<span class="tp">int</span> fast = <span class="nu">0</span>; fast &lt; (<span class="tp">int</span>)nums.size(); fast++) {
+    <span class="kw">if</span> (nums[fast] != <span class="nu">0</span>) {
+        <span class="kw">if</span> (slow != fast) swap(nums[slow], nums[fast]);
+        slow++;
+    }
+}</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body">Overwrite the front with non-zeros, then fill the remaining tail with zeros in a second pass. Same complexity, but it always writes every slot at least once and needs two passes — strictly more writes than the swap.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-a1', this)">▶ Reveal code</button>
+    <div id="code-a1" class="code-block">
+      <pre class="cb"><span class="tp">int</span> w = <span class="nu">0</span>;
+<span class="kw">for</span> (<span class="tp">int</span> i = <span class="nu">0</span>; i &lt; (<span class="tp">int</span>)nums.size(); i++) {
+    <span class="kw">if</span> (nums[i] != <span class="nu">0</span>) nums[w++] = nums[i];
+}
+<span class="kw">while</span> (w &lt; (<span class="tp">int</span>)nums.size()) nums[w++] = <span class="nu">0</span>;</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body">The brute-force baseline: build a separate array of non-zeros padded with zeros, then copy it back. Easiest to reason about, but the extra array violates the in-place requirement and doubles the writes.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-a2', this)">▶ Reveal code</button>
+    <div id="code-a2" class="code-block">
+      <pre class="cb">vector&lt;<span class="tp">int</span>&gt; out(nums.size(), <span class="nu">0</span>);
+<span class="tp">int</span> w = <span class="nu">0</span>;
+<span class="kw">for</span> (<span class="tp">int</span> x : nums) <span class="kw">if</span> (x != <span class="nu">0</span>) out[w++] = x;
+nums = out;</pre>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ SECTION 11: COMPLEXITY ═══ -->
@@ -167,13 +453,13 @@
   <div class="cplx-grid">
     <div class="ccard">
       <div class="ccard-l">Time</div>
-      <div class="ccard-v"><!-- PER-PROBLEM: big-O --></div>
-      <div class="ccard-n"><!-- PER-PROBLEM: one-sentence justification --></div>
+      <div class="ccard-v">O(n)</div>
+      <div class="ccard-n">A single pass; each element is read once and written at most once.</div>
     </div>
     <div class="ccard">
       <div class="ccard-l">Space</div>
-      <div class="ccard-v"><!-- PER-PROBLEM: big-O --></div>
-      <div class="ccard-n"><!-- PER-PROBLEM: one-sentence justification --></div>
+      <div class="ccard-v">O(1)</div>
+      <div class="ccard-n">Only the two index variables; the array is rearranged in place.</div>
     </div>
   </div>
 </div>
@@ -183,32 +469,288 @@
   <p class="sec-label">Take home</p>
   <p class="sec-title">Related problems that use this pattern</p>
   <div class="takehome">
-    <!-- PER-PROBLEM: 2–4 related-problem lines, each naming the LC #, title, and what differs -->
+    <p><b>LC 27 — Remove Element:</b> same write-slot compaction, predicate is <code>!= val</code> instead of <code>!= 0</code>; order need not be preserved so an end-swap variant is allowed.</p>
+    <p><b>LC 26 — Remove Duplicates from Sorted Array:</b> write slot advances only when the current element differs from the last kept one.</p>
+    <p><b>LC 75 — Sort Colors:</b> a three-way partition (Dutch national flag) — the same idea with a write pointer at each end.</p>
+    <p><b>LC 905 — Sort Array By Parity:</b> partition by a predicate (even/odd) with two pointers; non-stable end-swap version.</p>
   </div>
 </div>
 
 <script src="../../static/lesson.js"></script>
 <script>
   /* PROBLEM-SPECIFIC SCRIPT ONLY */
-  /* Override bfTogglePlay / cvTogglePlay / drTogglePlay if non-default speed needed */
 
-  /* PER-PROBLEM: EXAMPLES array (for cv + dr) */
-  /* PER-PROBLEM: BF_EXAMPLES array (for brute force, often a subset) */
-  /* PER-PROBLEM: CV_LINES array — every line of the optimal code with line numbers */
+  /* ─── shared data ─── */
+  const EXAMPLES   = [[0,1,0,3,12], [4,0,5,0,0,3,0,8], [0,0,1]];
+  const EX = [
+    {nums:[0,1,0,3,12],       answer:[1,3,12,0,0]},
+    {nums:[4,0,5,0,0,3,0,8],  answer:[4,5,3,8,0,0,0,0]},
+    {nums:[0,0,1],            answer:[1,0,0]},
+  ];
+  const BF_EXAMPLES = EXAMPLES;
+  const CV_LINES = [
+    {n:1, c:'void moveZeroes(vector<int>& nums) {'},
+    {n:2, c:'    int slow = 0;'},
+    {n:3, c:'    for (int fast = 0; fast < n; fast++) {'},
+    {n:4, c:'        if (nums[fast] != 0) {'},
+    {n:5, c:'            if (slow != fast) swap(nums[slow], nums[fast]);'},
+    {n:6, c:'            slow++;'},
+    {n:7, c:'        }'},
+    {n:8, c:'    }'},
+    {n:9, c:'}'},
+  ];
 
-  /* PER-PROBLEM: bfGen(input) — returns step objects */
-  /* PER-PROBLEM: bfRender(st) — reflects state in DOM */
-  /* PER-PROBLEM: bfLoadEx(idx) — hard-reset + load example */
+  /* ─── shared strip renderer (pure of state; writes into a container) ─── */
+  function renderStrip(containerId, arr, slow, fast, settledTo){
+    const con = document.getElementById(containerId);
+    con.innerHTML = '';
+    arr.forEach((v, i) => {
+      const cell = document.createElement('div'); cell.className = 'mz-cell';
+      const pw = document.createElement('div'); pw.className = 'mz-ptr w'; pw.textContent = (i === slow) ? 'w' : '';
+      const box = document.createElement('div'); box.className = 'mz-box' + (v === 0 ? ' zero' : '');
+      if (i < settledTo && v !== 0) box.classList.add('settled');
+      if (i === slow) box.classList.add('write');
+      if (i === fast) box.classList.add('read');
+      box.textContent = v;
+      const pr = document.createElement('div'); pr.className = 'mz-ptr r'; pr.textContent = (i === fast) ? 'r' : '';
+      const idx = document.createElement('div'); idx.className = 'mz-idx'; idx.textContent = i;
+      cell.appendChild(pw); cell.appendChild(box); cell.appendChild(pr); cell.appendChild(idx);
+      con.appendChild(cell);
+    });
+  }
 
-  /* PER-PROBLEM: cvGen(input) — returns step objects {line, vars, dim, narration, match} */
-  /* PER-PROBLEM: cvRender(st) — reflects state in DOM */
-  /* PER-PROBLEM: cvLoadEx(idx) — hard-reset + load example */
+  /* ══════════════════════════════════════════════════════════════
+     §1 INSIGHT ANIMATION
+     ══════════════════════════════════════════════════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
 
-  /* PER-PROBLEM: drGen(input) — returns step objects */
-  /* PER-PROBLEM: drRender(st) — reflects state in DOM */
-  /* PER-PROBLEM: drLoadEx(idx) — hard-reset + load example */
+  function siGenSteps(input){
+    const a = [...input], n = a.length, steps = [];
+    let slow = 0;
+    steps.push({a:[...a], slow, fast:-1, settledTo:0,
+      note:`Start: write slot w = 0. The reader r will scan left to right.`});
+    for (let fast = 0; fast < n; fast++){
+      if (a[fast] !== 0){
+        if (slow !== fast){ const t=a[slow]; a[slow]=a[fast]; a[fast]=t; }
+        steps.push({a:[...a], slow, fast, settledTo:slow+1,
+          note:`nums[${fast}] = ${a[slow]} ≠ 0 → place it at slot ${slow}, then w → ${slow+1}.`});
+        slow++;
+      } else {
+        steps.push({a:[...a], slow, fast, settledTo:slow,
+          note:`nums[${fast}] = 0 → skip. w stays at ${slow}; this zero will be overtaken later.`});
+      }
+    }
+    steps.push({a:[...a], slow, fast:n, settledTo:slow,
+      note:`Done. [0,${slow}) are the non-zeros in order; [${slow},${n}) are zeros.`});
+    return steps;
+  }
+  function siRender(st){
+    renderStrip('si-strip', st.a, st.slow, st.fast, st.settledTo);
+    document.getElementById('si-note').textContent = st.note;
+    siUpdateCtr();
+  }
+  function siNext(){ if(siCur<siSteps.length-1){ siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev(){ if(siCur>0){ siCur--; siRender(siSteps[siCur]); } }
+  function siReset(){ siStopPlay(); siCur=0; siRender(siSteps[0]); }
+  function siStopPlay(){ clearInterval(siTimer); siTimer=null;
+    document.getElementById('si-bplay').textContent='▶ Auto'; }
+  function siTogglePlay(){
+    if(siTimer){ siStopPlay(); }
+    else{
+      document.getElementById('si-bplay').textContent='⏸ Pause';
+      siTimer=setInterval(()=>{ if(siCur<siSteps.length-1) siNext(); else siStopPlay(); }, 1400);
+    }
+  }
+  function siUpdateCtr(){
+    const c=document.getElementById('si-sctr');
+    if(c) c.textContent=`step ${siCur+1} / ${siSteps.length}`;
+  }
 
-  /* Init calls: cvBuildCode(CV_LINES); cvLoadEx(0); drLoadEx(0); bfLoadEx(0); */
+  /* ══════════════════════════════════════════════════════════════
+     §2 BRUTE FORCE — copy non-zeros into an output buffer, then fill
+     ══════════════════════════════════════════════════════════════ */
+  let bfSteps = [], bfCur = 0, bfTimer = null;
+
+  function bfGenSteps(input){
+    const a = [...input], n = a.length, steps = [];
+    const out = new Array(n).fill(null);
+    let w = 0, writes = 0;
+    steps.push({src:[...a], out:out.map(x=>x), read:-1, w, writes,
+      what:'Allocate an output buffer of length n.', why:'Brute force trades O(n) extra space for simplicity.', eq:'out = [ _, _, … ]'});
+    for (let i = 0; i < n; i++){
+      if (a[i] !== 0){
+        out[w] = a[i]; writes++;
+        steps.push({src:[...a], out:out.map(x=>x), read:i, w, writes,
+          what:`nums[${i}] = ${a[i]} ≠ 0 → out[${w}] = ${a[i]}.`,
+          why:'Append the non-zero to the buffer (write #1).', eq:`out[${w}] = nums[${i}]`});
+        w++;
+      } else {
+        steps.push({src:[...a], out:out.map(x=>x), read:i, w, writes,
+          what:`nums[${i}] = 0 → ignore.`, why:'Zeros are not copied; the tail is already 0-padded.', eq:'skip'});
+      }
+    }
+    // copy-back pass
+    for (let i = 0; i < n; i++){
+      const v = out[i] === null ? 0 : out[i];
+      out[i] = v; writes++;
+      steps.push({src:out.slice(0,i+1).concat(a.slice(i+1)), out:out.map(x=>x), read:i, w, writes, copyback:true,
+        what:`Copy back: nums[${i}] = ${v}.`, why:'Second pass overwrites the original array (write #2).', eq:`nums[${i}] = out[${i}]`});
+    }
+    steps.push({src:out.map(x=>x===null?0:x), out:out.map(x=>x===null?0:x), read:n, w, writes, done:true,
+      what:`Done in ${writes} writes — roughly 2n.`, why:'Two passes and an extra array: correct, but wasteful.', eq:'result ready'});
+    return steps;
+  }
+  function bfRender(st){
+    renderStrip('bf-src', st.src, st.copyback?st.read:-99, st.read, st.copyback?st.read+1:0);
+    const oc = document.getElementById('bf-out'); oc.innerHTML='';
+    st.out.forEach((v,i)=>{
+      const box=document.createElement('div'); box.className='mz-box'+(v===null?'':(v===0?' zero':' settled'));
+      if(i===st.w && !st.done && !st.copyback) box.classList.add('write');
+      box.textContent = v===null ? '·' : v;
+      oc.appendChild(box);
+    });
+    document.getElementById('bf-f-read').textContent = st.read<0 ? '—' : (st.read>=st.src.length ? '—' : st.read);
+    document.getElementById('bf-f-w').textContent = st.w;
+    document.getElementById('bf-f-writes').textContent = st.writes;
+    document.getElementById('bf-eq').textContent = st.eq;
+    document.getElementById('bf-what').textContent = st.what;
+    document.getElementById('bf-why').textContent = st.why;
+    document.getElementById('bf-formula').className = 'formula-panel' + (st.done?' is-match':'');
+    document.getElementById('bf-step').className = 'step-panel' + (st.done?' match':'');
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur+1} / ${bfSteps.length}`;
+    document.getElementById('bf-bp').disabled = bfCur===0;
+    document.getElementById('bf-bn').disabled = bfCur===bfSteps.length-1;
+  }
+  function bfNext(){ if(bfCur<bfSteps.length-1){ bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev(){ if(bfCur>0){ bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset(){ bfStopPlay(); bfCur=0; bfRender(bfSteps[0]); }
+  function bfLoadEx(idx){
+    bfStopPlay(); bfCur=0;
+    [0,1,2].forEach(i=>document.getElementById('bf-ex'+i).classList.toggle('active', i===idx));
+    bfSteps = bfGenSteps(BF_EXAMPLES[idx]);
+    bfRender(bfSteps[0]);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     §6 CODE VISUALIZATION
+     ══════════════════════════════════════════════════════════════ */
+  let cvSteps = [], cvCur = 0, cvTimer = null;
+
+  function cvGenSteps(input){
+    const a = [...input], n = a.length, steps = [];
+    const snap = (line, slow, fast, val, narration, match) =>
+      steps.push({line, a:[...a], slow, fast, val, narration, match:!!match});
+    let slow = 0;
+    snap(2, slow, -1, null, 'Initialise slow = 0 — the next non-zero will be written here.', false);
+    for (let fast = 0; fast < n; fast++){
+      snap(3, slow, fast, a[fast], `fast = ${fast}: inspect nums[${fast}] = ${a[fast]}.`, false);
+      snap(4, slow, fast, a[fast], a[fast]!==0
+        ? `nums[${fast}] = ${a[fast]} ≠ 0 → enter the body.`
+        : `nums[${fast}] = 0 → condition false, skip.`, a[fast]!==0);
+      if (a[fast] !== 0){
+        if (slow !== fast){ const t=a[slow]; a[slow]=a[fast]; a[fast]=t;
+          snap(5, slow, fast, a[slow], `slow (${slow}) ≠ fast (${fast}) → swap; nums[${slow}] ← ${a[slow]}.`, true);
+        } else {
+          snap(5, slow, fast, a[slow], `slow == fast (${slow}) → swap skipped, value already in place.`, false);
+        }
+        slow++;
+        snap(6, slow, fast, a[fast], `Advance write slot → slow = ${slow}.`, false);
+      }
+    }
+    snap(9, slow, n, null, `Loop ends. Non-zeros in [0,${slow}); zeros in [${slow},${n}). Result: [${a.join(', ')}].`, true);
+    return steps;
+  }
+  function cvRender(st){
+    document.querySelectorAll('.cv-line').forEach(el=>el.classList.remove('active','active-match'));
+    const ln = document.getElementById('cvL'+st.line);
+    if(ln) ln.classList.add(st.match ? 'active-match' : 'active');
+    const setCard=(id,val,on,match)=>{
+      const card=document.getElementById('cv-v-'+id);
+      document.getElementById('cv-vv-'+id).textContent = val;
+      card.classList.toggle('dim', !on);
+      card.classList.toggle('hl', on && !match);
+      card.classList.toggle('hl-match', on && match);
+    };
+    setCard('arr', '['+st.a.join(', ')+']', true, st.match && st.fast>=st.a.length);
+    setCard('slow', st.slow, true, false);
+    setCard('fast', st.fast<0?'—':(st.fast>=st.a.length?'done':st.fast), st.fast>=0, false);
+    setCard('val', st.val===null?'—':st.val, st.val!==null, st.match);
+    const nar=document.getElementById('cv-narration');
+    nar.textContent=st.narration;
+    nar.className='cv-narration'+(st.match?' is-match':' is-active');
+    document.getElementById('cv-sctr').textContent=`Step ${cvCur+1} / ${cvSteps.length}`;
+    document.getElementById('cv-bprev').disabled=cvCur===0;
+    document.getElementById('cv-bnext').disabled=cvCur===cvSteps.length-1;
+  }
+  function cvNext(){ if(cvCur<cvSteps.length-1){ cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev(){ if(cvCur>0){ cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset(){ cvStopPlay(); cvCur=0; cvRender(cvSteps[0]); }
+  function cvLoadEx(idx){
+    cvStopPlay(); cvCur=0;
+    [0,1,2].forEach(i=>document.getElementById('cv-ex'+i).classList.toggle('active', i===idx));
+    cvSteps = cvGenSteps(EXAMPLES[idx]);
+    cvRender(cvSteps[0]);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     §7 DRY RUN — drGenSteps is the correctness oracle
+     ══════════════════════════════════════════════════════════════ */
+  let drSteps = [], drCur = 0, drTimer = null;
+
+  function drGenSteps(nums){
+    const a = [...nums], n = a.length, steps = [];
+    let slow = 0;
+    steps.push({a:[...a], slow, fast:-1, settledTo:0, phase:'init',
+      what:'Initialise slow = 0.', why:'slow marks where the next non-zero will be written.', eq:'slow = 0', val:null});
+    for (let fast = 0; fast < n; fast++){
+      const val = a[fast];
+      if (val !== 0){
+        const swapped = slow !== fast;
+        if (swapped){ const t=a[slow]; a[slow]=a[fast]; a[fast]=t; }
+        steps.push({a:[...a], slow, fast, settledTo:slow+1, phase:'write',
+          what:`fast=${fast}: nums[${fast}] = ${val} ≠ 0 → ${swapped?`swap into slot ${slow}`:'already in place'}.`,
+          why:swapped?`The zero at index ${slow} is parked back at index ${fast}.`:'slow == fast, so the swap is a no-op; just advance.',
+          eq:`slow: ${slow} → ${slow+1}`, val});
+        slow++;
+      } else {
+        steps.push({a:[...a], slow, fast, settledTo:slow, phase:'skip',
+          what:`fast=${fast}: nums[${fast}] = 0 → skip.`,
+          why:'Zeros are left for a later non-zero to swap past; slow stays put.',
+          eq:`slow stays ${slow}`, val});
+      }
+    }
+    steps.push({a:[...a], slow, fast:n, settledTo:slow, phase:'done',
+      what:`Done. ${slow} non-zero(s) at the front, ${n-slow} zero(s) at the back.`,
+      why:`Result: [${a.join(', ')}].`, eq:`result = [${a.join(', ')}]`, val:null, result:[...a]});
+    return steps;
+  }
+  function drRender(st){
+    renderStrip('dr-strip', st.a, st.slow, st.fast, st.settledTo);
+    document.getElementById('dr-f-slow').textContent = st.slow;
+    document.getElementById('dr-f-fast').textContent = st.fast<0?'—':(st.fast>=st.a.length?'—':st.fast);
+    document.getElementById('dr-f-val').textContent = st.val===null?'—':st.val;
+    document.getElementById('dr-eq').textContent = st.eq;
+    document.getElementById('dr-what').textContent = st.what;
+    document.getElementById('dr-why').textContent = st.why;
+    document.getElementById('dr-formula').className = 'formula-panel' + (st.phase==='write'?' is-squeeze':st.phase==='done'?' is-match':'');
+    document.getElementById('dr-step').className = 'step-panel' + (st.phase==='write'?' squeeze':st.phase==='done'?' match':'');
+    document.getElementById('dr-sctr').textContent = `Step ${drCur+1} / ${drSteps.length}`;
+    document.getElementById('dr-bp').disabled = drCur===0;
+    document.getElementById('dr-bn').disabled = drCur===drSteps.length-1;
+  }
+  function drNext(){ if(drCur<drSteps.length-1){ drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev(){ if(drCur>0){ drCur--; drRender(drSteps[drCur]); } }
+  function drReset(){ drStopPlay(); drCur=0; drRender(drSteps[0]); }
+  function drLoadEx(idx){
+    drStopPlay(); drCur=0;
+    [0,1,2].forEach(i=>document.getElementById('dr-ex'+i).classList.toggle('active', i===idx));
+    drSteps = drGenSteps(EXAMPLES[idx]);
+    drRender(drSteps[0]);
+  }
+
+  /* ─── INIT ─── */
+  siSteps = siGenSteps(EXAMPLES[0]); siRender(siSteps[0]);
+  cvBuildCode(CV_LINES); cvLoadEx(0); drLoadEx(0); bfLoadEx(0);
 </script>
 
 </body>
