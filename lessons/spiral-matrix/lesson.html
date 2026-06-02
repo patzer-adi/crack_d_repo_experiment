@@ -8,8 +8,8 @@
 <style>
   .sm-matrix {
     display: inline-flex;
-    gap: 6px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 4px;
     align-items: flex-start;
     margin: 1rem 0;
   }
@@ -515,40 +515,32 @@
 <div class="section cv-section">
   <p class="sec-label">Step 5</p>
   <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Walk the boundary-shrinking code one statement at a time. The four boundary cards stay dimmed until line 5 initialises them, then light up as each side closes in. The matrix below highlights the cell being appended on every <code>push_back</code>.</p>
   <div class="cv-split">
-    <div id="cv-code-panel" class="cv-code-panel"></div>
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
     <div class="cv-state-panel">
-      <div style="font-size: 13px; color: var(--text3); font-weight: 600; margin-bottom: 0.5rem;">State</div>
-      <div class="sm-boundaries">
-        <div class="sm-bound-card">
-          <div class="label">top</div>
-          <div class="value" id="cvv-top">0</div>
-        </div>
-        <div class="sm-bound-card">
-          <div class="label">bottom</div>
-          <div class="value" id="cvv-bottom">0</div>
-        </div>
-        <div class="sm-bound-card">
-          <div class="label">left</div>
-          <div class="value" id="cvv-left">0</div>
-        </div>
-        <div class="sm-bound-card">
-          <div class="label">right</div>
-          <div class="value" id="cvv-right">0</div>
-        </div>
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-top"><span class="cv-var-name">top</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-bottom"><span class="cv-var-name">bottom</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-left"><span class="cv-var-name">left</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-right"><span class="cv-var-name">right</span><span class="cv-var-val">—</span></div>
       </div>
-      <div id="cv-narration" class="cv-narration" style="margin-top: 1rem;"></div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
     </div>
   </div>
-  <div style="margin-top: 1.5rem; margin-bottom: 1.5rem;" id="cv-matrix-con"></div>
-  <div class="ctrl-row">
-    <button class="ex-btn active" onclick="cvLoadEx(0)">3×3</button>
-    <button class="ex-btn" onclick="cvLoadEx(1)">4×5</button>
-    <div style="flex: 1;"></div>
-    <button class="ctrl-btn" onclick="cvStopPlay()">■ Stop</button>
-    <button class="ctrl-btn pri" onclick="cvTogglePlay()">▶ Play</button>
-    <button class="ctrl-btn" onclick="cvNextStep()">Next ▶</button>
-    <div class="step-ctr"><span id="cv-step-num">0</span>/<span id="cv-step-max">0</span></div>
+  <div id="cv-matrix-con" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0;"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">3×3</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">4×5</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">2×2</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
   </div>
 </div>
 
@@ -825,59 +817,75 @@
     const m = matrix.length, n = matrix[0].length;
     let result = [];
     let top = 0, bottom = m - 1, left = 0, right = n - 1;
+    const B = () => ({ top, bottom, left, right });
 
-    steps.push({line: 1, narr: 'Function call', top, bottom, left, right, result: []});
-    steps.push({line: 2, narr: 'Initialize result', top, bottom, left, right, result: []});
-    steps.push({line: 3, narr: 'Check if empty', top, bottom, left, right, result: []});
-    steps.push({line: 4, narr: 'Get dimensions m=' + m + ', n=' + n, top, bottom, left, right, result: []});
-    steps.push({line: 5, narr: 'Initialize boundaries', top, bottom, left, right, result: []});
+    steps.push({ line: 1, inited: false, changed: [], narr: 'Enter spiralOrder.', result: [] });
+    steps.push({ line: 2, inited: false, changed: [], narr: 'Create the empty result list.', result: [] });
+    steps.push({ line: 3, inited: false, changed: [], narr: 'Matrix is non-empty — continue.', result: [] });
+    steps.push({ line: 4, inited: false, changed: [], narr: `Read dimensions: m=${m}, n=${n}.`, result: [] });
+    steps.push({ line: 5, inited: true, changed: ['top','bottom','left','right'], narr: `Initialise the four boundaries: top=${top}, bottom=${bottom}, left=${left}, right=${right}.`, ...B(), result: [] });
 
     let iter = 0;
     while (top <= bottom && left <= right && iter < 100) {
       iter++;
       for (let j = left; j <= right; j++) {
         result.push(matrix[top][j]);
-        steps.push({line: 7, narr: `Append matrix[${top}][${j}]=${matrix[top][j]}`, top, bottom, left, right, result: [...result], cellRow: top, cellCol: j});
+        steps.push({ line: 8, inited: true, changed: [], narr: `Top row → append matrix[${top}][${j}]=${matrix[top][j]}.`, ...B(), result: [...result], cellRow: top, cellCol: j });
       }
       top++;
-      steps.push({line: 9, narr: `top++`, top, bottom, left, right, result: [...result]});
+      steps.push({ line: 9, inited: true, changed: ['top'], narr: `Top row consumed — shrink it away: top=${top}.`, ...B(), result: [...result] });
 
       for (let i = top; i <= bottom; i++) {
         result.push(matrix[i][right]);
-        steps.push({line: 10, narr: `Append matrix[${i}][${right}]=${matrix[i][right]}`, top, bottom, left, right, result: [...result], cellRow: i, cellCol: right});
+        steps.push({ line: 11, inited: true, changed: [], narr: `Right column → append matrix[${i}][${right}]=${matrix[i][right]}.`, ...B(), result: [...result], cellRow: i, cellCol: right });
       }
       right--;
-      steps.push({line: 12, narr: `right--`, top, bottom, left, right, result: [...result]});
+      steps.push({ line: 12, inited: true, changed: ['right'], narr: `Right column consumed — shrink it away: right=${right}.`, ...B(), result: [...result] });
 
       if (top <= bottom) {
         for (let j = right; j >= left; j--) {
           result.push(matrix[bottom][j]);
-          steps.push({line: 13, narr: `Append matrix[${bottom}][${j}]=${matrix[bottom][j]}`, top, bottom, left, right, result: [...result], cellRow: bottom, cellCol: j});
+          steps.push({ line: 13, inited: true, changed: [], narr: `Bottom row → append matrix[${bottom}][${j}]=${matrix[bottom][j]}.`, ...B(), result: [...result], cellRow: bottom, cellCol: j });
         }
         bottom--;
-        steps.push({line: 13, narr: `bottom--`, top, bottom, left, right, result: [...result]});
+        steps.push({ line: 13, inited: true, changed: ['bottom'], narr: `Bottom row consumed — shrink it away: bottom=${bottom}.`, ...B(), result: [...result] });
       }
 
       if (left <= right) {
         for (let i = bottom; i >= top; i--) {
           result.push(matrix[i][left]);
-          steps.push({line: 14, narr: `Append matrix[${i}][${left}]=${matrix[i][left]}`, top, bottom, left, right, result: [...result], cellRow: i, cellCol: left});
+          steps.push({ line: 14, inited: true, changed: [], narr: `Left column → append matrix[${i}][${left}]=${matrix[i][left]}.`, ...B(), result: [...result], cellRow: i, cellCol: left });
         }
         left++;
-        steps.push({line: 14, narr: `left++`, top, bottom, left, right, result: [...result]});
+        steps.push({ line: 14, inited: true, changed: ['left'], narr: `Left column consumed — shrink it away: left=${left}.`, ...B(), result: [...result] });
       }
     }
 
-    steps.push({line: 14, narr: 'Done. Return result', top, bottom, left, right, result: [...result]});
+    steps.push({ line: 6, inited: true, changed: [], phase: 'done', narr: `Loop condition fails — return the ${result.length}-element spiral.`, ...B(), result: [...result] });
     return steps;
   }
 
   function cvRender(st) {
-    document.getElementById('cvv-top').textContent = st.top;
-    document.getElementById('cvv-bottom').textContent = st.bottom;
-    document.getElementById('cvv-left').textContent = st.left;
-    document.getElementById('cvv-right').textContent = st.right;
-    document.getElementById('cv-narration').textContent = st.narr;
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const lineEl = document.getElementById('cvL' + st.line);
+    if (lineEl) lineEl.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    setCard('cv-v-top',    st.inited ? st.top : '—',    ch.includes('top'));
+    setCard('cv-v-bottom', st.inited ? st.bottom : '—', ch.includes('bottom'));
+    setCard('cv-v-left',   st.inited ? st.left : '—',   ch.includes('left'));
+    setCard('cv-v-right',  st.inited ? st.right : '—',  ch.includes('right'));
+
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : ' is-active');
 
     if (cvCurrentEx) {
       const m = cvCurrentEx.m, n = cvCurrentEx.n;
@@ -886,57 +894,29 @@
           const cell = document.getElementById('cv_' + i + '_' + j);
           if (!cell) continue;
           cell.classList.remove('active', 'done');
-          if (st.cellRow === i && st.cellCol === j) {
-            cell.classList.add('active');
-          }
+          if (st.cellRow === i && st.cellCol === j) cell.classList.add('active');
         }
       }
     }
+
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
   }
 
   function cvLoadEx(idx) {
+    cvStopPlay();
     cvCurrentEx = EXAMPLES[idx];
     buildMatrix(cvCurrentEx.nums, 'cv-matrix-con', 'cv');
     cvSteps = cvGenSteps(cvCurrentEx.nums);
     cvCur = 0;
-    cvStopPlay();
+    [0, 1, 2].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
     cvRender(cvSteps[0]);
-    document.querySelectorAll('.cv-section .ex-btn').forEach((btn, i) => {
-      btn.classList.toggle('active', i === idx);
-    });
-    document.getElementById('cv-step-num').textContent = '0';
-    document.getElementById('cv-step-max').textContent = Math.max(0, cvSteps.length - 1);
   }
 
-  function cvNextStep() {
-    if (cvCur < cvSteps.length - 1) {
-      cvCur++;
-      cvRender(cvSteps[cvCur]);
-      document.getElementById('cv-step-num').textContent = cvCur;
-    }
-  }
-
-  function cvTogglePlay() {
-    if (cvTimer) {
-      cvStopPlay();
-    } else {
-      const btn = document.querySelectorAll('.cv-section .ctrl-row .ctrl-btn.pri')[0];
-      if (btn) btn.textContent = '⏸ Pause';
-      cvTimer = setInterval(() => {
-        cvNextStep();
-        if (cvCur === cvSteps.length - 1) cvStopPlay();
-      }, 400);
-    }
-  }
-
-  function cvStopPlay() {
-    if (cvTimer) {
-      clearInterval(cvTimer);
-      cvTimer = null;
-    }
-    const btn = document.querySelectorAll('.cv-section .ctrl-row .ctrl-btn.pri')[0];
-    if (btn) btn.textContent = '▶ Play';
-  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
 
   let cvCurrentEx = EXAMPLES[0];
 
