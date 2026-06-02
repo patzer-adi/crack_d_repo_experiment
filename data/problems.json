@@ -255,7 +255,7 @@
       "google_focused"
     ],
     "status": "new",
-    "lesson_status": "none"
+    "lesson_status": "generated"
   },
   {
     "order": 2003,
@@ -273,7 +273,7 @@
       "google_focused"
     ],
     "status": "new",
-    "lesson_status": "none"
+    "lesson_status": "generated"
   },
   {
     "order": 2004,
@@ -1544,7 +1544,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -1562,7 +1562,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -1578,7 +1578,7 @@
     "ramp_pos": 3,
     "twist": "DFS from the border to mark 'safe' cells; flip the rest",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -1595,7 +1595,7 @@
     "twist": "two reverse-BFS sources (each ocean); intersect reachable sets",
     "tracks": [],
     "status": "new",
-    "lesson_status": "none"
+    "lesson_status": "generated"
   },
   {
     "order": 11005,
@@ -2163,7 +2163,7 @@
     "twist": "3-state machine: hold / sold-today / rest",
     "tracks": [],
     "status": "new",
-    "lesson_status": "none"
+    "lesson_status": "generated"
   },
   {
     "order": 13009,
@@ -3531,6 +3531,22 @@
     "tier": 3,
     "ramp_pos": 12,
     "twist": "BIT (or merge-sort with index tracking) — capstone for ordered counts",
+    "tracks": [],
+    "status": "new",
+    "lesson_status": "none"
+  },
+  {
+    "order": 20013,
+    "lc_num": 2188,
+    "name": "Minimum Time To Finish The Race",
+    "url": "https://leetcode.com/problems/minimum-time-to-finish-the-race/",
+    "slug": "minimum-time-to-finish-the-race",
+    "topic": "DP",
+    "difficulty": "Hard",
+    "section": "Ad-hoc",
+    "tier": 2,
+    "ramp_pos": 999,
+    "twist": "",
     "tracks": [],
     "status": "new",
     "lesson_status": "none"
