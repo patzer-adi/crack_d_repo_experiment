@@ -222,12 +222,12 @@
       steps.push({i, j: -1, isPivot: true, dpSnapshot: dp.map(r => [...r]),
         caption: `↹ Advance to row i=${i}: insert element ${i} into each length-${i} arrangement.`});
       for (let j = 0; j <= maxInv; j++) {
-        const window = [];
-        for (let k = 0; k <= Math.min(i, j); k++) window.push({jp: j - k, val: dp[i - 1][j - k]});
-        const sum = window.reduce((a, b) => a + b.val, 0);
+        const terms = [];
+        for (let k = 0; k <= Math.min(i, j); k++) terms.push({jp: j - k, val: dp[i - 1][j - k]});
+        const sum = terms.reduce((a, b) => a + b.val, 0);
         dp[i][j] = sum;
-        steps.push({i, j, dpSnapshot: dp.map(r => [...r]), window, sum,
-          caption: `dp[${i}][${j}] = ${window.map(w => `dp[${i-1}][${w.jp}]=${w.val}`).join(' + ')} = ${sum}.`});
+        steps.push({i, j, dpSnapshot: dp.map(r => [...r]), terms, sum,
+          caption: `dp[${i}][${j}] = ${terms.map(w => `dp[${i-1}][${w.jp}]=${w.val}`).join(' + ')} = ${sum}.`});
       }
     }
     const rowSum = dp[n - 1].reduce((a, b) => a + b, 0);
@@ -246,7 +246,7 @@
       html += `<tr><td style="padding:4px 8px;color:var(--text3);text-align:right;font-weight:600">${i}</td>`;
       for (let j = 0; j <= SI_MAX; j++) {
         const isCur = !s.terminal && s.i === i && s.j === j;
-        const isWindow = !s.terminal && s.window && s.i === i + 1 && s.window.some(w => w.jp === j);
+        const isWindow = !s.terminal && s.terms && s.i === i + 1 && s.terms.some(w => w.jp === j);
         let bg = 'transparent', color = 'var(--text2)', border = '1px solid var(--border)';
         if (isCur) { bg = 'var(--bg-info)'; color = 'var(--text-info)'; border = '1px solid var(--border-info)'; }
         else if (isWindow) { bg = 'var(--bg-success)'; color = 'var(--text-success)'; border = '1px solid var(--border-success)'; }
@@ -624,6 +624,11 @@ const EXAMPLES = [
   {n:3, reqs:[[2,2]],       expected:2},
   {n:2, reqs:[[0,0],[1,0]], expected:1},
 ];
+const EX = [
+  {n:3, reqs:[[2,2],[0,0]], expected:2, answer:2},
+  {n:3, reqs:[[2,2]],       expected:2, answer:2},
+  {n:2, reqs:[[0,0],[1,0]], expected:1, answer:1},
+];
 const BF_EXAMPLES = [
   {n:3, reqs:[[2,2],[0,0]]},
   {n:3, reqs:[[2,2]]},
@@ -843,13 +848,15 @@ function cvLoadEx(idx){
 let drSteps=[],drCur=0,drTimer=null;
 function drGen({n, reqs, expected}) {
   const out=[];
+  const MOD=1000000007;
+  const buildReq=(N,R)=>{const r=new Array(N).fill(-1);for(const [end,cnt] of R){r[end]=cnt;}return r;};
   const maxInv=n*(n-1)/2;
   const req=buildReq(n,reqs);
   const table=[];
   let dp=new Array(maxInv+1).fill(0); dp[0]=1;
   if(req[0]!==-1&&req[0]!==0){
     out.push({table:[[...dp]],req,n,maxInv,i:0,reqI:req[0],
-      what:'req[0] != 0 — impossible.',why:'Single element always has 0 inversions. Return 0.',phase:'req'});
+      what:'req[0] != 0 — impossible.',why:'Single element always has 0 inversions. Return 0.',phase:'req',result:0});
     return out;
   }
   table.push([...dp]);
@@ -883,7 +890,7 @@ function drGen({n, reqs, expected}) {
   }
   const ans=dp.reduce((a,v)=>(a+v)%MOD,0);
   out.push({table:table.map(r=>[...r]),req,n,maxInv,i:n-1,reqI:req[n-1],
-    what:`Done. sum(dp) = ${ans}.`,why:`Answer = ${ans} (expected ${expected}).`,phase:'done',ans});
+    what:`Done. sum(dp) = ${ans}.`,why:`Answer = ${ans} (expected ${expected}).`,phase:'done',ans,result:ans});
   return out;
 }
 function drRenderTable(st){
