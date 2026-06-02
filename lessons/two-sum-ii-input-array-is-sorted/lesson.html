@@ -8,6 +8,19 @@
 <style>
   /* PROBLEM-SPECIFIC CSS ONLY — bar charts, freq arrays, panel-height overrides */
   /* Do not redefine any class already in static/lesson.css */
+  .ts-strip { display:flex; gap:6px; flex-wrap:wrap; margin:.5rem 0; }
+  .ts-cell  { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .ts-box   { width:46px; height:42px; display:flex; align-items:center; justify-content:center;
+              border:1px solid var(--border); border-radius:6px; font-family:var(--mono); font-size:15px;
+              background:var(--bg2); color:var(--text); transition:all .15s ease; }
+  .ts-box.lcell  { background:var(--bg-info);    border-color:var(--border-info);    color:var(--text-info); }
+  .ts-box.rcell  { background:var(--bg-warn);    border-color:var(--border-warn);    color:var(--text-warn); }
+  .ts-box.matched{ background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); }
+  .ts-box.dead   { opacity:.35; }
+  .ts-idx   { font-family:var(--mono); font-size:10px; color:var(--text3); }
+  .ts-ptr   { font-family:var(--mono); font-size:10px; height:12px; font-weight:600; }
+  .ts-ptr.l { color:var(--text-info); }
+  .ts-ptr.r { color:var(--text-warn); }
 </style>
 </head>
 <body>
@@ -28,40 +41,160 @@
   <p class="sec-title">Clarifying questions to ask first</p>
   <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
   <div class="asgrid">
-    <!-- PER-PROBLEM: 4 × .acard (Q / A / unlock line). See design/sec0_clarifying.md -->
+    <div class="acard">
+      <p class="acard-q">Is the input guaranteed sorted (ascending)?</p>
+      <p class="acard-a">Yes — that is the whole point. The array is sorted non-decreasing.</p>
+      <p class="acard-u">→ unlocks the two-pointer squeeze; no hash map needed</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Is there exactly one solution?</p>
+      <p class="acard-a">Yes. Exactly one pair sums to the target, and an element may not be used twice.</p>
+      <p class="acard-u">→ we can return immediately on the first match</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">What index base does the answer use?</p>
+      <p class="acard-a">1-indexed. Return positions <code>[i+1, j+1]</code>, not the raw array indices.</p>
+      <p class="acard-u">→ add 1 to both pointers in the returned pair</p>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can values be negative or repeated?</p>
+      <p class="acard-a">Yes to both — values may be negative and duplicates are allowed.</p>
+      <p class="acard-u">→ the squeeze relies only on order, so signs and repeats are fine</p>
+    </div>
   </div>
-  <!-- PER-PROBLEM (optional): .infobox titled "Assumptions we carry forward" -->
+  <div class="infobox">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Sorted ascending, exactly one answer, 1-indexed output, values may be negative or duplicated. O(1) extra space is expected (the array is already sorted, so a hash map is wasteful).</p>
+  </div>
 </div>
 
 <!-- ═══ SECTION 1: THE INSIGHT ═══ -->
 <div class="section">
   <p class="sec-label">The Insight</p>
-  <p class="sec-title"><!-- PER-PROBLEM: one-line kernel as title --></p>
+  <p class="sec-title">Sorted order turns the sum into a dial you can steer</p>
 
-  <p class="body"><!-- PER-PROBLEM: kernel paragraph (one paragraph, algorithm-derivable) --></p>
+  <p class="body">Because the array is sorted, the smallest possible sum is the two leftmost elements and the largest is the two rightmost. Put one pointer at each end and read their sum. If it is too small, the only way to grow it is to give up the smallest element — move the left pointer right. If it is too large, the only way to shrink it is to give up the largest element — move the right pointer left. Every move strictly tightens the window toward the target and permanently discards an element that could never be part of the answer, so a single inward sweep either lands on the target or proves no pair exists. No element is ever revisited, which is why O(n²) checking collapses to O(n).</p>
 
-  <!-- PER-PROBLEM: foundational concept visual (.number-line, bar chart, freq badges, etc.) -->
+  <!-- Foundational visual: animated two-pointer squeeze on a sorted array -->
+  <div style="margin:1.1rem 0 .25rem">
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:var(--text3);margin-bottom:.4rem">
+      numbers = [2, 7, 11, 15] &nbsp;·&nbsp; target = 9 &nbsp;·&nbsp; <span style="color:var(--text-info)">L</span> = left &nbsp;·&nbsp; <span style="color:var(--text-warn)">R</span> = right
+    </div>
+    <div id="si-strip" class="ts-strip"></div>
+    <div class="legend" style="margin-top:.4rem">
+      <span class="leg-item"><span class="leg-dot" style="background:var(--bg-info);border:1px solid var(--border-info)"></span><span class="leg-label">left pointer (L)</span></span>
+      <span class="leg-item"><span class="leg-dot" style="background:var(--bg-warn);border:1px solid var(--border-warn)"></span><span class="leg-label">right pointer (R)</span></span>
+      <span class="leg-item"><span class="leg-dot" style="background:var(--bg-success);border:1px solid var(--border-success)"></span><span class="leg-label">matched pair</span></span>
+    </div>
+    <div id="si-note" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin:.5rem 0;min-height:2.4em"></div>
+    <div class="ctrl-row" style="margin-top:.625rem">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
 
   <div class="infobox success">
     <p class="infobox-t">The kernel</p>
-    <p class="infobox-d"><!-- PER-PROBLEM: dense kernel paragraph from which algorithm is derivable --></p>
+    <p class="infobox-d">Set <code>L = 0</code>, <code>R = n − 1</code>. Loop while <code>L &lt; R</code>: let <code>sum = numbers[L] + numbers[R]</code>. If <code>sum == target</code>, return <code>[L+1, R+1]</code>. If <code>sum &lt; target</code>, do <code>L++</code> (need a bigger value). If <code>sum &gt; target</code>, do <code>R--</code> (need a smaller value). Sortedness guarantees each discarded element is genuinely impossible, so the squeeze is correct and runs in O(n).</p>
   </div>
 
-  <!-- PER-PROBLEM (optional): equivalence chain in a .chain-box with concrete pill examples per row -->
+  <p class="body" style="margin-top:1rem">Why the squeeze never misses the answer:</p>
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">Find indices i &lt; j with numbers[i] + numbers[j] = target, in a sorted array.</div>
+        <div class="chain-note">the problem</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">Fix the largest candidate at R; the partner it needs is target − numbers[R].</div>
+        <div class="chain-note">in sorted data the needed partner has a definite position relative to the ends</div>
+        <div class="chain-example">
+          <span class="pill n">R=15, target 9</span><span class="arrow">→</span>
+          <span class="pill bad">needs −6, impossible → R--</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">Compare the end-sum to target and move the pointer that can only help.</div>
+        <div class="chain-note">sum too small ⇒ L++ (drop the smallest); sum too big ⇒ R-- (drop the largest)</div>
+        <div class="chain-example">
+          <span class="pill n">sum &lt; target</span><span class="arrow">→</span><span class="pill n">L++</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">sum &gt; target</span><span class="arrow">→</span><span class="pill n">R--</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill ok">sum == target → done</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">Each discarded element is provably impossible</span>, so no pair is ever skipped.</div>
+        <div class="chain-note">dropping numbers[L] when sum&lt;target: it was the smallest, so it can't reach target with anything left</div>
+        <div class="chain-example">
+          <span class="pill n">[2,7,11,15], t=9</span><span class="arrow">→</span><span class="pill ok">2 + 7 = 9 → [1,2]</span>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
 <div class="section">
   <p class="sec-label">Step 1</p>
   <p class="sec-title">Brute force — feel the cost</p>
-  <p class="body"><!-- PER-PROBLEM: one paragraph stating the naive approach and its complexity --></p>
+  <p class="body">Ignore the sortedness and just try every pair: for each <code>i</code>, scan every <code>j &gt; i</code> and test whether the two add to the target. It works, but it inspects up to n(n−1)/2 pairs. Watch the "Checks" counter climb — on the longer example it does far more work than the single inward sweep we build next, which never re-examines an element.</p>
 
-  <!-- PER-PROBLEM: brute-force animation panel. For array problems: .bf-nums + .bf-num cells.
-       Live "Checks" counter is mandatory. Controls in .ctrl-row. -->
+  <div class="ts-strip" id="bf-strip" style="margin-top:.5rem"></div>
+  <div class="panels-fixed" style="margin-top:.6rem">
+    <div class="formula-panel" id="bf-formula">
+      <div class="formula-grid">
+        <div><p class="fitem-label">i (1-idx)</p><p class="fitem-val" id="bf-f-i">—</p></div>
+        <div><p class="fitem-label">j (1-idx)</p><p class="fitem-val" id="bf-f-j">—</p></div>
+        <div><p class="fitem-label">Checks</p><p class="fitem-val" id="bf-f-checks">0</p></div>
+      </div>
+      <div class="formula-eq" id="bf-eq"></div>
+    </div>
+    <div class="step-panel" id="bf-step">
+      <div class="step-what" id="bf-what"></div>
+      <div class="step-why" id="bf-why"></div>
+    </div>
+  </div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">[2,7,11,15] t=9</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">[1,2,3,4,4,9,56,90] t=8</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">[-3,3,4] t=0</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-bp"   onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-bn"   onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
 
-  <button class="reveal-btn" onclick="toggleEl('code-bf')">▶ Reveal brute-force code</button>
+  <button class="reveal-btn" onclick="toggleEl('code-bf', this)">▶ Reveal brute-force code</button>
   <div id="code-bf" class="code-block">
-    <pre class="cb"><!-- PER-PROBLEM: brute-force C++ code with explicit braces --></pre>
+    <pre class="cb">vector&lt;<span class="tp">int</span>&gt; <span class="fn">twoSum</span>(vector&lt;<span class="tp">int</span>&gt;&amp; numbers, <span class="tp">int</span> target) {
+    <span class="tp">int</span> n = numbers.size();
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        <span class="kw">for</span> (<span class="tp">int</span> j = i + <span class="nu">1</span>; j &lt; n; j++) {
+            <span class="kw">if</span> (numbers[i] + numbers[j] == target) {
+                <span class="kw">return</span> {i + <span class="nu">1</span>, j + <span class="nu">1</span>};
+            }
+        }
+    }
+    <span class="kw">return</span> {};
+}</pre>
   </div>
 </div>
 
@@ -69,9 +202,32 @@
 <div class="section">
   <p class="sec-label">Step 2</p>
   <p class="sec-title">Translations — every optimisation, named</p>
-  <p class="body"><!-- PER-PROBLEM: one paragraph framing the chain of optimisations --></p>
+  <p class="body">Two ideas take the naive double loop down to a single linear pass — each one exploits the fact that the array is already sorted.</p>
   <div class="skeleton">
-    <!-- PER-PROBLEM: one .wt-item per translation (.wt-num + .wt-body containing .wt-name, .wt-desc, .wt-gain) -->
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Replace the inner search with a hash map</p>
+        <p class="wt-desc">For each <code>numbers[i]</code>, look up <code>target − numbers[i]</code> in a hash set of seen values. This is the generic "Two Sum" trick and works on unsorted input too.</p>
+        <p class="wt-gain">O(n²) time → O(n) time, but O(n) extra space</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Exploit the sort: converging two pointers</p>
+        <p class="wt-desc">Since the array is sorted, the sum of the two ends is monotonic in each pointer. Start wide and move the pointer that steers the sum toward the target. No hash map, no second pass.</p>
+        <p class="wt-gain">O(n) extra space → O(1)</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <p class="wt-name">Return on first match</p>
+        <p class="wt-desc">The problem guarantees exactly one solution, so the instant <code>sum == target</code> we can return <code>[L+1, R+1]</code> — no need to keep scanning or collect multiple results.</p>
+        <p class="wt-gain">early exit; never over-runs the answer</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -80,7 +236,12 @@
   <p class="sec-label">Step 3</p>
   <p class="sec-title">The algorithm in plain English</p>
   <div class="algo-steps">
-    <!-- PER-PROBLEM: 4–6 .algo-step rows (.algo-n + .algo-t with <b> emphasis on verbs) -->
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t"><b>Place</b> <code>L</code> at the first index and <code>R</code> at the last.</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t"><b>While</b> <code>L &lt; R</code>, <b>add</b> <code>numbers[L] + numbers[R]</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t"><b>If</b> the sum equals the target, <b>return</b> <code>[L+1, R+1]</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t"><b>If</b> the sum is too small, <b>advance</b> <code>L</code> to pick up a larger value.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t"><b>If</b> the sum is too large, <b>retreat</b> <code>R</code> to pick up a smaller value.</span></div>
+    <div class="algo-step"><span class="algo-n">6.</span><span class="algo-t"><b>Stop</b> when the pointers meet — by the guarantee, a match is always found first.</span></div>
   </div>
 </div>
 
@@ -88,9 +249,22 @@
 <div class="section">
   <p class="sec-label">Step 4</p>
   <p class="sec-title">Code</p>
-  <button class="reveal-btn" onclick="toggleEl('code-main')">▶ Reveal Code</button>
+  <button class="reveal-btn" onclick="toggleEl('code-main', this)">▶ Reveal Code</button>
   <div id="code-main" class="code-block">
-    <pre class="cb"><!-- PER-PROBLEM: optimal C++ code with EXPLICIT BRACES (design/code_style.md) --></pre>
+    <pre class="cb">vector&lt;<span class="tp">int</span>&gt; <span class="fn">twoSum</span>(vector&lt;<span class="tp">int</span>&gt;&amp; numbers, <span class="tp">int</span> target) {
+    <span class="tp">int</span> L = <span class="nu">0</span>, R = (<span class="tp">int</span>)numbers.size() - <span class="nu">1</span>;
+    <span class="kw">while</span> (L &lt; R) {
+        <span class="tp">int</span> sum = numbers[L] + numbers[R];
+        <span class="kw">if</span> (sum == target) {
+            <span class="kw">return</span> {L + <span class="nu">1</span>, R + <span class="nu">1</span>};
+        } <span class="kw">else if</span> (sum &lt; target) {
+            L++;
+        } <span class="kw">else</span> {
+            R--;
+        }
+    }
+    <span class="kw">return</span> {};
+}</pre>
   </div>
 </div>
 
@@ -102,14 +276,27 @@
     <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
     <div class="cv-state-panel">
       <div id="cv-var-grid" class="cv-var-grid">
-        <!-- PER-PROBLEM: .cv-var-card per variable (.cv-var-name + .cv-var-val). Start dimmed. -->
+        <div class="cv-var-card dim" id="cv-v-arr"><p class="cv-var-name">numbers</p><p class="cv-var-val" id="cv-vv-arr">—</p></div>
+        <div class="cv-var-card dim" id="cv-v-L"><p class="cv-var-name">L</p><p class="cv-var-val" id="cv-vv-L">—</p></div>
+        <div class="cv-var-card dim" id="cv-v-R"><p class="cv-var-name">R</p><p class="cv-var-val" id="cv-vv-R">—</p></div>
+        <div class="cv-var-card dim" id="cv-v-sum"><p class="cv-var-name">sum vs target</p><p class="cv-var-val" id="cv-vv-sum">—</p></div>
       </div>
       <div id="cv-narration" class="cv-narration"><!-- per-step narration --></div>
     </div>
   </div>
-  <div class="ctrl-row">
-    <!-- PER-PROBLEM: example switcher buttons (.ex-btn), prev/play/next/reset (.ctrl-btn) -->
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">[2,7,11,15] t=9</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">[1,2,3,4,4,9,56,90] t=8</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">[-3,3,4] t=0</button>
   </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
 </div>
 
 <!-- ═══ SECTION 7: DRY RUN ═══ -->
@@ -117,28 +304,82 @@
   <p class="sec-label">Step 6</p>
   <p class="sec-title">Dry run — step through the algorithm</p>
 
-  <!-- PER-PROBLEM: visual strip (.num-strip / .arr-strip / .bf-bar-con / problem-specific) -->
+  <div id="dr-strip" class="ts-strip"></div>
+  <div class="legend" style="margin:.35rem 0 .2rem">
+    <span class="leg-item"><span class="leg-dot" style="background:var(--bg-info);border:1px solid var(--border-info)"></span><span class="leg-label">left (L)</span></span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--bg-warn);border:1px solid var(--border-warn)"></span><span class="leg-label">right (R)</span></span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--bg-success);border:1px solid var(--border-success)"></span><span class="leg-label">matched pair</span></span>
+  </div>
 
   <div class="panels-fixed">
     <div id="dr-formula" class="formula-panel">
-      <!-- PER-PROBLEM: .formula-grid with .fitem-label/.fitem-val cells + .formula-eq -->
+      <div class="formula-grid">
+        <div><p class="fitem-label">L</p><p class="fitem-val" id="dr-f-L">0</p><p class="fitem-sub">numbers[L]</p></div>
+        <div><p class="fitem-label">R</p><p class="fitem-val" id="dr-f-R">—</p><p class="fitem-sub">numbers[R]</p></div>
+        <div><p class="fitem-label">sum</p><p class="fitem-val" id="dr-f-sum">—</p><p class="fitem-sub" id="dr-f-tgt">—</p></div>
+      </div>
+      <div class="formula-eq" id="dr-eq"></div>
     </div>
     <div id="dr-step" class="step-panel">
-      <div class="step-what"><!-- per-step what --></div>
-      <div class="step-why"><!-- per-step why --></div>
+      <div class="step-what" id="dr-what"></div>
+      <div class="step-why" id="dr-why"></div>
     </div>
   </div>
 
-  <div class="ctrl-row">
-    <!-- PER-PROBLEM: example switcher + prev/play/next/reset. MUST hard-reset on switch. -->
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">[2,7,11,15] t=9</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">[1,2,3,4,4,9,56,90] t=8</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">[-3,3,4] t=0</button>
   </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
 </div>
 
 <!-- ═══ SECTION 8: CORNER CASES ═══ -->
 <div class="section">
   <p class="sec-label">Step 7</p>
   <p class="sec-title">Corner cases</p>
-  <!-- PER-PROBLEM: 3–5 × .corner (.cnum + .corner-title + .corner-body) -->
+  <div class="corner">
+    <span class="cnum">1</span>
+    <div>
+      <p class="corner-title">Match on the first check</p>
+      <p class="corner-body"><code>[1,2], t=3</code> — the two ends already sum to the target, so the loop returns <code>[1,2]</code> on its very first iteration.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <span class="cnum">2</span>
+    <div>
+      <p class="corner-title">Negative numbers</p>
+      <p class="corner-body"><code>[-3,3,4], t=0</code> — sortedness still holds for negatives, so the squeeze works unchanged: <code>-3 + 4 = 1 &gt; 0 → R--</code>, then <code>-3 + 3 = 0</code> → <code>[1,2]</code>.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <span class="cnum">3</span>
+    <div>
+      <p class="corner-title">Duplicate values</p>
+      <p class="corner-body"><code>[1,2,3,4,4,9,56,90], t=8</code> — the two equal <code>4</code>s form the pair. The squeeze finds the correct two positions because it compares the ends, not the values' uniqueness.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <span class="cnum">4</span>
+    <div>
+      <p class="corner-title">1-indexed output</p>
+      <p class="corner-body">Forgetting the <code>+1</code> is the classic bug. The array is 0-indexed internally but the answer must be 1-indexed — return <code>[L+1, R+1]</code>.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <span class="cnum">5</span>
+    <div>
+      <p class="corner-title">Two-element array</p>
+      <p class="corner-body"><code>[a,b]</code> — <code>L=0, R=1</code>, one check. If they sum to target return <code>[1,2]</code>; otherwise the loop ends immediately.</p>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
@@ -146,7 +387,12 @@
   <p class="sec-label">Step 8</p>
   <p class="sec-title">Production readiness</p>
   <div class="checklist">
-    <!-- PER-PROBLEM: 5–8 × .chk-item (.chk-icon + .chk-text with <b> label) -->
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Termination:</b> every iteration moves <code>L</code> right or <code>R</code> left, so the gap strictly shrinks and the loop always ends.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Correctness:</b> discarding the smallest (or largest) end is provably safe — it cannot pair with anything remaining to hit the target.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Overflow:</b> for large values, compute <code>sum</code> as <code>long long</code> to avoid <code>int</code> overflow before the comparison.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>1-indexing:</b> the returned pair adds 1 to both pointers — verified against the problem's examples.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Space:</b> O(1) — no hash map, since the sort already encodes the ordering a map would rebuild.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>No-solution path:</b> the trailing <code>return {}</code> is defensive even though the prompt guarantees a solution.</span></div>
   </div>
 </div>
 
@@ -155,9 +401,50 @@
   <p class="sec-label">Step 9</p>
   <p class="sec-title">Approaches — trade-offs</p>
   <div class="tab-bar">
-    <!-- PER-PROBLEM: 2–3 × .tab-btn (first .active) -->
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Two pointers</button>
+    <button class="tab-btn"        id="tab1" onclick="switchTab(1)">Hash map</button>
+    <button class="tab-btn"        id="tab2" onclick="switchTab(2)">Binary search</button>
   </div>
-  <!-- PER-PROBLEM: matching .tab-pane blocks, each with tags + paragraph + reveal-btn + code-block -->
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body">The optimal answer for a <em>sorted</em> input. One inward sweep, constant space, returns on first match. This is what to write here.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-a0', this)">▶ Reveal code</button>
+    <div id="code-a0" class="code-block">
+      <pre class="cb"><span class="tp">int</span> L = <span class="nu">0</span>, R = (<span class="tp">int</span>)numbers.size() - <span class="nu">1</span>;
+<span class="kw">while</span> (L &lt; R) {
+    <span class="tp">int</span> s = numbers[L] + numbers[R];
+    <span class="kw">if</span> (s == target) <span class="kw">return</span> {L + <span class="nu">1</span>, R + <span class="nu">1</span>};
+    <span class="kw">else if</span> (s &lt; target) L++;
+    <span class="kw">else</span> R--;
+}</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body">The generic Two Sum trick: store each value in a hash map and look up the complement. Works on unsorted input, but wastes O(n) space rebuilding ordering the sort already gave us.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-a1', this)">▶ Reveal code</button>
+    <div id="code-a1" class="code-block">
+      <pre class="cb">unordered_map&lt;<span class="tp">int</span>,<span class="tp">int</span>&gt; seen;
+<span class="kw">for</span> (<span class="tp">int</span> i = <span class="nu">0</span>; i &lt; (<span class="tp">int</span>)numbers.size(); i++) {
+    <span class="kw">auto</span> it = seen.find(target - numbers[i]);
+    <span class="kw">if</span> (it != seen.end()) <span class="kw">return</span> {it->second + <span class="nu">1</span>, i + <span class="nu">1</span>};
+    seen[numbers[i]] = i;
+}</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">Time O(n log n)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body">For each <code>i</code>, binary-search the array for <code>target − numbers[i]</code>. Uses the sort but only halfway — it still pays a log factor per element instead of the linear squeeze.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-a2', this)">▶ Reveal code</button>
+    <div id="code-a2" class="code-block">
+      <pre class="cb"><span class="kw">for</span> (<span class="tp">int</span> i = <span class="nu">0</span>; i &lt; (<span class="tp">int</span>)numbers.size(); i++) {
+    <span class="tp">int</span> need = target - numbers[i];
+    <span class="kw">auto</span> it = lower_bound(numbers.begin() + i + <span class="nu">1</span>, numbers.end(), need);
+    <span class="kw">if</span> (it != numbers.end() &amp;&amp; *it == need)
+        <span class="kw">return</span> {i + <span class="nu">1</span>, (<span class="tp">int</span>)(it - numbers.begin()) + <span class="nu">1</span>};
+}</pre>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ SECTION 11: COMPLEXITY ═══ -->
@@ -167,13 +454,13 @@
   <div class="cplx-grid">
     <div class="ccard">
       <div class="ccard-l">Time</div>
-      <div class="ccard-v"><!-- PER-PROBLEM: big-O --></div>
-      <div class="ccard-n"><!-- PER-PROBLEM: one-sentence justification --></div>
+      <div class="ccard-v">O(n)</div>
+      <div class="ccard-n">Each pointer moves inward at most n times total; every element is visited once.</div>
     </div>
     <div class="ccard">
       <div class="ccard-l">Space</div>
-      <div class="ccard-v"><!-- PER-PROBLEM: big-O --></div>
-      <div class="ccard-n"><!-- PER-PROBLEM: one-sentence justification --></div>
+      <div class="ccard-v">O(1)</div>
+      <div class="ccard-n">Only the two index variables; no auxiliary structure.</div>
     </div>
   </div>
 </div>
@@ -183,32 +470,279 @@
   <p class="sec-label">Take home</p>
   <p class="sec-title">Related problems that use this pattern</p>
   <div class="takehome">
-    <!-- PER-PROBLEM: 2–4 related-problem lines, each naming the LC #, title, and what differs -->
+    <p><b>LC 1 — Two Sum:</b> unsorted input, so the hash-map approach is the right call; this problem is the sorted special case.</p>
+    <p><b>LC 15 — 3Sum:</b> fix one element, then run exactly this two-pointer squeeze on the rest.</p>
+    <p><b>LC 11 — Container With Most Water:</b> same converging pointers, but the move rule maximises area instead of hitting a target.</p>
+    <p><b>LC 18 — 4Sum:</b> two nested fixes wrapping the two-pointer squeeze.</p>
   </div>
 </div>
 
 <script src="../../static/lesson.js"></script>
 <script>
   /* PROBLEM-SPECIFIC SCRIPT ONLY */
-  /* Override bfTogglePlay / cvTogglePlay / drTogglePlay if non-default speed needed */
 
-  /* PER-PROBLEM: EXAMPLES array (for cv + dr) */
-  /* PER-PROBLEM: BF_EXAMPLES array (for brute force, often a subset) */
-  /* PER-PROBLEM: CV_LINES array — every line of the optimal code with line numbers */
+  /* ─── shared data ─── */
+  const EXAMPLES = [
+    {numbers:[2,7,11,15],            target:9},
+    {numbers:[1,2,3,4,4,9,56,90],    target:8},
+    {numbers:[-3,3,4],               target:0},
+  ];
+  const EX = [
+    {numbers:[2,7,11,15],            target:9, answer:[1,2]},
+    {numbers:[1,2,3,4,4,9,56,90],    target:8, answer:[4,5]},
+    {numbers:[-3,3,4],               target:0, answer:[1,2]},
+  ];
+  const BF_EXAMPLES = EXAMPLES;
+  const CV_LINES = [
+    {n:1, c:'vector<int> twoSum(vector<int>& numbers, int target) {'},
+    {n:2, c:'    int L = 0, R = numbers.size() - 1;'},
+    {n:3, c:'    while (L < R) {'},
+    {n:4, c:'        int sum = numbers[L] + numbers[R];'},
+    {n:5, c:'        if (sum == target) return {L + 1, R + 1};'},
+    {n:6, c:'        else if (sum < target) L++;'},
+    {n:7, c:'        else R--;'},
+    {n:8, c:'    }'},
+    {n:9, c:'    return {};'},
+    {n:10, c:'}'},
+  ];
 
-  /* PER-PROBLEM: bfGen(input) — returns step objects */
-  /* PER-PROBLEM: bfRender(st) — reflects state in DOM */
-  /* PER-PROBLEM: bfLoadEx(idx) — hard-reset + load example */
+  /* ─── shared strip renderer (pure of state; writes into a container) ─── */
+  function renderStrip(containerId, arr, L, R, matched){
+    const con = document.getElementById(containerId);
+    con.innerHTML = '';
+    arr.forEach((v, i) => {
+      const cell = document.createElement('div'); cell.className = 'ts-cell';
+      const pl = document.createElement('div'); pl.className = 'ts-ptr l'; pl.textContent = (i === L) ? 'L' : '';
+      const box = document.createElement('div'); box.className = 'ts-box';
+      if (i < L || i > R) box.classList.add('dead');
+      if (matched && (i === L || i === R)) box.classList.add('matched');
+      else { if (i === L) box.classList.add('lcell'); if (i === R) box.classList.add('rcell'); }
+      box.textContent = v;
+      const pr = document.createElement('div'); pr.className = 'ts-ptr r'; pr.textContent = (i === R) ? 'R' : '';
+      const idx = document.createElement('div'); idx.className = 'ts-idx'; idx.textContent = (i + 1);
+      cell.appendChild(pl); cell.appendChild(box); cell.appendChild(pr); cell.appendChild(idx);
+      con.appendChild(cell);
+    });
+  }
 
-  /* PER-PROBLEM: cvGen(input) — returns step objects {line, vars, dim, narration, match} */
-  /* PER-PROBLEM: cvRender(st) — reflects state in DOM */
-  /* PER-PROBLEM: cvLoadEx(idx) — hard-reset + load example */
+  /* ══════════════════════════════════════════════════════════════
+     §1 INSIGHT ANIMATION
+     ══════════════════════════════════════════════════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
 
-  /* PER-PROBLEM: drGen(input) — returns step objects */
-  /* PER-PROBLEM: drRender(st) — reflects state in DOM */
-  /* PER-PROBLEM: drLoadEx(idx) — hard-reset + load example */
+  function siGenSteps(input){
+    const a = input.numbers, t = input.target, n = a.length, steps = [];
+    let L = 0, R = n - 1;
+    while (L < R){
+      const sum = a[L] + a[R];
+      if (sum === t){
+        steps.push({a, L, R, sum, t, matched:true,
+          note:`numbers[${L}] + numbers[${R}] = ${a[L]} + ${a[R]} = ${sum} = target → answer [${L+1}, ${R+1}].`});
+        break;
+      } else if (sum < t){
+        steps.push({a, L, R, sum, t, matched:false,
+          note:`${a[L]} + ${a[R]} = ${sum} < ${t} → too small, drop the smallest: L → ${L+1}.`});
+        L++;
+      } else {
+        steps.push({a, L, R, sum, t, matched:false,
+          note:`${a[L]} + ${a[R]} = ${sum} > ${t} → too big, drop the largest: R → ${R-1}.`});
+        R--;
+      }
+    }
+    return steps;
+  }
+  function siRender(st){
+    renderStrip('si-strip', st.a, st.L, st.R, st.matched);
+    document.getElementById('si-note').textContent = st.note;
+    siUpdateCtr();
+  }
+  function siNext(){ if(siCur<siSteps.length-1){ siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev(){ if(siCur>0){ siCur--; siRender(siSteps[siCur]); } }
+  function siReset(){ siStopPlay(); siCur=0; siRender(siSteps[0]); }
+  function siStopPlay(){ clearInterval(siTimer); siTimer=null;
+    document.getElementById('si-bplay').textContent='▶ Auto'; }
+  function siTogglePlay(){
+    if(siTimer){ siStopPlay(); }
+    else{
+      document.getElementById('si-bplay').textContent='⏸ Pause';
+      siTimer=setInterval(()=>{ if(siCur<siSteps.length-1) siNext(); else siStopPlay(); }, 1400);
+    }
+  }
+  function siUpdateCtr(){
+    const c=document.getElementById('si-sctr');
+    if(c) c.textContent=`step ${siCur+1} / ${siSteps.length}`;
+  }
 
-  /* Init calls: cvBuildCode(CV_LINES); cvLoadEx(0); drLoadEx(0); bfLoadEx(0); */
+  /* ══════════════════════════════════════════════════════════════
+     §2 BRUTE FORCE — try every pair (i, j)
+     ══════════════════════════════════════════════════════════════ */
+  let bfSteps = [], bfCur = 0, bfTimer = null;
+
+  function bfGenSteps(input){
+    const a = input.numbers, t = input.target, n = a.length, steps = [];
+    let checks = 0;
+    outer:
+    for (let i = 0; i < n; i++){
+      for (let j = i + 1; j < n; j++){
+        checks++;
+        const sum = a[i] + a[j], hit = sum === t;
+        steps.push({a, i, j, sum, t, checks, hit,
+          what:`Check pair (${i+1}, ${j+1}): ${a[i]} + ${a[j]} = ${sum}.`,
+          why:hit?`Equals target → return [${i+1}, ${j+1}].`:`${sum} ${sum<t?'<':'>'} ${t} → keep scanning.`,
+          eq:`numbers[${i}] + numbers[${j}] = ${sum}`});
+        if (hit) break outer;
+      }
+    }
+    return steps;
+  }
+  function bfRender(st){
+    renderStrip('bf-strip', st.a, st.i, st.j, st.hit);
+    document.getElementById('bf-f-i').textContent = st.i+1;
+    document.getElementById('bf-f-j').textContent = st.j+1;
+    document.getElementById('bf-f-checks').textContent = st.checks;
+    document.getElementById('bf-eq').textContent = st.eq;
+    document.getElementById('bf-what').textContent = st.what;
+    document.getElementById('bf-why').textContent = st.why;
+    document.getElementById('bf-formula').className = 'formula-panel' + (st.hit?' is-match':'');
+    document.getElementById('bf-step').className = 'step-panel' + (st.hit?' match':'');
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur+1} / ${bfSteps.length}`;
+    document.getElementById('bf-bp').disabled = bfCur===0;
+    document.getElementById('bf-bn').disabled = bfCur===bfSteps.length-1;
+  }
+  function bfNext(){ if(bfCur<bfSteps.length-1){ bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev(){ if(bfCur>0){ bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset(){ bfStopPlay(); bfCur=0; bfRender(bfSteps[0]); }
+  function bfLoadEx(idx){
+    bfStopPlay(); bfCur=0;
+    [0,1,2].forEach(i=>document.getElementById('bf-ex'+i).classList.toggle('active', i===idx));
+    bfSteps = bfGenSteps(BF_EXAMPLES[idx]);
+    bfRender(bfSteps[0]);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     §6 CODE VISUALIZATION
+     ══════════════════════════════════════════════════════════════ */
+  let cvSteps = [], cvCur = 0, cvTimer = null;
+
+  function cvGenSteps(input){
+    const a = input.numbers, t = input.target, n = a.length, steps = [];
+    const snap = (line, L, R, sum, narration, match) =>
+      steps.push({line, a, L, R, sum, t, narration, match:!!match});
+    let L = 0, R = n - 1;
+    snap(2, L, R, null, `Initialise L = 0, R = ${R} at the two ends.`, false);
+    while (L < R){
+      snap(3, L, R, null, `L (${L}) < R (${R}) → continue the loop.`, false);
+      const sum = a[L] + a[R];
+      snap(4, L, R, sum, `sum = numbers[${L}] + numbers[${R}] = ${a[L]} + ${a[R]} = ${sum}.`, false);
+      if (sum === t){
+        snap(5, L, R, sum, `sum (${sum}) == target (${t}) → return [${L+1}, ${R+1}].`, true);
+        break;
+      } else if (sum < t){
+        snap(6, L, R, sum, `sum (${sum}) < target (${t}) → L++ to grow the sum.`, false);
+        L++;
+      } else {
+        snap(7, L, R, sum, `sum (${sum}) > target (${t}) → R-- to shrink the sum.`, false);
+        R--;
+      }
+    }
+    return steps;
+  }
+  function cvRender(st){
+    document.querySelectorAll('.cv-line').forEach(el=>el.classList.remove('active','active-match'));
+    const ln = document.getElementById('cvL'+st.line);
+    if(ln) ln.classList.add(st.match ? 'active-match' : 'active');
+    const setCard=(id,val,on,match)=>{
+      const card=document.getElementById('cv-v-'+id);
+      document.getElementById('cv-vv-'+id).textContent = val;
+      card.classList.toggle('dim', !on);
+      card.classList.toggle('hl', on && !match);
+      card.classList.toggle('hl-match', on && match);
+    };
+    setCard('arr', '['+st.a.join(', ')+']', true, st.match);
+    setCard('L', st.L + ' → ' + st.a[st.L], true, false);
+    setCard('R', st.R + ' → ' + st.a[st.R], true, false);
+    const cmp = st.sum===null ? '—' : (st.sum===st.t ? st.sum+' = '+st.t : st.sum+(st.sum<st.t?' < ':' > ')+st.t);
+    setCard('sum', cmp, st.sum!==null, st.match);
+    const nar=document.getElementById('cv-narration');
+    nar.textContent=st.narration;
+    nar.className='cv-narration'+(st.match?' is-match':' is-active');
+    document.getElementById('cv-sctr').textContent=`Step ${cvCur+1} / ${cvSteps.length}`;
+    document.getElementById('cv-bprev').disabled=cvCur===0;
+    document.getElementById('cv-bnext').disabled=cvCur===cvSteps.length-1;
+  }
+  function cvNext(){ if(cvCur<cvSteps.length-1){ cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev(){ if(cvCur>0){ cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset(){ cvStopPlay(); cvCur=0; cvRender(cvSteps[0]); }
+  function cvLoadEx(idx){
+    cvStopPlay(); cvCur=0;
+    [0,1,2].forEach(i=>document.getElementById('cv-ex'+i).classList.toggle('active', i===idx));
+    cvSteps = cvGenSteps(EXAMPLES[idx]);
+    cvRender(cvSteps[0]);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     §7 DRY RUN — drGenSteps is the correctness oracle
+     ══════════════════════════════════════════════════════════════ */
+  let drSteps = [], drCur = 0, drTimer = null;
+
+  function drGenSteps(numbers, target){
+    const a = numbers, t = target, n = a.length, steps = [];
+    let L = 0, R = n - 1, ans = [];
+    steps.push({a, L, R, sum:null, t, phase:'init',
+      what:`Place L at index 0 and R at index ${R}.`,
+      why:'The widest pair brackets the full range of possible sums.', eq:`L=0, R=${R}`});
+    while (L < R){
+      const sum = a[L] + a[R];
+      if (sum === t){
+        ans = [L+1, R+1];
+        steps.push({a, L, R, sum, t, phase:'match',
+          what:`${a[L]} + ${a[R]} = ${sum} = target → match.`,
+          why:`Return the 1-indexed pair [${L+1}, ${R+1}].`, eq:`answer = [${L+1}, ${R+1}]`});
+        break;
+      } else if (sum < t){
+        steps.push({a, L, R, sum, t, phase:'lt',
+          what:`${a[L]} + ${a[R]} = ${sum} < ${t} → too small.`,
+          why:`numbers[${L}]=${a[L]} is the smallest left; it can't help — advance L.`, eq:`L: ${L} → ${L+1}`});
+        L++;
+      } else {
+        steps.push({a, L, R, sum, t, phase:'gt',
+          what:`${a[L]} + ${a[R]} = ${sum} > ${t} → too big.`,
+          why:`numbers[${R}]=${a[R]} is the largest right; it can't help — retreat R.`, eq:`R: ${R} → ${R-1}`});
+        R--;
+      }
+    }
+    const last = steps[steps.length-1];
+    last.result = ans;
+    return steps;
+  }
+  function drRender(st){
+    renderStrip('dr-strip', st.a, st.L, st.R, st.phase==='match');
+    document.getElementById('dr-f-L').textContent = st.L + ' (' + st.a[st.L] + ')';
+    document.getElementById('dr-f-R').textContent = st.R + ' (' + st.a[st.R] + ')';
+    document.getElementById('dr-f-sum').textContent = st.sum===null ? '—' : st.sum;
+    document.getElementById('dr-f-tgt').textContent = 'target ' + st.t;
+    document.getElementById('dr-eq').textContent = st.eq;
+    document.getElementById('dr-what').textContent = st.what;
+    document.getElementById('dr-why').textContent = st.why;
+    document.getElementById('dr-formula').className = 'formula-panel' + (st.phase==='match'?' is-match':(st.phase==='lt'||st.phase==='gt')?' is-squeeze':'');
+    document.getElementById('dr-step').className = 'step-panel' + (st.phase==='match'?' match':(st.phase==='lt'||st.phase==='gt')?' squeeze':'');
+    document.getElementById('dr-sctr').textContent = `Step ${drCur+1} / ${drSteps.length}`;
+    document.getElementById('dr-bp').disabled = drCur===0;
+    document.getElementById('dr-bn').disabled = drCur===drSteps.length-1;
+  }
+  function drNext(){ if(drCur<drSteps.length-1){ drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev(){ if(drCur>0){ drCur--; drRender(drSteps[drCur]); } }
+  function drReset(){ drStopPlay(); drCur=0; drRender(drSteps[0]); }
+  function drLoadEx(idx){
+    drStopPlay(); drCur=0;
+    [0,1,2].forEach(i=>document.getElementById('dr-ex'+i).classList.toggle('active', i===idx));
+    drSteps = drGenSteps(EXAMPLES[idx].numbers, EXAMPLES[idx].target);
+    drRender(drSteps[0]);
+  }
+
+  /* ─── INIT ─── */
+  siSteps = siGenSteps(EXAMPLES[0]); siRender(siSteps[0]);
+  cvBuildCode(CV_LINES); cvLoadEx(0); drLoadEx(0); bfLoadEx(0);
 </script>
 
 </body>
