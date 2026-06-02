@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rotting Oranges — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC: grid of orange cells (fresh / rotten / empty) */
+  .rot-grid { display: inline-flex; flex-direction: column; gap: 4px; }
+  .rot-row  { display: flex; gap: 4px; }
+  .rot-cell {
+    width: 42px; height: 42px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 15px; font-weight: 700;
+    border-radius: 6px; border: 2px solid var(--border2);
+    background: var(--bg2); color: var(--text3);
+    transition: all .15s ease;
+  }
+  .rot-cell.empty  { background: var(--bg2);        border-color: var(--border2);      color: var(--text3); }
+  .rot-cell.fresh  { background: var(--bg-warn);    border-color: var(--border-warn);  color: var(--text-warn); }
+  .rot-cell.rotten { background: var(--bg-danger);  border-color: var(--border-danger);color: var(--text-danger); }
+  .rot-cell.just   { outline: 3px solid var(--text-info); outline-offset: 1px; }
+  .rot-legend { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin: .25rem 0 .75rem; font-size: 12px; color: var(--text2); }
+  .rot-legend .leg-dot { width: 14px; height: 14px; border-radius: 4px; display: inline-block; vertical-align: middle; margin-right: 5px; }
+  .rot-cap { font-family: var(--mono); font-size: 12px; color: var(--text2); margin: .625rem 0; min-height: 2.2em; }
+  .rot-counter { display: flex; gap: 1.5rem; flex-wrap: wrap; font-family: var(--mono); font-size: 13px; margin: .625rem 0; }
+  .rot-counter b { color: var(--text-danger); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Rotting Oranges</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/rotting-oranges/" target="_blank">LC #994</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Graphs — BFS / DFS</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Does rot spread diagonally?</div>
+      <div class="acard-a">No — only to the four orthogonal neighbours (up, down, left, right).</div>
+      <div class="acard-u">→ a 4-direction neighbour helper, not 8</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Do all rotten oranges spread at the same time?</div>
+      <div class="acard-a">Yes — every rotten orange rots its neighbours simultaneously, each minute.</div>
+      <div class="acard-u">→ multi-source BFS: every rotten cell is a seed at minute 0</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">What if there are no fresh oranges at all?</div>
+      <div class="acard-a">The grid is already done — the answer is 0 minutes.</div>
+      <div class="acard-u">→ early return when fresh == 0</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">What if a fresh orange is walled off by empty cells?</div>
+      <div class="acard-a">It can never rot, so the task is impossible → return -1.</div>
+      <div class="acard-u">→ check for leftover fresh after the BFS drains</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Rot spreads in waves — start every rotten orange at once</p>
+
+  <p class="body">You probably tried rotting one orange, rescanning the whole grid, then doing it again — and watched it crawl. The fix is to stop thinking one source at a time: every rotten orange spreads simultaneously, so drop them <em>all</em> into one queue and let the rot fan out in synchronized waves, one wave per minute.</p>
+
+  <!-- Foundational visual: the synchronized wave (animated, reader-controlled) -->
+  <div style="margin:1.25rem 0">
+    <div class="rot-legend">
+      <span><span class="leg-dot" style="background:var(--bg-warn)"></span>fresh (1)</span>
+      <span><span class="leg-dot" style="background:var(--bg-danger)"></span>rotten (2)</span>
+      <span><span class="leg-dot" style="background:var(--bg2);outline:2px solid var(--text-info)"></span>just rotted this minute</span>
+      <span><span class="leg-dot" style="background:var(--bg2);border:1px solid var(--border2)"></span>empty (0)</span>
+      <span><span class="leg-dot" style="background:var(--bg-success)"></span>all clear</span>
+    </div>
+    <div id="si-grid" class="rot-wrap" style="margin:.5rem 0"></div>
+    <div id="si-cap" class="rot-cap"></div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="ctrl-btn"     onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn"     onclick="siNext()">Next →</button>
+      <button class="ctrl-btn"     onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <!-- What the wave is doing, minute by minute -->
+  <div style="margin:1.25rem 0;font-size:13px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:.5rem;color:var(--text)">Read the animation as a clock:</div>
+    <div class="skeleton">
+      <div class="wt-item">
+        <div class="wt-num">0</div>
+        <div class="wt-body">
+          <div class="wt-name">Seed every source at once</div>
+          <div class="wt-desc">Minute 0 — every rotten orange (R) goes into one shared queue. They are all equal starting points; none waits its turn.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">t</div>
+        <div class="wt-body">
+          <div class="wt-name">One synchronized wave per minute</div>
+          <div class="wt-desc">Each minute, the whole current frontier rots its fresh orthogonal neighbours simultaneously (highlighted with the blue ring), and those become next minute's frontier.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">∎</div>
+        <div class="wt-body">
+          <div class="wt-name">Stop when the spread dies out</div>
+          <div class="wt-desc">The answer is the number of waves once no fresh orange remains — or -1 if the wave stalls while some fresh orange is still walled off.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Seed a BFS queue with every rotten cell at once (multi-source). Each round, pop the entire current layer and rot its fresh orthogonal neighbours, enqueuing them for the next round; one round = one minute. The answer is the number of rounds — or -1 if any fresh orange is still standing when the queue drains.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">The naive simulation rescans the <em>entire</em> grid every minute: for each rotten cell, look at its neighbours, collect the fresh ones, rot them, then repeat the full scan next minute. Each minute costs O(m·n) cell-visits, and the rot can take up to O(m·n) minutes — so the whole thing is O((m·n)²). Watch the cell-scan counter climb.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">3×3 → 4 min</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">3×3 → -1</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">1×2 → 0</button>
+  </div>
+  <div id="bf-matrix-con" style="margin:.75rem 0;padding:.75rem;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2)"></div>
+  <div class="rot-counter">
+    <span>minute: <b id="bf-min">0</b></span>
+    <span>fresh left: <b id="bf-fresh">0</b></span>
+    <span>cell-scans: <b id="bf-scans">0</b></span>
+  </div>
+  <div id="bf-narr" class="rot-cap"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O((m·n)²) time, O(m·n) space</p>
+    <p class="infobox-d">The whole grid is rescanned every minute even though only the rot frontier changes. The cell-scan counter is the point — each minute re-examines cells that already settled long ago.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="kw">int</span> <span class="fn">orangesRotting</span>(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; grid) {
+    <span class="kw">int</span> m = grid.<span class="fn">size</span>(), n = grid[0].<span class="fn">size</span>(), minutes = 0;
+    <span class="kw">while</span> (<span class="kw">true</span>) {
+        <span class="kw">vector</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt; toRot;
+        <span class="cm">// full rescan of the grid every single minute</span>
+        <span class="kw">for</span> (<span class="kw">int</span> r = 0; r &lt; m; r++) {
+            <span class="kw">for</span> (<span class="kw">int</span> c = 0; c &lt; n; c++) {
+                <span class="kw">if</span> (grid[r][c] != 2) { <span class="kw">continue</span>; }
+                <span class="kw">int</span> dr[] = {1,-1,0,0}, dc[] = {0,0,1,-1};
+                <span class="kw">for</span> (<span class="kw">int</span> d = 0; d &lt; 4; d++) {
+                    <span class="kw">int</span> nr = r+dr[d], nc = c+dc[d];
+                    <span class="kw">if</span> (nr&gt;=0 &amp;&amp; nr&lt;m &amp;&amp; nc&gt;=0 &amp;&amp; nc&lt;n &amp;&amp; grid[nr][nc]==1) {
+                        toRot.<span class="fn">push_back</span>({nr,nc});
+                    }
+                }
+            }
+        }
+        <span class="kw">if</span> (toRot.<span class="fn">empty</span>()) { <span class="kw">break</span>; }
+        <span class="kw">for</span> (<span class="kw">auto</span>&amp; p : toRot) { grid[p.first][p.second] = 2; }
+        minutes++;
+    }
+    <span class="kw">for</span> (<span class="kw">int</span> r = 0; r &lt; m; r++) {
+        <span class="kw">for</span> (<span class="kw">int</span> c = 0; c &lt; n; c++) {
+            <span class="kw">if</span> (grid[r][c] == 1) { <span class="kw">return</span> -1; }
+        }
+    }
+    <span class="kw">return</span> minutes;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three swaps turn the quadratic resimulation into a single linear pass over the grid.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Per-orange resimulation → one shared queue</div>
+        <div class="wt-desc">Instead of asking "what does each rotten orange do" separately, drop every rotten cell into a single queue and let them all spread together (multi-source BFS).</div>
+        <div class="wt-gain">drops the "which source" outer factor</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Full grid rescan each minute → process only the frontier</div>
+        <div class="wt-desc">Pop exactly the cells that rotted last minute and rot only their neighbours. Settled cells are never revisited.</div>
+        <div class="wt-gain">O((m·n)²) → O(m·n)</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">"Did anything change?" sentinel → a fresh counter</div>
+        <div class="wt-desc">Count fresh oranges up front and decrement on each rot. Termination and the -1 verdict both read straight off this one integer.</div>
+        <div class="wt-gain">O(1) termination test; -1 case falls out</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Scan once.</b> Enqueue every rotten cell and count the fresh ones.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Short-circuit.</b> If there are no fresh oranges, return 0.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Process one layer at a time.</b> While the queue is non-empty and fresh remain, snapshot the current queue size and pop exactly that many cells — the whole current minute's wave.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Rot neighbours.</b> For each popped cell, rot its fresh orthogonal neighbours, decrement <code>fresh</code>, and enqueue them for the next layer. After the full layer, do <code>minutes++</code>.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>Report.</b> When the queue drains, return <code>minutes</code> if <code>fresh == 0</code>, otherwise <code>-1</code>.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">int</span> <span class="fn">orangesRotting</span>(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; grid) {
+    <span class="kw">int</span> m = grid.<span class="fn">size</span>(), n = grid[0].<span class="fn">size</span>();
+    <span class="kw">queue</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt; q;
+    <span class="kw">int</span> fresh = 0;
+    <span class="kw">for</span> (<span class="kw">int</span> r = 0; r &lt; m; r++) {
+        <span class="kw">for</span> (<span class="kw">int</span> c = 0; c &lt; n; c++) {
+            <span class="kw">if</span> (grid[r][c] == 2) { q.<span class="fn">push</span>({r, c}); }
+            <span class="kw">else if</span> (grid[r][c] == 1) { fresh++; }
+        }
+    }
+    <span class="kw">if</span> (fresh == 0) { <span class="kw">return</span> 0; }
+    <span class="kw">int</span> minutes = 0;
+    <span class="kw">int</span> dr[] = {1, -1, 0, 0}, dc[] = {0, 0, 1, -1};
+    <span class="kw">while</span> (!q.<span class="fn">empty</span>() &amp;&amp; fresh &gt; 0) {
+        <span class="kw">int</span> sz = q.<span class="fn">size</span>();          <span class="cm">// snapshot: this minute's wave</span>
+        <span class="kw">while</span> (sz--) {
+            <span class="kw">auto</span> [r, c] = q.<span class="fn">front</span>(); q.<span class="fn">pop</span>();
+            <span class="kw">for</span> (<span class="kw">int</span> d = 0; d &lt; 4; d++) {
+                <span class="kw">int</span> nr = r + dr[d], nc = c + dc[d];
+                <span class="kw">if</span> (nr &lt; 0 || nr &gt;= m || nc &lt; 0 || nc &gt;= n) { <span class="kw">continue</span>; }
+                <span class="kw">if</span> (grid[nr][nc] != 1) { <span class="kw">continue</span>; }
+                grid[nr][nc] = 2;            <span class="cm">// rot it; mutation = visited mark</span>
+                fresh--;
+                q.<span class="fn">push</span>({nr, nc});
+            }
+        }
+        minutes++;
+    }
+    <span class="kw">return</span> fresh == 0 ? minutes : -1;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Walk the level-order BFS one statement at a time. The variable cards stay dimmed until the line that assigns them fires; the grid below highlights the oranges that rot on each wave. Switch examples to see the -1 and the instant cases.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-m"><span class="cv-var-name">m</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-n"><span class="cv-var-name">n</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-fresh"><span class="cv-var-name">fresh</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-minutes"><span class="cv-var-name">minutes</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-q"><span class="cv-var-name">queue size</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-matrix-con" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">3×3 → 4 min</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">3×3 → -1</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">1×2 → 0</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick an input and step through the synchronized waves. Predict which oranges rot next before pressing Next.</p>
+
+  <div id="dr-matrix-con" style="margin:.75rem 0"></div>
+  <div class="rot-legend">
+    <span><span class="leg-dot" style="background:var(--bg-warn)"></span>fresh</span>
+    <span><span class="leg-dot" style="background:var(--bg-danger)"></span>rotten</span>
+    <span><span class="leg-dot" style="background:var(--bg2);outline:2px solid var(--text-info)"></span>just rotted</span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">minute</div>
+          <div class="fitem-val" id="dr-f-min">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">fresh left</div>
+          <div class="fitem-val" id="dr-f-fresh">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">rotten</div>
+          <div class="fitem-val" id="dr-f-rot">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">result</div>
+          <div class="fitem-val" id="dr-f-res">…</div>
+        </div>
+      </div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">3×3 → 4 min</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">3×3 → -1</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">1×2 → 0</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">No fresh oranges</div>
+    <div class="corner-body">fresh == 0 after the initial scan. Return 0 immediately — never enter the BFS loop, which would otherwise leave minutes at 0 anyway but the early return makes intent explicit.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">No rotten oranges, but fresh exist</div>
+    <div class="corner-body">The queue starts empty, so the loop never runs and fresh stays &gt; 0. Return -1 — nothing can ever rot them.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Fresh orange sealed off by empties</div>
+    <div class="corner-body">Like <code>[[2,1,1],[0,1,1],[1,0,1]]</code>: the BFS rots everything reachable, but the orange at (2,0) has only empty neighbours. fresh ends &gt; 0 → -1.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Single-cell grids</div>
+    <div class="corner-body"><code>[[0]]</code> → 0 (no fresh). <code>[[2]]</code> → 0 (no fresh). <code>[[1]]</code> → -1 (a lone fresh orange with no rot source).</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">Everything already rotten</div>
+    <div class="corner-body">fresh == 0 from the start → 0. The queue may be full of seeds, but the early return fires first.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Bounds-check all four neighbours</b> before reading the grid — an out-of-range index is undefined behaviour in C++.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Count fresh up front</b>; the -1 verdict is just "fresh &gt; 0 at the end" — no second full scan needed.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Snapshot the queue size</b> (<code>sz = q.size()</code>) so each loop layer = exactly one minute. Counting per-pop would overcount.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Early-return 0 when fresh == 0</b> to avoid an off-by-one minute on already-finished grids.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Mutate in place</b> (<code>grid[nr][nc] = 2</code>) — the rot value doubles as the visited marker, so no separate visited set.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>minutes is bounded by m·n</b>, so no integer-overflow concerns even on the largest grids.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Multi-source BFS</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">DFS + timestamp</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Repeated full-scan</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(m·n)</span><span class="tag tag-space">O(m·n)</span>
+    <p class="body">Seed the queue with every rotten cell and expand level by level. Each cell is enqueued at most once; minutes counts the BFS layers. This is the intended solution — simple, linear, and the queue's level structure maps exactly onto "minutes".</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(m·n) amortised</span><span class="tag tag-space">O(m·n)</span>
+    <p class="body">DFS from each rotten cell, stamping every fresh cell with the earliest minute it could rot (the min over all sources). It works but is fiddlier: a cell may be reached by a later source first and must be re-stamped, so you revisit cells and lose the clean "one layer = one minute" structure BFS gives for free.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-dfs',this)">▶ Reveal sketch</button>
+    <div id="code-dfs" class="code-block">
+      <pre class="cb"><span class="cm">// dfs(r,c,t): if t &lt; time[r][c], stamp it and recurse into</span>
+<span class="cm">// neighbours with t+1. Answer = max stamp - initial, or -1 if</span>
+<span class="cm">// any fresh cell was never stamped. Re-stamping makes it subtler</span>
+<span class="cm">// than BFS, with no asymptotic win.</span></pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O((m·n)²)</span><span class="tag tag-space">O(m·n)</span>
+    <p class="body">The brute force from Step 1: rescan the whole grid each minute, rot every fresh-adjacent-to-rotten cell, repeat until nothing changes. Correct and easy to reason about, but quadratic because settled regions are re-examined every minute.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(m·n)</div>
+      <div class="ccard-n">Each cell is enqueued at most once and its four neighbours inspected a constant number of times.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(m·n)</div>
+      <div class="ccard-n">The BFS queue can hold up to every cell in the worst case (e.g. a grid that is all rotten at the start).</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><b>LC 542 — 01 Matrix:</b> multi-source BFS from every 0, recording the distance to the nearest 0. Same "all sources in the queue at once" seeding.</p>
+    <p><b>LC 286 — Walls and Gates:</b> multi-source BFS from every gate, filling each room with the distance to the closest gate.</p>
+    <p><b>LC 1162 — As Far from Land as Possible:</b> multi-source BFS from all land cells; the answer is the last water cell reached.</p>
+    <p><b>The trick to carry:</b> when many sources expand at the same rate, seed them <i>all</i> into one queue and let BFS layers double as a clock — never simulate sources one at a time.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  /* ── shared grid painter (DOM only; never called by the pure *GenSteps) ── */
+  function rotPaint(containerId, grid, justList) {
+    const con = document.getElementById(containerId);
+    if (!con) return;
+    con.innerHTML = '';
+    const just = new Set((justList || []).map(p => p[0] + ',' + p[1]));
+    const wrap = document.createElement('div');
+    wrap.className = 'rot-grid';
+    for (let r = 0; r < grid.length; r++) {
+      const row = document.createElement('div');
+      row.className = 'rot-row';
+      for (let c = 0; c < grid[r].length; c++) {
+        const v = grid[r][c];
+        const cell = document.createElement('div');
+        cell.className = 'rot-cell ' + (v === 0 ? 'empty' : v === 2 ? 'rotten' : 'fresh');
+        if (just.has(r + ',' + c)) cell.classList.add('just');
+        cell.textContent = v === 0 ? '·' : v === 2 ? 'R' : 'F';
+        row.appendChild(cell);
+      }
+      wrap.appendChild(row);
+    }
+    con.appendChild(wrap);
+  }
+
+  /* ── answer-bearing examples (drive bf / cv / dr panels AND the verifier) ── */
+  const EX = [
+    { grid: [[2,1,1],[1,1,0],[0,1,1]], answer: 4  },
+    { grid: [[2,1,1],[0,1,1],[1,0,1]], answer: -1 },
+    { grid: [[0,2]],                   answer: 0  },
+  ];
+
+  const CV_LINES = [
+    { n:1,  c:'int orangesRotting(vector<vector<int>>& grid) {' },
+    { n:2,  c:'    int m = grid.size(), n = grid[0].size();' },
+    { n:3,  c:'    queue<pair<int,int>> q;  int fresh = 0;' },
+    { n:4,  c:'    for (int r = 0; r < m; r++)' },
+    { n:5,  c:'        for (int c = 0; c < n; c++)' },
+    { n:6,  c:'            if (grid[r][c] == 2) q.push({r, c});' },
+    { n:7,  c:'            else if (grid[r][c] == 1) fresh++;' },
+    { n:8,  c:'    if (fresh == 0) return 0;' },
+    { n:9,  c:'    int minutes = 0;' },
+    { n:10, c:'    while (!q.empty() && fresh > 0) {' },
+    { n:11, c:'        int sz = q.size();' },
+    { n:12, c:'        while (sz--) {' },
+    { n:13, c:'            auto [r, c] = q.front(); q.pop();' },
+    { n:14, c:'            for (auto [nr, nc] : neighbours(r, c)) {' },
+    { n:15, c:'                if (oob(nr,nc) || grid[nr][nc] != 1) continue;' },
+    { n:16, c:'                grid[nr][nc] = 2; fresh--; q.push({nr, nc});' },
+    { n:17, c:'            }' },
+    { n:18, c:'        }  minutes++;' },
+    { n:19, c:'    }' },
+    { n:20, c:'    return fresh == 0 ? minutes : -1;' },
+  ];
+
+  /* ════════════════ §1 INSIGHT — synchronized wave ════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+
+  function siGenSteps(grid) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const m = grid.length, n = grid[0].length;
+    let g = grid.map(r => r.slice());
+    let fresh = 0, frontier = [];
+    for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) {
+      if (g[r][c] === 2) frontier.push([r, c]);
+      else if (g[r][c] === 1) fresh++;
+    }
+    const steps = [];
+    let minute = 0;
+    steps.push({ grid: g.map(r => r.slice()), just: frontier.map(p => p.slice()), minute, fresh,
+      cap: `Minute 0 — every rotten orange (R) is a source. ${fresh} fresh (F) remain.` });
+    while (fresh > 0 && frontier.length) {
+      const next = [];
+      for (const [r, c] of frontier) for (const [dr, dc] of DIRS) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= m || nc < 0 || nc >= n) continue;
+        if (g[nr][nc] !== 1) continue;
+        g[nr][nc] = 2; fresh--; next.push([nr, nc]);
+      }
+      if (next.length === 0) break;
+      minute++;
+      steps.push({ grid: g.map(r => r.slice()), just: next.map(p => p.slice()), minute, fresh,
+        cap: `Minute ${minute} — the wave rots ${next.length} neighbour(s) at once. ${fresh} fresh left.` });
+      frontier = next;
+    }
+    steps.push({ grid: g.map(r => r.slice()), just: [], minute, fresh,
+      cap: fresh > 0 ? `Stuck: ${fresh} fresh orange(s) are unreachable → answer is -1.`
+                     : `All clear after ${minute} synchronized wave(s).` });
+    return steps;
+  }
+
+  function siRender(st) {
+    rotPaint('si-grid', st.grid, st.just);
+    document.getElementById('si-cap').textContent = st.cap;
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+
+  /* ════════════════ §2 BRUTE FORCE — repeated full rescan ════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null;
+
+  function bfGenSteps(grid) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const m = grid.length, n = grid[0].length;
+    let g = grid.map(r => r.slice());
+    const countFresh = gg => { let f = 0; for (const row of gg) for (const v of row) if (v === 1) f++; return f; };
+    const steps = [];
+    let minute = 0, scans = 0;
+    steps.push({ grid: g.map(r => r.slice()), minute, scans, fresh: countFresh(g), just: [],
+      narr: 'Start: each minute we rescan the entire grid looking for fresh oranges next to rot.' });
+    while (true) {
+      const toRot = [];
+      for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) {
+        scans++;
+        if (g[r][c] !== 2) continue;
+        for (const [dr, dc] of DIRS) {
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < m && nc >= 0 && nc < n && g[nr][nc] === 1) toRot.push([nr, nc]);
+        }
+      }
+      if (toRot.length === 0) break;
+      for (const [r, c] of toRot) g[r][c] = 2;
+      minute++;
+      steps.push({ grid: g.map(r => r.slice()), minute, scans, fresh: countFresh(g), just: toRot.map(p => p.slice()),
+        narr: `Minute ${minute}: a full rescan (${scans} cell-scans total) found and rotted ${toRot.length} orange(s).` });
+    }
+    const fresh = countFresh(g);
+    steps.push({ grid: g.map(r => r.slice()), minute, scans, fresh, just: [],
+      narr: fresh > 0 ? `No more spread, but ${fresh} fresh remain → -1. Total cell-scans: ${scans}.`
+                      : `All rotten after ${minute} min. The repeated full scans cost ${scans} cell-visits — O((m·n)²).`,
+      result: fresh > 0 ? -1 : minute });
+    return steps;
+  }
+
+  function bfRender(st) {
+    rotPaint('bf-matrix-con', st.grid, st.just);
+    document.getElementById('bf-min').textContent = st.minute;
+    document.getElementById('bf-fresh').textContent = st.fresh;
+    document.getElementById('bf-scans').textContent = st.scans;
+    const nb = document.getElementById('bf-narr'); if (nb) nb.textContent = st.narr;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+  function bfLoadEx(idx) {
+    bfStopPlay(); bfCur = 0;
+    [0,1,2].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+    bfSteps = bfGenSteps(EX[idx].grid);
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ════════════════ §6 CODE VIZ — level-order BFS ════════════════ */
+  let cvCur = 0, cvSteps = [], cvTimer = null;
+
+  function cvGenSteps(grid) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const m = grid.length, n = grid[0].length;
+    let g = grid.map(r => r.slice());
+    let fresh = 0, frontier = [], minutes = 0;
+    const base = () => ({ grid: g.map(r => r.slice()), m, n, fresh, minutes, qsize: frontier.length });
+    const steps = [];
+    steps.push(Object.assign(base(), { line:1, changed:['m','n'], just:[], narr:'Enter orangesRotting.' }));
+    steps.push(Object.assign(base(), { line:2, changed:['m','n'], just:[], narr:`Dimensions m=${m}, n=${n}.` }));
+    steps.push(Object.assign(base(), { line:3, changed:['fresh'], just:[], narr:'Empty queue; fresh counter starts at 0.' }));
+    for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) {
+      if (g[r][c] === 2) frontier.push([r, c]);
+      else if (g[r][c] === 1) fresh++;
+    }
+    steps.push(Object.assign(base(), { line:7, changed:['fresh','qsize'], just: frontier.map(p => p.slice()),
+      narr:`Scan done: ${frontier.length} rotten seed(s) queued, ${fresh} fresh oranges counted.` }));
+    steps.push(Object.assign(base(), { line:8, changed:[], just:[],
+      narr: fresh === 0 ? 'No fresh oranges — return 0 immediately.' : 'Fresh oranges exist, so begin the timed BFS.' }));
+    if (fresh === 0) {
+      steps.push(Object.assign(base(), { line:8, changed:[], just:[], phase:'done', narr:'Return 0.', result:0 }));
+      return steps;
+    }
+    steps.push(Object.assign(base(), { line:9, changed:['minutes'], just:[], narr:'minutes = 0.' }));
+    while (frontier.length && fresh > 0) {
+      steps.push(Object.assign(base(), { line:10, changed:[], just:[],
+        narr:`Queue has ${frontier.length} cell(s) and ${fresh} fresh remain → enter the loop.` }));
+      steps.push(Object.assign(base(), { line:11, changed:['qsize'], just:[],
+        narr:`sz = ${frontier.length}: process exactly this minute's wave.` }));
+      const next = [];
+      for (const [r, c] of frontier) for (const [dr, dc] of DIRS) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= m || nc < 0 || nc >= n) continue;
+        if (g[nr][nc] !== 1) continue;
+        g[nr][nc] = 2; fresh--; next.push([nr, nc]);
+      }
+      if (next.length === 0) { frontier = []; break; }
+      steps.push(Object.assign(base(), { line:16, changed:['fresh'], just: next.map(p => p.slice()),
+        narr:`Wave rots ${next.length} neighbour(s); fresh now ${fresh}.` }));
+      minutes++;
+      frontier = next;
+      steps.push(Object.assign(base(), { line:18, changed:['minutes','qsize'], just:[],
+        narr:`Minute complete: minutes = ${minutes}.` }));
+    }
+    steps.push(Object.assign(base(), { line:10, changed:[], just:[],
+      narr: fresh > 0 ? `Queue drained but ${fresh} fresh remain.` : 'fresh = 0 → loop ends.' }));
+    const result = fresh > 0 ? -1 : minutes;
+    steps.push(Object.assign(base(), { line:20, changed:[], just:[], phase:'done',
+      narr: result === -1 ? 'Return -1 — an orange is unreachable.' : `Return ${minutes}.`, result }));
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const ln = document.getElementById('cvL' + st.line);
+    if (ln) ln.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    setCard('cv-v-m', st.m, ch.includes('m'));
+    setCard('cv-v-n', st.n, ch.includes('n'));
+    setCard('cv-v-fresh', st.fresh, ch.includes('fresh'));
+    setCard('cv-v-minutes', st.minutes, ch.includes('minutes'));
+    setCard('cv-v-q', st.qsize, ch.includes('qsize'));
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : ' is-active');
+    rotPaint('cv-matrix-con', st.grid, st.just);
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+  function cvLoadEx(idx) {
+    cvStopPlay(); cvCur = 0;
+    [0,1,2].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(EX[idx].grid);
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ════════════════ §7 DRY RUN — the oracle ════════════════ */
+  let drCur = 0, drSteps = [], drTimer = null;
+
+  function drGenSteps(grid) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const m = grid.length, n = grid[0].length;
+    let g = grid.map(r => r.slice());
+    let fresh = 0, frontier = [];
+    for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) {
+      if (g[r][c] === 2) frontier.push([r, c]);
+      else if (g[r][c] === 1) fresh++;
+    }
+    const countRotten = gg => { let x = 0; for (const row of gg) for (const v of row) if (v === 2) x++; return x; };
+    const steps = [];
+    let minute = 0;
+    steps.push({ grid: g.map(r => r.slice()), minute, fresh, rotten: countRotten(g), just: frontier.map(p => p.slice()),
+      phase:'init', what:'Minute 0 — seed the queue',
+      why:`All ${frontier.length} rotten orange(s) enter the queue together; ${fresh} fresh remain.` });
+    while (fresh > 0 && frontier.length) {
+      const next = [];
+      for (const [r, c] of frontier) for (const [dr, dc] of DIRS) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= m || nc < 0 || nc >= n) continue;
+        if (g[nr][nc] !== 1) continue;
+        g[nr][nc] = 2; fresh--; next.push([nr, nc]);
+      }
+      if (next.length === 0) break;
+      minute++;
+      steps.push({ grid: g.map(r => r.slice()), minute, fresh, rotten: countRotten(g), just: next.map(p => p.slice()),
+        phase: fresh === 0 ? 'done' : 'spread', what:`Minute ${minute} — wave spreads`,
+        why: fresh > 0 ? `${next.length} fresh orange(s) rot; ${fresh} still fresh.`
+                       : `Last ${next.length} fresh orange(s) rot — none remain.` });
+      frontier = next;
+    }
+    const result = fresh > 0 ? -1 : minute;
+    steps.push({ grid: g.map(r => r.slice()), minute, fresh, rotten: countRotten(g), just: [],
+      phase: result === -1 ? 'fail' : 'done',
+      what: result === -1 ? 'Unreachable fresh orange' : `Finished in ${minute} minute(s)`,
+      why: result === -1 ? `${fresh} fresh orange(s) have no rotten path — return -1.`
+                         : `No fresh oranges left — return ${minute}.`,
+      result });
+    return steps;
+  }
+
+  function drRender(st) {
+    rotPaint('dr-matrix-con', st.grid, st.just);
+    document.getElementById('dr-f-min').textContent = st.minute;
+    document.getElementById('dr-f-fresh').textContent = st.fresh;
+    document.getElementById('dr-f-rot').textContent = st.rotten;
+    const res = document.getElementById('dr-f-res');
+    if ('result' in st) {
+      res.textContent = st.result;
+      res.style.color = st.result === -1 ? 'var(--text-danger)' : 'var(--text-success)';
+    } else {
+      res.textContent = '…';
+      res.style.color = 'var(--text2)';
+    }
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.what;
+    if (whyEl) whyEl.textContent = st.why;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+  function drLoadEx(idx) {
+    drStopPlay(); drCur = 0;
+    [0,1,2].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+    drSteps = drGenSteps(EX[idx].grid);
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ── init ── */
+  const SI_GRID = [[2,1,1],[1,1,0],[0,1,1]];
+  siSteps = siGenSteps(SI_GRID);
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>
