@@ -2,7 +2,7 @@
 
 A personal LeetCode study platform. Each problem gets an interactive HTML lesson — visual explanations, step-through animations, and C++ code — all browsable from a local dashboard.
 
-The lesson-authoring side is AI-driven: a single `/batch-lesson` slash command in Claude Code generates lessons end-to-end against the design system in `lessons/design/`. See [Generating lessons](#generating-lessons) below.
+The lesson-authoring side is AI-driven: a single `/batch-lesson` slash command in Claude Code generates lessons end-to-end against the design system in `lessons/design/`. Every lesson is held to a machine-checkable bar — a structural linter plus a headless **animation-correctness gate** that runs each lesson's step-through generators and asserts the computed answer matches an independently hand-derived one. All 26 lessons currently pass. See [Quality gate](#quality-gate) below.
 
 ---
 
@@ -49,7 +49,7 @@ This is the AI-assisted path. You run it in a Claude Code session.
    - Runs a Python algorithm trace to verify correctness on every example.
    - **Pauses for your review** before writing HTML.
 4. You review the plan in plain text. Approve or request changes.
-5. On approval, the agent writes `lesson.html` and PATCHes the dashboard so the lesson shows up immediately.
+5. On approval, the agent writes `lesson.html`, runs the [quality gate](#quality-gate) (lint + animation-correctness) and only marks the lesson `generated` once it passes, then PATCHes the dashboard so the lesson shows up immediately.
 6. Repeats for the next slug.
 
 The full workflow specification lives in [`.claude/commands/batch-lesson.md`](.claude/commands/batch-lesson.md). It loads only when the command fires, so it costs nothing on other sessions.
@@ -82,7 +82,10 @@ crack_d/
 ├── scripts/
 │   ├── server.py               # local file server + API
 │   ├── import_problems.py      # one-time HTML → JSON problem importer
-│   └── new_lesson.py           # scaffolds lessons/<slug>/ from _template.html + problems.json
+│   ├── new_lesson.py           # scaffolds lessons/<slug>/ from _template.html + problems.json
+│   ├── verify_animation.mjs    # animation-correctness gate (Node) — runs drGenSteps headlessly
+│   ├── lint_lesson.py          # structural + scaffold linter; delegates to the gate for §7
+│   └── audit_lessons.py        # corpus-wide status sweep across all lessons
 ├── .claude/
 │   └── commands/
 │       └── batch-lesson.md     # /batch-lesson slash command (Claude Code)
@@ -134,6 +137,35 @@ Every generated lesson HTML follows the same 13-section layout (§0–§12), enf
 | 10 | Approaches — tabs with complexity tags |
 | 11 | Complexity |
 | 12 | Take home — related problems |
+
+---
+
+## Quality gate
+
+Generated lessons are not trusted on faith. Two checks (PLAN-016) gate a lesson before it may be marked `generated`; `/batch-lesson` enforces both, and you can run them by hand:
+
+```bash
+# 1. Animation-correctness gate (Node). The dry-run generator (drGenSteps) is the oracle:
+#    it is run headlessly over answer-bearing examples and its terminal `result` is
+#    deep-compared to each example's independently hand-derived `answer`.
+node scripts/verify_animation.mjs <slug>
+
+# 2. Structural + scaffold linter (Python). Section order/markers, the §1/§2/§6/§7
+#    canonical chassis (element ids, button handlers, function names), and the §1
+#    insight rules. It delegates to the gate above for §7.
+python3 scripts/lint_lesson.py <slug>
+
+# 3. Corpus-wide sweep — status across every lesson at once.
+python3 scripts/audit_lessons.py
+```
+
+**The contract a lesson must satisfy to pass the gate:**
+
+- A pure `drGenSteps` generator (no DOM access) is the correctness oracle. `si`/`cv`/`bf` generators animate pedagogical inputs and are skipped as non-oracles, but must still be pure.
+- Examples are declared as `const EX = [{ <inputs>, answer }, …]` (preferred over the bare `EXAMPLES` array). Every `answer` must be **independently hand-derived** — never copied from generator output.
+- The generator's **terminal step carries a `result` field** that deep-equals the example's `answer`. Any module-level helper a generator calls must be inlined inside it, because the gate extracts and runs only the generator's own source.
+
+A lesson passes only if ≥1 example verifies, 0 are wrong, and 0 are unverifiable. The full design lives in [`lessons/design/sec7_dry_run.md`](lessons/design/sec7_dry_run.md) ("Correctness contract").
 
 ---
 
@@ -226,7 +258,12 @@ For single-lesson work or when you don't want to invoke the slash command:
 2. **Read the index** [`lessons/LESSON_DESIGN.md`](lessons/LESSON_DESIGN.md) — it names which `design/sec<N>_*.md` to load per section. Do not preload all design files.
 3. **Fill `plan.md`**, then run a Python trace per [`lessons/design/python_verify.md`](lessons/design/python_verify.md) against every example.
 4. **Author each section** of `lesson.html` in order. For class names, use [`static/CLASSES.md`](static/CLASSES.md), never the full CSS.
-5. **Mark generated** when done:
+5. **Pass the [quality gate](#quality-gate)** — both must be clean before the lesson counts as done:
+   ```bash
+   node scripts/verify_animation.mjs <slug>   # animation-correctness (exit 0)
+   python3 scripts/lint_lesson.py <slug>      # structural + scaffold lint
+   ```
+6. **Mark generated** when done:
    ```bash
    curl -X PATCH http://localhost:8000/api/status \
      -H 'Content-Type: application/json' \
@@ -285,7 +322,7 @@ Implementation work is tracked under `AGENT_MD/plan/`:
 - `current_state_report.md` — living snapshot of project state.
 - `rules.md` — authoring conventions for plan and report documents.
 
-The latest plan: [PLAN-011](AGENT_MD/plan/plans/PLAN-011_lesson_gen_efficiency.md) — lesson-generation efficiency. Phase 1 completed 2026-05-14; Phase 2 (renderer + Python verifier as a hard gate) deferred to a follow-up plan.
+The latest plan: [PLAN-016](AGENT_MD/plan/plans/PLAN-016_self_healing_pipeline.md) — self-healing lesson-generation pipeline (the animation-correctness gate + lint as a hard gate), landed 2026-05-20. It delivers what PLAN-011's deferred Phase 2 anticipated: a headless verifier that blocks any lesson whose dry-run animation computes a wrong answer.
 
 ---
 
