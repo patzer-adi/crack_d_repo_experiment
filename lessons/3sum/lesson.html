@@ -779,6 +779,14 @@ function cvLoadEx(idx){
 ══════════════════════════════ */
 let drSteps=[],drCur=0,drTimer=null;
 
+// Gate oracle examples — triplets hand-derived (by hand, sorted ascending, dedup), independent of the generator.
+// drGen emits sorted triplets in fixed-i order with two-pointer squeeze and duplicate-skip.
+// [-4,-1,-1,0,1,2] → [-1,-1,2],[-1,0,1] · [-2,0,0,1,1,2] → [-2,0,2],[-2,1,1] · [0,0,0,0] → [0,0,0]
+const EX=[
+  {nums:[-4,-1,-1,0,1,2], answer:[[-1,-1,2],[-1,0,1]]},
+  {nums:[-2,0,0,1,1,2],   answer:[[-2,0,2],[-2,1,1]]},
+  {nums:[0,0,0,0],        answer:[[0,0,0]]},
+];
 function drGen(nums){
   const out=[]; const n=nums.length;
   let result=[];
