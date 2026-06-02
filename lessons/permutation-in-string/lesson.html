@@ -777,6 +777,11 @@ const EXAMPLES=[
   {s1:'abcd', s2:'xyzabcd'},
   {s1:'ab',   s2:'eidboaoo'},
 ];
+const EX=[
+  {s1:'ab',   s2:'eidbaooo', answer:true},
+  {s1:'abcd', s2:'xyzabcd',  answer:true},
+  {s1:'ab',   s2:'eidboaoo', answer:false},
+];
 
 /* ══════════════════════════════
    AZ GRID
@@ -1172,7 +1177,7 @@ function drGenSteps({s1,s2}){
 
   if(k>n){
     out.push({s1,s2,k,wL:-1,wR:-1,diff:0,inC:'',outC:'',
-      what:'|s1| > |s2| — no window possible.',why:'Return false immediately.',phase:'done',found:false});
+      what:'|s1| > |s2| — no window possible.',why:'Return false immediately.',phase:'done',found:false,result:false});
     return out;
   }
 
@@ -1182,7 +1187,7 @@ function drGenSteps({s1,s2}){
   for(let i=0;i<26;i++) if(freq[i]!==0) diff++;
 
   const snap=(wL,wR,inC,outC,what,why,phase)=>
-    out.push({s1,s2,k,wL,wR,diff,inC,outC,what,why,phase,found:phase==='match'});
+    out.push({s1,s2,k,wL,wR,diff,inC,outC,what,why,phase,found:phase==='match',result:phase==='match'});
 
   snap(0,k-1,'','',
     `Prime window [0..${k-1}] = "${s2.slice(0,k)}"`,
