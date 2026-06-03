@@ -801,7 +801,7 @@ const CV_EXAMPLES = [
   [-2, 0, -1],
 ];
 let cvNums = CV_EXAMPLES[0];
-let cvSteps = [], cvCur = 0;
+let cvSteps = [], cvCur = 0, cvTimer = null;
 
 const CV_LINES = [
   { n: 1,  c: 'int maxProduct(vector<int>& nums) {' },
@@ -976,7 +976,7 @@ const DR_EXAMPLES = [
   [-2, 0, -1],
 ];
 let drNums = DR_EXAMPLES[0];
-let drSteps = [], drCur = 0;
+let drSteps = [], drCur = 0, drTimer = null;
 
 // Gate oracle examples — answers hand-derived (brute force), independent of the generator.
 // [2,3,-2,4] → 2·3 = 6 · [-2,3,-4] → (-2)·3·(-4) = 24 · [-2,0,-1] → best is 0
