@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minimum Size Subarray Sum — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC CSS ONLY */
+  .si-strip { display:flex; gap:6px; margin:.75rem 0 .375rem; flex-wrap:wrap; }
+  .si-cell  { display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .si-num   { width:38px; height:38px; display:flex; align-items:center; justify-content:center;
+              font-family:var(--mono); font-size:15px; font-weight:600;
+              border-radius:var(--r2); background:var(--bg3); border:1.5px solid var(--border2);
+              color:var(--text1); transition:background .2s, border-color .2s, color .2s; }
+  .si-num.win  { background:var(--bg-info); border-color:var(--border-info); color:var(--text-info); }
+  .si-num.best { background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); }
+  .si-idx  { font-size:10px; color:var(--text3); font-family:var(--mono); }
+  .si-note { font-family:var(--mono); font-size:12px; color:var(--text2); margin:.375rem 0 .125rem; min-height:1.4em; }
+  .si-vars { display:flex; gap:1rem; flex-wrap:wrap; margin:.5rem 0; }
+  .si-var  { background:var(--bg2); border:0.5px solid var(--border2); border-radius:var(--r2);
+             padding:.375rem .75rem; font-family:var(--mono); font-size:13px; color:var(--text2); }
+  .si-var b { color:var(--text1); }
+
+  .bf-strip { display:flex; gap:6px; margin:.75rem 0 .25rem; flex-wrap:wrap; }
+  .bf-cell  { display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .bf-num   { width:38px; height:38px; display:flex; align-items:center; justify-content:center;
+              font-family:var(--mono); font-size:15px; font-weight:600;
+              border-radius:var(--r2); background:var(--bg3); border:1.5px solid var(--border2);
+              color:var(--text1); transition:background .2s, border-color .2s; }
+  .bf-num.bi { background:var(--bg-info);  border-color:var(--border-info);  color:var(--text-info); }
+  .bf-num.bj { background:var(--bg-warn);  border-color:var(--border-warn);  color:var(--text-warn); }
+  .bf-num.bmatch { background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); }
+  .bf-idx   { font-size:10px; color:var(--text3); font-family:var(--mono); }
+  .bf-state { font-family:var(--mono); font-size:13px; color:var(--text2); margin:.5rem 0; }
+  .bf-state span { color:var(--text1); font-weight:600; }
+
+  /* dry-run window strip */
+  .dr-strip { display:flex; gap:6px; margin:.875rem 0 .375rem; flex-wrap:wrap; }
+  .dr-cell  { display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .dr-num   { width:40px; height:40px; display:flex; align-items:center; justify-content:center;
+              font-family:var(--mono); font-size:15px; font-weight:700;
+              border-radius:var(--r2); background:var(--bg3); border:1.5px solid var(--border2);
+              color:var(--text1); transition:background .25s, border-color .25s, color .25s; }
+  .dr-num.in-win  { background:var(--bg-info);    border-color:var(--border-info);  color:var(--text-info); }
+  .dr-num.shrink  { background:var(--bg-warn);    border-color:var(--border-warn);  color:var(--text-warn); }
+  .dr-num.done    { background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); }
+  .dr-idx   { font-size:10px; color:var(--text3); font-family:var(--mono); }
+  .dr-lbl   { font-size:10px; font-weight:700; font-family:var(--mono); min-height:14px; }
+  .dr-lbl.L { color:var(--text-info); }
+  .dr-lbl.R { color:var(--text-warn); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Minimum Size Subarray Sum</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/minimum-size-subarray-sum/" target="_blank">LC #209</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Sliding Window</span>
+    <span class="badge badge-arr">Two Pointers</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Are all elements positive integers?</div>
+      <div class="acard-a">Yes — all nums[i] ≥ 1, target ≥ 1.</div>
+      <div class="acard-u">→ unlocks: sum is strictly monotone as window grows, so shrinking from L is safe — a sliding window works.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">What if no subarray's sum reaches target?</div>
+      <div class="acard-a">Return 0 — the problem guarantees 0 is a sentinel for "impossible".</div>
+      <div class="acard-u">→ unlocks: initialize ans = ∞, return 0 if ans never updated.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Do we want the subarray itself or just its length?</div>
+      <div class="acard-a">Length only — no need to store start indices.</div>
+      <div class="acard-u">→ unlocks: we only track L, R, and the current window length R−L+1.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Can the array be empty?</div>
+      <div class="acard-a">No — 1 ≤ nums.length ≤ 10⁵, so at least one element exists.</div>
+      <div class="acard-u">→ unlocks: no empty-array guard needed; but check "no valid subarray" case at the end.</div>
+    </div>
+  </div>
+  <div class="infobox info" style="margin-top:.875rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">All elements are strictly positive; target ≥ 1; we return the minimum window length, or 0 if no subarray can reach target. Because elements are positive, window sum is monotonically non-decreasing as R grows — which is the single property that makes a variable-size sliding window correct here.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Grow until you hit target, then shrink from the left — record the length each time you shrink.</p>
+
+  <p class="body">The brute force checks every subarray (L, R) — O(n²) pairs. But since every element is positive, adding an element to the right can only increase the sum, and removing from the left can only decrease it. That monotone property means once window sum ≥ target, you never need to re-try a smaller R for the same L — you can just shrink L. This shrink-while-valid loop turns the nested loops into a single linear pass: R moves right n times, L moves right at most n times, so every element is visited at most twice.</p>
+
+  <!-- Animated §1 visual: variable-size window sliding -->
+  <div style="margin:1.25rem 0">
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:var(--text3);margin-bottom:.375rem">
+      Example · nums = [2, 3, 1, 2, 4, 3] · target = 7
+    </div>
+    <div id="si-strip" class="si-strip"></div>
+    <div id="si-note" class="si-note"></div>
+    <div id="si-vars" class="si-vars"></div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.625rem">
+    <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" onclick="siNext()">Next →</button>
+    <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+    <span class="step-ctr" id="si-sctr"></span>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Use two pointers L and R. Advance R one step at a time, adding nums[R] to a running sum. Whenever sum ≥ target, record the window length (R−L+1) as a candidate answer, then subtract nums[L] and advance L — repeat until sum &lt; target. Because all elements are positive, sum can only grow by expanding R and shrink by contracting L; the sliding window visits each element at most twice, giving O(n) time and O(1) space.</p>
+  </div>
+
+  <p class="body" style="margin-top:1rem">Why positive-only elements are the key that unlocks everything:</p>
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">Find the shortest contiguous subarray with sum ≥ target.</div>
+        <div class="chain-note">the problem</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">Because all elements are positive, window sum is monotone: growing R only increases sum, shrinking L only decreases it.</div>
+        <div class="chain-note">this is the property that makes sliding window valid — it doesn't work with negative numbers</div>
+        <div class="chain-example">
+          <span class="pill n">sum &lt; target</span><span class="arrow">→</span><span class="pill n">expand: R++</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">sum ≥ target</span><span class="arrow">→</span><span class="pill ok">record len, shrink: L++</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">R moves right n times; L moves right at most n times → O(n) total steps, each element touched at most twice.</div>
+        <div class="chain-note">amortized: no element is added or removed from the window more than once</div>
+        <div class="chain-example">
+          <span class="pill n">n=6 elements</span><span class="arrow">→</span>
+          <span class="pill ok">≤ 12 operations (each el: 1 enter + 1 exit)</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">Track ans = min(ans, R−L+1)</span> only inside the shrink loop — every shrink step represents a valid window just found.</div>
+        <div class="chain-note">recording the length before removing nums[L] captures the tightest valid window for this R</div>
+        <div class="chain-example">
+          <span class="pill n">sum=8, L=0, R=3</span><span class="arrow">→</span><span class="pill ok">ans = min(∞, 4) = 4</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">sum=7, L=2, R=4</span><span class="arrow">→</span><span class="pill ok">ans = min(4, 3) = 3</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">Try every starting index L. For each L, extend R rightward accumulating a sum until it hits target — then record the length and move to the next L. This is O(n²) in the worst case because every pair (L, R) might be tested. The "Checks" counter below counts how many (L, R) pairs the brute force examines.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">Ex 1 · n=6</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">Ex 2 · n=3</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">Ex 3 · no match</button>
+  </div>
+  <div id="bf-strip" class="bf-strip" style="margin-top:.75rem"></div>
+  <div id="bf-state" class="bf-state"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n²) time, O(1) space</p>
+    <p class="infobox-d">For each of the n starting positions, we scan up to n elements rightward. On an array of 10⁵ elements that's 10¹⁰ operations — far too slow. The "Checks" counter above makes that visible even on tiny inputs.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block"><pre class="cb"><span class="tp">int</span> <span class="fn">minSubArrayLen</span>(<span class="tp">int</span> target, <span class="tp">vector</span>&lt;<span class="tp">int</span>&gt;&amp; nums) {
+    <span class="tp">int</span> n = nums.size(), ans = INT_MAX;
+    <span class="kw">for</span> (<span class="tp">int</span> L = <span class="nu">0</span>; L &lt; n; L++) {
+        <span class="tp">int</span> s = <span class="nu">0</span>;
+        <span class="kw">for</span> (<span class="tp">int</span> R = L; R &lt; n; R++) {
+            s += nums[R];
+            <span class="kw">if</span> (s &gt;= target) {
+                ans = min(ans, R - L + <span class="nu">1</span>);
+                <span class="kw">break</span>; <span class="cm">// no shorter window starting at L exists</span>
+            }
+        }
+    }
+    <span class="kw">return</span> ans == INT_MAX ? <span class="nu">0</span> : ans;
+}</pre></div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">The brute force has one key inefficiency: after finding a valid window at (L, R), it throws away the running sum and starts fresh at L+1 from scratch. Since all values are positive, there is a smarter way to reuse work: instead of restarting, advance L while the window is still valid. Two named translations get you there.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Two nested loops → one expanding pointer + one shrinking pointer</div>
+        <div class="wt-desc">Instead of a full inner loop restarting at L every time, keep a running sum <code>s</code> and a left pointer L. As R advances, add nums[R] to s. When s ≥ target, shrink from L: record the window length, subtract nums[L], advance L — repeat until s &lt; target. No inner loop needed because positive elements guarantee shrinking always decreases sum.</div>
+        <div class="wt-gain">→ O(n²) with break → O(n) amortized (each element enters and exits the window at most once)</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">INT_MAX sentinel → 0-return for impossible case</div>
+        <div class="wt-desc">Initialize <code>ans = INT_MAX</code>. After the single pass, if ans is still INT_MAX no valid subarray was found — return 0. This is cleaner than a boolean flag and avoids any special-case branching inside the loop. The final return is simply <code>ans == INT_MAX ? 0 : ans</code>.</div>
+        <div class="wt-gain">→ same O(1) space — just a cleaner termination condition</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Initialise</b> <code>L = 0</code>, <code>s = 0</code>, <code>ans = ∞</code>. These are the only variables you need.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Expand</b> R from 0 to n−1. At each step, <b>add</b> <code>nums[R]</code> to the running sum <code>s</code>.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t">While <code>s ≥ target</code>: <b>record</b> <code>ans = min(ans, R−L+1)</code>, then <b>subtract</b> <code>nums[L]</code> from <code>s</code> and <b>advance</b> <code>L++</code>. This shrinks the window from the left as long as it stays valid.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t">After R reaches the end, <b>return</b> <code>ans == ∞ ? 0 : ans</code>. If ans was never updated, no subarray reached target.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block"><pre class="cb"><span class="tp">int</span> <span class="fn">minSubArrayLen</span>(<span class="tp">int</span> target, <span class="tp">vector</span>&lt;<span class="tp">int</span>&gt;&amp; nums) {
+    <span class="tp">int</span> n = nums.size();
+    <span class="tp">int</span> ans = INT_MAX;
+    <span class="tp">int</span> s = <span class="nu">0</span>, L = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> R = <span class="nu">0</span>; R &lt; n; R++) {
+        s += nums[R];
+        <span class="kw">while</span> (s &gt;= target) {
+            ans = min(ans, R - L + <span class="nu">1</span>);
+            s -= nums[L++];
+        }
+    }
+    <span class="kw">return</span> ans == INT_MAX ? <span class="nu">0</span> : ans;
+}</pre></div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Watch the sliding window grow and shrink as each code line executes. The cyan cells below show the current window contents. Variable cards on the right highlight when they change.</p>
+
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-n">
+          <div class="cv-var-name">n</div>
+          <div class="cv-var-val">—</div>
+        </div>
+        <div class="cv-var-card dim" id="cv-v-ans">
+          <div class="cv-var-name">ans</div>
+          <div class="cv-var-val">—</div>
+        </div>
+        <div class="cv-var-card dim" id="cv-v-s">
+          <div class="cv-var-name">s</div>
+          <div class="cv-var-val">—</div>
+        </div>
+        <div class="cv-var-card dim" id="cv-v-L">
+          <div class="cv-var-name">L</div>
+          <div class="cv-var-val">—</div>
+        </div>
+        <div class="cv-var-card dim" id="cv-v-R">
+          <div class="cv-var-name">R</div>
+          <div class="cv-var-val">—</div>
+        </div>
+      </div>
+      <div id="cv-arr-con" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.5rem .75rem;margin:.5rem 0;"></div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">Ex 1 · [2,3,1,2,4,3]</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">Ex 2 · [1,4,4]</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">Ex 3 · no match</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+
+  <div id="dr-strip" class="dr-strip"></div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns: repeat(4, 1fr);">
+        <div><p class="fitem-label">L</p><p class="fitem-val" id="dr-L">—</p><p class="fitem-sub">left pointer</p></div>
+        <div><p class="fitem-label">R</p><p class="fitem-val" id="dr-R">—</p><p class="fitem-sub">right pointer</p></div>
+        <div><p class="fitem-label">s</p><p class="fitem-val" id="dr-s">—</p><p class="fitem-sub">window sum</p></div>
+        <div><p class="fitem-label">ans</p><p class="fitem-val" id="dr-ans">—</p><p class="fitem-sub">min length</p></div>
+      </div>
+      <div class="formula-eq" id="dr-eq"></div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what" id="dr-what"></div>
+      <div class="step-why"  id="dr-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">Ex 1 · [2,3,1,2,4,3]</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">Ex 2 · [1,4,4]</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">Ex 3 · no match</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div>
+      <p class="corner-title">No valid subarray — return 0</p>
+      <p class="corner-body"><code>[1,1,1,1,1], target=11</code> — the total sum (5) is less than target. The while-loop never fires, ans stays INT_MAX. Return <code>0</code>.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div>
+      <p class="corner-title">Single element equals target</p>
+      <p class="corner-body"><code>[7], target=7</code> — R=0: s=7 ≥ 7, ans=min(∞,1)=1, s−=7, L=1. Loop ends. Return 1. The answer is 1 (trivially), but the algorithm still runs through both the expand and shrink phases.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div>
+      <p class="corner-title">Answer is the whole array</p>
+      <p class="corner-body"><code>[1,2,3,4,5], target=15</code> — the window must include every element; ans=5. The shrink loop fires only once (at R=4), and immediately s &lt; target again. Confirm ans=5, not 0.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div>
+      <p class="corner-title">First element alone satisfies target</p>
+      <p class="corner-body"><code>[7,2,2,3], target=7</code> — on R=0 the window [0,0] already has sum=7, ans=1, shrink fires. The rest of the array is irrelevant; ans stays 1. Confirm early-shrink doesn't advance L past R.</p>
+    </div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div>
+      <p class="corner-title">All elements equal target</p>
+      <p class="corner-body"><code>[4,4,4], target=4</code> — each single element satisfies the condition. At R=0: s=4 ≥ 4, ans=1, shrink. R=1: s=4 ≥ 4, ans still 1. R=2 likewise. Return 1. Confirm that repeated equals don't produce ans=0 or overflow.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Initialise ans = INT_MAX</b>, not −1 or 0. Returning ans == INT_MAX ? 0 : ans is cleaner than a boolean found flag.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Use while, not if, for the shrink loop.</b> Multiple shrinks can be valid for the same R (e.g. when nums[R] is very large). An <code>if</code> leaves the window too large.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Record before shrinking:</b> <code>ans = min(ans, R − L + 1)</code> happens before <code>s −= nums[L++]</code>. Swapping the order would record a window one element too small.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Correctness depends on positive elements.</b> If the constraint ever changes (e.g. negative values allowed), this algorithm is wrong and you need a prefix-sum + binary search or deque approach.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>No overflow risk in practice:</b> n ≤ 10⁵, values ≤ 10⁴ → max sum ≤ 10⁹, fits in a 32-bit int. If constraints change, use <code>long long</code> for s.</span></div>
+    <div class="chk-item"><span class="chk-icon">✓</span><span class="chk-text"><b>Time O(n), Space O(1)</b> — suitable for any n ≤ 10⁵ and real-time / embedded settings where extra memory is forbidden.</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="showTab('tab-sw',this)">Sliding Window</button>
+    <button class="tab-btn"        onclick="showTab('tab-ps',this)">Prefix Sum + Binary Search</button>
+    <button class="tab-btn"        onclick="showTab('tab-bf2',this)">Brute Force</button>
+  </div>
+
+  <div id="tab-sw" class="tab-pane active">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin:.75rem 0 .5rem">
+      <span class="tag tag-time">Time O(n)</span>
+      <span class="tag tag-space">Space O(1)</span>
+      <span class="tag">Positive elements only</span>
+    </div>
+    <p class="body">Two pointers L, R with a running sum. The sliding window works because all values are positive — adding an element increases the sum, removing decreases it. This monotone property allows the shrink loop to be correct. If negative values were allowed this approach would fail.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-sw',this)">▶ Reveal Code</button>
+    <div id="code-sw" class="code-block"><pre class="cb"><span class="tp">int</span> <span class="fn">minSubArrayLen</span>(<span class="tp">int</span> target, <span class="tp">vector</span>&lt;<span class="tp">int</span>&gt;&amp; nums) {
+    <span class="tp">int</span> n = nums.size(), ans = INT_MAX, s = <span class="nu">0</span>, L = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> R = <span class="nu">0</span>; R &lt; n; R++) {
+        s += nums[R];
+        <span class="kw">while</span> (s &gt;= target) {
+            ans = min(ans, R - L + <span class="nu">1</span>);
+            s -= nums[L++];
+        }
+    }
+    <span class="kw">return</span> ans == INT_MAX ? <span class="nu">0</span> : ans;
+}</pre></div>
+  </div>
+
+  <div id="tab-ps" class="tab-pane">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin:.75rem 0 .5rem">
+      <span class="tag tag-time">Time O(n log n)</span>
+      <span class="tag tag-space">Space O(n)</span>
+      <span class="tag">Works with positive elements</span>
+    </div>
+    <p class="body">Build a prefix sum array P where P[i] = nums[0]+…+nums[i−1]. For each L, binary-search for the smallest R such that P[R+1] − P[L] ≥ target. Because all elements are positive, P is strictly increasing, making binary search valid. This approach is O(n log n) — useful in interviews to show you know multiple approaches, but strictly dominated by the sliding window.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-ps',this)">▶ Reveal Code</button>
+    <div id="code-ps" class="code-block"><pre class="cb"><span class="tp">int</span> <span class="fn">minSubArrayLen</span>(<span class="tp">int</span> target, <span class="tp">vector</span>&lt;<span class="tp">int</span>&gt;&amp; nums) {
+    <span class="tp">int</span> n = nums.size(), ans = INT_MAX;
+    <span class="tp">vector</span>&lt;<span class="tp">int</span>&gt; P(n + <span class="nu">1</span>, <span class="nu">0</span>);
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="nu">0</span>; i &lt; n; i++) { P[i + <span class="nu">1</span>] = P[i] + nums[i]; }
+    <span class="kw">for</span> (<span class="tp">int</span> L = <span class="nu">0</span>; L &lt; n; L++) {
+        <span class="tp">int</span> need = P[L] + target;
+        <span class="kw">auto</span> it = lower_bound(P.begin(), P.end(), need);
+        <span class="kw">if</span> (it != P.end()) {
+            <span class="tp">int</span> R = it - P.begin() - <span class="nu">1</span>;
+            ans = min(ans, R - L + <span class="nu">1</span>);
+        }
+    }
+    <span class="kw">return</span> ans == INT_MAX ? <span class="nu">0</span> : ans;
+}</pre></div>
+  </div>
+
+  <div id="tab-bf2" class="tab-pane">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin:.75rem 0 .5rem">
+      <span class="tag tag-time">Time O(n²)</span>
+      <span class="tag tag-space">Space O(1)</span>
+      <span class="tag">TLE on large inputs</span>
+    </div>
+    <p class="body">Try every starting index L; for each L scan right until sum ≥ target or R reaches the end. Record the length. This is the most intuitive approach but fails the time limit for n = 10⁵. Use only as a reference implementation to sanity-check the optimal solution.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-bf2',this)">▶ Reveal Code</button>
+    <div id="code-bf2" class="code-block"><pre class="cb"><span class="tp">int</span> <span class="fn">minSubArrayLen</span>(<span class="tp">int</span> target, <span class="tp">vector</span>&lt;<span class="tp">int</span>&gt;&amp; nums) {
+    <span class="tp">int</span> n = nums.size(), ans = INT_MAX;
+    <span class="kw">for</span> (<span class="tp">int</span> L = <span class="nu">0</span>; L &lt; n; L++) {
+        <span class="tp">int</span> s = <span class="nu">0</span>;
+        <span class="kw">for</span> (<span class="tp">int</span> R = L; R &lt; n; R++) {
+            s += nums[R];
+            <span class="kw">if</span> (s &gt;= target) {
+                ans = min(ans, R - L + <span class="nu">1</span>);
+                <span class="kw">break</span>;
+            }
+        }
+    }
+    <span class="kw">return</span> ans == INT_MAX ? <span class="nu">0</span> : ans;
+}</pre></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(n)</div>
+      <div class="ccard-n">R advances n times; L advances at most n times across the entire run — each element is added to and removed from the window at most once.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(1)</div>
+      <div class="ccard-n">Only four integers (n, ans, s, L) — no auxiliary arrays or hash maps required.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><b>LC #3 — Longest Substring Without Repeating Characters:</b> same variable-size window; shrink when a duplicate enters. Difference: condition is on character uniqueness, not sum.</p>
+    <p><b>LC #76 — Minimum Window Substring:</b> same grow-then-shrink pattern but the validity condition is a frequency map match across two strings. The diff counter from permutation-in-string applies here too.</p>
+    <p><b>LC #424 — Longest Repeating Character Replacement:</b> variable window; shrink when (window length − max frequency) &gt; k. Same two-pointer chassis.</p>
+    <p><b>LC #930 — Binary Subarrays With Sum:</b> sliding window over a binary array. Shows the pattern extends beyond minimum-length to counting problems.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════
+   PROBLEM-SPECIFIC SCRIPT — LC 209
+   ═══════════════════════════════════════════════════ */
+
+/* ── Examples ── */
+const EXAMPLES = [
+  { nums: [2,3,1,2,4,3], target: 7, label: 'Ex 1 · [2,3,1,2,4,3]' },
+  { nums: [1,4,4],        target: 4, label: 'Ex 2 · [1,4,4]' },
+  { nums: [1,1,1,1,1],   target: 11, label: 'Ex 3 · no match' },
+];
+const BF_EXAMPLES = EXAMPLES;
+
+/* ── §1 Insight animation ── */
+let siSteps = [], siCur = 0, siTimer = null;
+
+function siGenSteps({ nums, target }) {
+  const steps = [];
+  const n = nums.length;
+  let s = 0, L = 0, ans = Infinity;
+
+  steps.push({ L: -1, R: -1, s, ans, note: `Start: L=0, R=0, s=0, ans=∞`, phase:'init' });
+
+  for (let R = 0; R < n; R++) {
+    s += nums[R];
+    steps.push({ L, R, s, ans, note: `R=${R}: add nums[${R}]=${nums[R]} → s=${s}`, phase:'expand' });
+
+    while (s >= target) {
+      ans = Math.min(ans, R - L + 1);
+      const prevL = L;
+      s -= nums[L];
+      L++;
+      steps.push({ L, R, s, ans,
+        note: `s=${s + nums[L-1]} ≥ ${target} → window[${prevL}..${R}] len=${R-prevL+1}, ans=${ans === Infinity ? '∞' : ans}, remove nums[${prevL}]=${nums[prevL]} → s=${s}`,
+        phase: ans <= R - prevL + 1 ? 'match' : 'shrink' });
+    }
+  }
+
+  steps.push({ L, R: n-1, s, ans, note: `Done. Answer = ${ans === Infinity ? 0 : ans}`, phase:'done' });
+  return steps;
+}
+
+function siRender(st) {
+  const ex = EXAMPLES[0];
+  const nums = ex.nums;
+  const strip = document.getElementById('si-strip');
+  if (!strip) return;
+
+  strip.innerHTML = nums.map((v, i) => {
+    let cls = '';
+    if (st.L !== -1 && i >= st.L && i <= st.R) {
+      cls = st.phase === 'done' ? 'best' : 'win';
+    }
+    return `<div class="si-cell"><div class="si-num ${cls}">${v}</div><div class="si-idx">${i}</div></div>`;
+  }).join('');
+
+  document.getElementById('si-note').textContent = st.note;
+  document.getElementById('si-vars').innerHTML =
+    `<span class="si-var">L = <b>${st.L === -1 ? 0 : st.L}</b></span>` +
+    `<span class="si-var">R = <b>${st.R === -1 ? '—' : st.R}</b></span>` +
+    `<span class="si-var">s = <b>${st.s}</b></span>` +
+    `<span class="si-var">ans = <b>${st.ans === Infinity ? '∞' : st.ans}</b></span>`;
+
+  const c = document.getElementById('si-sctr');
+  if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+}
+
+function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+function siPrev()  { if (siCur > 0)                   { siCur--; siRender(siSteps[siCur]); } }
+function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+function siStopPlay() {
+  clearInterval(siTimer); siTimer = null;
+  const b = document.getElementById('si-bplay');
+  if (b) b.textContent = '▶ Auto';
+}
+function siTogglePlay() {
+  if (siTimer) { siStopPlay(); return; }
+  const b = document.getElementById('si-bplay');
+  if (b) b.textContent = '⏸ Pause';
+  siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+}
+
+/* ── §2 Brute Force ── */
+let bfSteps = [], bfCur = 0;
+
+function bfGenSteps({ nums, target }) {
+  const n = nums.length;
+  const steps = [];
+  let ans = Infinity, checks = 0;
+
+  steps.push({ L: -1, R: -1, s: 0, ans, checks, phase: 'init',
+               msg: `Start: try every (L, R) pair. checks=0, ans=∞` });
+
+  for (let L = 0; L < n; L++) {
+    let s = 0;
+    for (let R = L; R < n; R++) {
+      s += nums[R];
+      checks++;
+      const matched = s >= target;
+      if (matched) { ans = Math.min(ans, R - L + 1); }
+      steps.push({ L, R, s, ans: ans === Infinity ? '∞' : ans, checks, phase: matched ? 'match' : 'check',
+                   msg: matched
+                     ? `L=${L}, R=${R}: sum=${s} ≥ ${target} ✓  len=${R-L+1}  ans=${ans}  → break`
+                     : `L=${L}, R=${R}: sum=${s} < ${target}` });
+      if (matched) break;
+    }
+  }
+
+  steps.push({ L: -1, R: -1, s: 0, ans: ans === Infinity ? 0 : ans, checks, phase: 'done',
+               msg: `Done. checks=${checks}  answer=${ans === Infinity ? 0 : ans}` });
+  return steps;
+}
+
+function bfRender(st) {
+  const ex = BF_EXAMPLES[window._bfExIdx || 0];
+  const nums = ex.nums;
+
+  const strip = document.getElementById('bf-strip');
+  if (!strip) return;
+  strip.innerHTML = nums.map((v, i) => {
+    let cls = '';
+    if (i === st.L && i === st.R) { cls = st.phase === 'match' ? 'bmatch' : 'bi'; }
+    else if (i === st.L) cls = 'bi';
+    else if (i === st.R) cls = st.phase === 'match' ? 'bmatch' : 'bj';
+    return `<div class="bf-cell"><div class="bf-num ${cls}">${v}</div><div class="bf-idx">${i}</div></div>`;
+  }).join('');
+
+  document.getElementById('bf-state').innerHTML =
+    `<span>Checks: <span>${st.checks}</span></span>&nbsp;&nbsp;` +
+    `<span>s = <span>${st.s}</span></span>&nbsp;&nbsp;` +
+    `<span>ans = <span>${st.ans}</span></span><br><span style="font-size:12px;color:var(--text3)">${st.msg}</span>`;
+
+  document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+  const prev = document.getElementById('bf-prev'), next = document.getElementById('bf-next');
+  if (prev) prev.disabled = bfCur === 0;
+  if (next) next.disabled = bfCur === bfSteps.length - 1;
+}
+
+function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+function bfLoadEx(idx) {
+  window._bfExIdx = idx;
+  document.querySelectorAll('[id^="bf-ex"]').forEach((b, i) => b.classList.toggle('active', i === idx));
+  bfSteps = bfGenSteps(BF_EXAMPLES[idx]);
+  bfCur = 0;
+  bfRender(bfSteps[0]);
+}
+
+/* ── §6 Code visualization ── */
+const CV_LINES = [
+  { n:1,  c:'int minSubArrayLen(int target, vector<int>& nums) {' },
+  { n:2,  c:'    int n = nums.size();' },
+  { n:3,  c:'    int ans = INT_MAX;' },
+  { n:4,  c:'    int s = 0, L = 0;' },
+  { n:5,  c:'    for (int R = 0; R < n; R++) {' },
+  { n:6,  c:'        s += nums[R];' },
+  { n:7,  c:'        while (s >= target) {' },
+  { n:8,  c:'            ans = min(ans, R - L + 1);' },
+  { n:9,  c:'            s -= nums[L++];' },
+  { n:10, c:'        }' },
+  { n:11, c:'    }' },
+  { n:12, c:'    return ans == INT_MAX ? 0 : ans;' },
+  { n:13, c:'}' },
+];
+
+let cvSteps = [], cvCur = 0;
+
+function cvGenSteps({ nums, target }) {
+  const n = nums.length;
+  const steps = [];
+  const push = (line, vars, narr, phase, arr, changed) =>
+    steps.push({ line, vars: {...vars}, narr, phase: phase || 'active', arr: [...arr], changed: changed || [] });
+
+  const vars = { n, ans: 'INT_MAX', s: 0, L: 0, R: '—' };
+  const arr = [...nums];
+
+  push(1, {...vars}, 'Enter function with nums and target.', 'active', arr, []);
+  push(2, {...vars, n}, 'Compute n = nums.size() = ' + n + '.', 'active', arr, ['n']);
+  push(3, {...vars}, 'Initialise ans = INT_MAX (no valid window yet).', 'active', arr, ['ans']);
+  push(4, {...vars, s: 0, L: 0}, 'Initialise running sum s = 0 and left pointer L = 0.', 'active', arr, ['s','L']);
+
+  let s = 0, L = 0, ans = Infinity;
+
+  for (let R = 0; R < n; R++) {
+    push(5, { n, ans: ans === Infinity ? 'INT_MAX' : ans, s, L, R }, `Check loop: R=${R} < n=${n}.`, 'active', arr, ['R']);
+    s += nums[R];
+    push(6, { n, ans: ans === Infinity ? 'INT_MAX' : ans, s, L, R }, `Add nums[${R}]=${nums[R]} to s → s=${s}.`, 'active', arr, ['s']);
+    push(7, { n, ans: ans === Infinity ? 'INT_MAX' : ans, s, L, R }, `Check: s=${s} ${s >= target ? '≥' : '<'} target=${target}.`, s >= target ? 'active' : 'active', arr, []);
+
+    while (s >= target) {
+      const oldAns = ans === Infinity ? 'INT_MAX' : ans;
+      ans = Math.min(ans, R - L + 1);
+      push(8, { n, ans: ans === Infinity ? 'INT_MAX' : ans, s, L, R },
+        `s=${s} ≥ ${target}: ans = min(${oldAns}, ${R}-${L}+1) = ${ans}.`,
+        ans <= R - L + 1 ? 'match' : 'active', arr, ['ans']);
+      s -= nums[L];
+      const prevL = L;
+      L++;
+      push(9, { n, ans: ans === Infinity ? 'INT_MAX' : ans, s, L, R },
+        `Shrink: subtract nums[${prevL}]=${nums[prevL]} from s → s=${s}. Advance L → L=${L}.`,
+        'active', arr, ['s','L']);
+      push(7, { n, ans: ans === Infinity ? 'INT_MAX' : ans, s, L, R },
+        `Re-check: s=${s} ${s >= target ? '≥' : '<'} target=${target}.`, 'active', arr, []);
+    }
+  }
+
+  push(12, { n, ans: ans === Infinity ? 'INT_MAX' : ans, s, L, R: n-1 },
+    `Return ${ans === Infinity ? '0' : ans} (ans was ${ans === Infinity ? 'never updated → 0' : ans + ' ✓'}).`,
+    ans === Infinity ? 'active' : 'match', arr, ['ans']);
+
+  return steps;
+}
+
+function cvRender(st) {
+  document.querySelectorAll('#cv-code-panel .cv-line').forEach(el =>
+    el.classList.remove('active', 'active-match'));
+  const lineEl = document.getElementById('cvL' + st.line);
+  if (lineEl) lineEl.classList.add(st.phase === 'match' ? 'active-match' : 'active');
+
+  ['n','ans','s','L','R'].forEach(name => {
+    const card = document.getElementById('cv-v-' + name);
+    if (!card) return;
+    const val = st.vars[name];
+    card.querySelector('.cv-var-val').textContent = val === undefined ? '—' : String(val);
+    card.classList.remove('hl','hl-match','dim');
+    if (val === undefined || val === '—') { card.classList.add('dim'); }
+    else if (st.changed && st.changed.includes(name)) { card.classList.add(st.phase === 'match' ? 'hl-match' : 'hl'); }
+  });
+
+  const narr = document.getElementById('cv-narration');
+  if (narr) {
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'match' ? ' is-match' : ' is-active');
+  }
+
+  // Array preview — uses CSS variable names (no raw hex)
+  const con = document.getElementById('cv-arr-con');
+  if (con && st.arr) {
+    const L = typeof st.vars.L === 'number' ? st.vars.L : -1;
+    const R = typeof st.vars.R === 'number' ? st.vars.R : -1;
+    con.innerHTML = '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">' +
+      st.arr.map((v, i) => {
+        const inWin = i >= L && i <= R && L >= 0 && R >= 0;
+        const cellStyle = inWin
+          ? 'background:var(--bg-info);border-color:var(--border-info);color:var(--text-info)'
+          : 'background:var(--bg3);border-color:var(--border2);color:var(--text2)';
+        const lblL = i === L && L >= 0 ? `<div style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text-info);min-height:14px">L</div>` : '';
+        const lblR = i === R && R >= 0 && i !== L ? `<div style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text-warn);min-height:14px">R</div>` : (i === R && R >= 0 && i === L ? `<div style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text-info);min-height:14px">L·R</div>` : '');
+        const topLbl = lblR || lblL || `<div style="min-height:14px"></div>`;
+        return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">` +
+          topLbl +
+          `<div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;` +
+          `font-family:var(--mono);font-size:14px;font-weight:600;border-radius:var(--r2);` +
+          `border:1.5px solid;${cellStyle}">${v}</div>` +
+          `<div style="font-size:10px;color:var(--text3);font-family:var(--mono)">${i}</div></div>`;
+      }).join('') + '</div>';
+  }
+
+  document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+  const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+  const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+}
+
+function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+function cvLoadEx(idx) {
+  document.querySelectorAll('[id^="cv-ex"]').forEach((b, i) => b.classList.toggle('active', i === idx));
+  cvSteps = cvGenSteps(EXAMPLES[idx]);
+  cvCur = 0;
+  cvRender(cvSteps[0]);
+}
+
+/* ── §7 Dry Run ── */
+let drSteps = [], drCur = 0;
+
+function drGenSteps({ nums, target }) {
+  const n = nums.length;
+  const steps = [];
+  let s = 0, L = 0, ans = Infinity;
+
+  steps.push({ nums, L: 0, R: -1, s: 0, ans: '∞', what: 'Initialise.', why: 'L=0, R=−1 (not started), s=0, ans=∞.', phase:'init' });
+
+  for (let R = 0; R < n; R++) {
+    s += nums[R];
+    steps.push({ nums, L, R, s, ans: ans === Infinity ? '∞' : ans,
+      what: `Expand: R=${R}, add nums[${R}]=${nums[R]}.`,
+      why: `Running sum s = ${s}.  s ${s >= target ? '≥' : '<'} target (${target}).`,
+      phase: s >= target ? 'expand-ready' : 'expand' });
+
+    while (s >= target) {
+      ans = Math.min(ans, R - L + 1);
+      const prevL = L;
+      s -= nums[L];
+      L++;
+      steps.push({ nums, L, R, s, ans: ans === Infinity ? '∞' : ans,
+        what: `Shrink: remove nums[${prevL}]=${nums[prevL]}, L=${L}.`,
+        why: `Window [${prevL}..${R}] had length ${R - prevL + 1} → ans = ${ans}.  New s = ${s}.`,
+        phase: 'shrink' });
+    }
+  }
+
+  steps.push({ nums, L, R: n-1, s, ans: ans === Infinity ? 0 : ans,
+    what: `Done.`,
+    why: `Answer = ${ans === Infinity ? 0 : ans}${ans === Infinity ? ' (no valid subarray found)' : ' ✓'}.`,
+    phase: ans === Infinity ? 'none' : 'done' });
+
+  return steps;
+}
+
+function drBuildStrip(nums, L, R, phase) {
+  const strip = document.getElementById('dr-strip');
+  if (!strip) return;
+  strip.innerHTML = nums.map((v, i) => {
+    let numCls = '';
+    if (i >= L && i <= R && R >= 0) {
+      numCls = phase === 'done' ? 'done' : 'in-win';
+    }
+    // Label row: L and R can coincide
+    let lbl;
+    if (i === L && i === R && R >= 0)  lbl = '<div class="dr-lbl L">L·R</div>';
+    else if (i === L)                   lbl = '<div class="dr-lbl L">L</div>';
+    else if (i === R && R >= 0)         lbl = '<div class="dr-lbl R">R</div>';
+    else                                lbl = '<div class="dr-lbl"> </div>';
+    return `<div class="dr-cell">${lbl}` +
+           `<div class="dr-num ${numCls}">${v}</div>` +
+           `<div class="dr-idx">${i}</div></div>`;
+  }).join('');
+}
+
+function drRender(st) {
+  drBuildStrip(st.nums, st.L, st.R, st.phase);
+
+  document.getElementById('dr-L').textContent   = String(st.L);
+  document.getElementById('dr-R').textContent   = String(st.R < 0 ? '—' : st.R);
+  document.getElementById('dr-s').textContent   = String(st.s);
+  document.getElementById('dr-ans').textContent = String(st.ans);
+
+  // Formula equation: show window-length expression on shrink steps
+  const eq = document.getElementById('dr-eq');
+  if (eq) {
+    if (st.phase === 'shrink' && st.R >= 0) {
+      eq.textContent = `len = R−L+1 = ${st.R}−${st.L}+1 = ${st.R - st.L + 1}`;
+    } else if (st.phase === 'done') {
+      eq.textContent = `answer = ${st.ans}`;
+    } else {
+      eq.textContent = '';
+    }
+  }
+
+  const fp = document.getElementById('dr-formula');
+  if (fp) {
+    fp.classList.remove('is-match','is-squeeze');
+    if (st.phase === 'done' && st.ans !== 0) fp.classList.add('is-match');
+    else if (st.phase === 'shrink') fp.classList.add('is-squeeze');
+  }
+
+  const sp = document.getElementById('dr-step');
+  if (sp) {
+    sp.classList.remove('match','squeeze');
+    if (st.phase === 'done' && st.ans !== 0) sp.classList.add('match');
+    else if (st.phase === 'shrink') sp.classList.add('squeeze');
+  }
+
+  document.getElementById('dr-what').textContent = st.what;
+  document.getElementById('dr-why').textContent  = st.why;
+
+  document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+  const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+  const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+}
+
+function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+function drLoadEx(idx) {
+  document.querySelectorAll('[id^="dr-ex"]').forEach((b, i) => b.classList.toggle('active', i === idx));
+  drSteps = drGenSteps(EXAMPLES[idx]);
+  drCur = 0;
+  drRender(drSteps[0]);
+}
+
+/* ── Approaches tab helper ── */
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const pane = document.getElementById(id);
+  if (pane) pane.classList.add('active');
+  if (btn)  btn.classList.add('active');
+}
+
+/* ── Init ── */
+cvBuildCode(CV_LINES);
+siSteps = siGenSteps(EXAMPLES[0]);
+siRender(siSteps[0]);
+cvLoadEx(0);
+drLoadEx(0);
+bfLoadEx(0);
+</script>
+
+</body>
+</html>
