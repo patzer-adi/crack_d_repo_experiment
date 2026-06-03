@@ -17,7 +17,5 @@
     "two-sum": "§2:canonical bf functions; §6:canonical cv functions; §7:canonical dr functions",
     "valid-palindrome": "§6:canonical element ids; §6:variable cards"
   },
-  "render": {
-    "valid-palindrome": "drRender sets textContent on a missing element id; all 3 §6 steps light no active code line (non-canonical §6/§7)."
-  }
+  "render": {}
 }
