@@ -18,9 +18,6 @@
     "valid-palindrome": "§6:canonical element ids; §6:variable cards"
   },
   "render": {
-    "count-permutations-with-inversion-requirement": "2 §6 cv steps carry no active code line (the si-calc.innerHTML-overwrite throw was fixed 2026-06-03).",
-    "container-with-most-water": "2 of 60 §6 steps carry no line, so the code panel shows no active line on those steps.",
-    "trapping-rain-water": "4 of 29 §6 steps carry no line.",
     "valid-palindrome": "drRender sets textContent on a missing element id; all 3 §6 steps light no active code line (non-canonical §6/§7)."
   }
 }
