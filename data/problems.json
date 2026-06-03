@@ -343,7 +343,7 @@
     "twist": "primer: shrink window from the left while constraint still met",
     "tracks": [],
     "status": "new",
-    "lesson_status": "generated"
+    "lesson_status": "none"
   },
   {
     "order": 3002,
@@ -517,7 +517,7 @@
       "google_focused"
     ],
     "status": "new",
-    "lesson_status": "generated"
+    "lesson_status": "none"
   },
   {
     "order": 4002,
@@ -535,7 +535,7 @@
       "google_focused"
     ],
     "status": "new",
-    "lesson_status": "generated"
+    "lesson_status": "none"
   },
   {
     "order": 4003,
