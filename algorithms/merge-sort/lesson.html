@@ -1,0 +1,1260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MergeSort | Interactive Lesson</title>
+  <link rel="stylesheet" href="../../static/lesson.css">
+  <style>
+    .cell-wrap { display: flex; flex-direction: column; align-items: center; }
+    .idx { font-family: var(--mono); font-size: 13px; color: var(--text3); height: 18px; }
+    .cell {
+      width: 40px;
+      height: 36px;
+      border-radius: 6px;
+      border: 1px solid var(--border2);
+      background: var(--bg3);
+      color: var(--text1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 700;
+      transition: background .2s, border-color .2s, color .2s, transform .2s, opacity .2s;
+    }
+    /* Color states */
+    .cell.live { background: var(--bg-info); border-color: var(--border-info); color: var(--text-info); }
+    .cell.mid { background: var(--bg-warn); border-color: var(--border-warn); color: var(--text-warn); transform: translateY(-2px); }
+    .cell.found { background: var(--bg-success); border-color: var(--border-success); color: var(--text-success); transform: translateY(-2px); }
+    .cell.drop { background: var(--bg-danger); border-color: var(--border-danger); color: var(--text-danger); opacity: 0.72; }
+    .cell.muted { opacity: 0.35; }
+
+    /* Pointers */
+    .ptr { font-family: var(--mono); font-size: 11px; font-weight: 700; color: transparent; height: 16px; margin-top: 4px; transition: color .2s; }
+    .ptr.on { color: var(--text-info); }
+    .ptr.on.mid-label { color: var(--text-warn); }
+    .ptr.on.found-label { color: var(--text-success); }
+
+    /* Merge panels styles */
+    .array-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin: 1rem 0; min-height: 70px; }
+    .buffers-container { display: flex; gap: 2rem; justify-content: center; align-items: flex-start; margin: 1rem 0; padding: 0.75rem; background: var(--bg); border: 1.5px dashed var(--border2); border-radius: 8px; min-height: 100px; }
+    .buffer-box { display: flex; flex-direction: column; align-items: center; }
+    .buffer-title { font-family: var(--mono); font-size: 12px; color: var(--text3); margin-bottom: 4px; font-weight: 700; }
+    
+    .input-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin: 1rem 0; align-items: center; }
+    .input-row input { font-family: var(--mono); font-size: 15px; border: 1px solid var(--border); background: var(--bg2); border-radius: 6px; padding: 7px 10px; color: var(--text1); }
+    .small-msg { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; color: var(--text3); margin-top: -8px; margin-bottom: 12px; }
+    .small-msg.bad { color: var(--text-danger); }
+    
+    @media (max-width: 680px) {
+      .input-row { grid-template-columns: 1fr; }
+      .cell { width: 34px; height: 30px; font-size: 13px; }
+      .idx, .ptr { font-size: 10px; }
+      .buffers-container { flex-direction: column; gap: 1rem; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+  <main style="max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 4rem;">
+    <header class="header">
+      <div class="header-eyebrow">Algorithm lesson</div>
+      <h1>MergeSort</h1>
+      <div class="header-meta">
+        <span class="badge badge-arr">Foundational Algorithms</span>
+        <span class="badge badge-med">Tier 2</span>
+        <span class="badge badge-med">D&C Sort</span>
+      </div>
+    </header>
+
+    <!-- ═══ SECTION 1: EXPLAIN THE ALGORITHM ═══ -->
+    <section class="section" id="explain">
+      <div class="sec-label">Section 1</div>
+      <h2 class="sec-title">Explain the algorithm in plain English</h2>
+      <p class="body">MergeSort is a divide-and-conquer algorithm designed to sort a collection by breaking it into smaller pieces. Instead of sorting a large stack of cards all at once, you divide it in half, sort each half independently, and then zip (merge) the two sorted piles back together. By comparing the top card of each pile and taking the smaller one, you assemble a fully sorted deck in linear time.</p>
+      
+      <div class="asgrid" style="margin-top: 1rem;">
+        <div class="acard">
+          <div class="acard-q">Is MergeSort stable?</div>
+          <div class="acard-a">Yes. If two elements have equal values, we prefer the one from the left subarray during merge, preserving their original relative order.</div>
+          <div class="acard-u">→ unlocks: stable sorting of identical keys</div>
+        </div>
+        <div class="acard">
+          <div class="acard-q">Can we sort in-place?</div>
+          <div class="acard-a">Standard array MergeSort requires O(n) auxiliary space to copy elements to temp buffers during merge to prevent overwriting.</div>
+          <div class="acard-u">→ unlocks: need for temporary buffers L and R</div>
+        </div>
+      </div>
+
+      <div class="infobox success" style="margin-top: 1rem;">
+        <p class="infobox-t">The kernel</p>
+        <p class="infobox-d">Divide the unsorted array in half at its midpoint. Recursively sort the left and right halves. Once sorted, merge the two halves together by zipping them: compare elements from each half sequentially, taking the smaller element, and copy the sorted result back into the main array.</p>
+      </div>
+    </section>
+
+    <!-- ═══ SECTION 2: VISUALIZE THE DATA STRUCTURE ═══ -->
+    <section class="section" id="structure">
+      <div class="sec-label">Section 2</div>
+      <h2 class="sec-title">Visualize the data structure</h2>
+      <p class="body">During the merge phase, MergeSort copies the left and right subarrays into temporary buffers <code>L</code> and <code>R</code>, then zips them back into the main array using three index pointers: <code>i</code> (pointing to <code>L</code>), <code>j</code> (pointing to <code>R</code>), and <code>k</code> (pointing to the target slot in the main array).</p>
+      
+      <div class="visual-card" style="background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 1.25rem; margin: 1rem 0;">
+        <div class="infobox-t" style="text-align: center; margin-bottom: 0.5rem;">Zipping Temporary Buffers back to Main Array</div>
+        <div id="structure-array" class="array-row"></div>
+        
+        <div class="buffers-container" style="margin-top: 1rem;">
+          <div class="buffer-box">
+            <div class="buffer-title">Left Buffer (L)</div>
+            <div id="structure-buf-L" style="display: flex; gap: 6px;"></div>
+          </div>
+          <div class="buffer-box">
+            <div class="buffer-title">Right Buffer (R)</div>
+            <div id="structure-buf-R" style="display: flex; gap: 6px;"></div>
+          </div>
+        </div>
+
+        <div class="legend" style="justify-content: center; margin-top: 1rem;">
+          <div class="leg-item"><span class="leg-dot" style="background: var(--bg-info);"></span><span class="leg-label">Active merge range</span></div>
+          <div class="leg-item"><span class="leg-dot" style="background: var(--bg-warn);"></span><span class="leg-label">Active compare pointers (i, j)</span></div>
+          <div class="leg-item"><span class="leg-dot" style="background: var(--bg-success);"></span><span class="leg-label">Merged elements written back</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ SECTION 3: ALGORITHM IN PLAIN ENGLISH ═══ -->
+    <section class="section" id="plain">
+      <div class="sec-label">Section 3</div>
+      <h2 class="sec-title">Algorithm in plain English</h2>
+      
+      <div class="skeleton" style="margin-bottom: 1rem;">
+        <div class="wt-item">
+          <div class="wt-num">1</div>
+          <div class="wt-body">
+            <div class="wt-name">Inefficient Local Scan → Divide and Conquer</div>
+            <div class="wt-desc">Instead of scanning elements iteratively to bubble/insert them, split the array recursively down to size-1 subarrays.</div>
+            <div class="wt-gain">→ reduces complexity from O(n²) to O(n log n)</div>
+          </div>
+        </div>
+        <div class="wt-item">
+          <div class="wt-num">2</div>
+          <div class="wt-body">
+            <div class="wt-name">Two Sorted Halves → Linear Merge</div>
+            <div class="wt-desc">Zip two sorted segments together in a single linear pass by comparing their head elements, picking the smaller one.</div>
+            <div class="wt-gain">→ merges in O(n) time at each recursive level</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="algo-steps">
+        <div class="algo-step"><div class="algo-n">1</div><div class="algo-t"><b>Check</b> base case: if the range size is 0 or 1, it is already sorted — return.</div></div>
+        <div class="algo-step"><div class="algo-n">2</div><div class="algo-t"><b>Compute</b> midpoint: <code>mid = left + (right - left) / 2</code>.</div></div>
+        <div class="algo-step"><div class="algo-n">3</div><div class="algo-t"><b>Divide</b> and sort: recursively call MergeSort on left half <code>[left, mid]</code> and right half <code>[mid + 1, right]</code>.</div></div>
+        <div class="algo-step"><div class="algo-n">4</div><div class="algo-t"><b>Copy</b> to buffers: duplicate left and right segments into temporary arrays <code>L</code> and <code>R</code>.</div></div>
+        <div class="algo-step"><div class="algo-n">5</div><div class="algo-t"><b>Merge</b>: compare heads of <code>L</code> and <code>R</code>, write smaller to main array, advance index. Repeat until one buffer is empty.</div></div>
+        <div class="algo-step"><div class="algo-n">6</div><div class="algo-t"><b>Flush</b> remaining: copy any leftover elements of <code>L</code> or <code>R</code> back into the main array.</div></div>
+      </div>
+    </section>
+
+    <!-- ═══ SECTION 4: INTERACTIVE VISUALIZATION ═══ -->
+    <section class="section dr-section" id="visualizer">
+      <div class="sec-label">Section 4</div>
+      <h2 class="sec-title">Interactive visualization</h2>
+      <p class="body">Watch MergeSort split segments and merge them back together in order. Use the buttons below or trigger them via keyboard shortcuts: <code>Space</code> (play/pause), <code>ArrowLeft</code>/<code>ArrowRight</code> (step), <code>R</code> (reset), and <code>1</code>/<code>2</code>/<code>3</code> (presets).</p>
+      
+      <div class="ctrl-row">
+        <button class="ctrl-btn pri" id="dr-bplay">▶ Auto</button>
+        <button class="ctrl-btn" onclick="drPrev()">← Prev</button>
+        <button class="ctrl-btn" onclick="drNext()">Next →</button>
+        <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+        <select id="dr-speed" aria-label="speed" style="font-family: var(--mono); font-size: 14px; border: 1px solid var(--border); background: var(--bg2); padding: 4px 8px; border-radius: 6px; color: var(--text1);">
+          <option value="2000">Slow</option>
+          <option value="1200" selected>Normal</option>
+          <option value="600">Fast</option>
+        </select>
+        <span class="step-ctr" id="dr-count">0/0</span>
+      </div>
+
+      <div class="ctrl-row" style="margin-top: .5rem;">
+        <button class="ex-btn active" id="dr-ex0" onclick="loadExample(0)">Preset 1</button>
+        <button class="ex-btn" id="dr-ex1" onclick="loadExample(1)">Preset 2</button>
+        <button class="ex-btn" id="dr-ex2" onclick="loadExample(2)">Preset 3</button>
+      </div>
+
+      <div class="input-row">
+        <input id="custom-array" value="5, 2, 4, 1, 3" aria-label="Custom unsorted array">
+        <button class="ctrl-btn pri" id="custom-run" onclick="parseCustom()">Run custom</button>
+      </div>
+      <div id="custom-msg" class="small-msg">Enter comma-separated numbers (maximum 10 elements for visual clarity).</div>
+
+      <div class="visual-card" style="background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 1.25rem;">
+        <div id="dr-array" class="array-row"></div>
+        
+        <div id="dr-buffers-con" class="buffers-container" style="display: none;">
+          <div class="buffer-box">
+            <div class="buffer-title">Left Buffer (L)</div>
+            <div id="dr-buf-L" style="display: flex; gap: 6px;"></div>
+          </div>
+          <div class="buffer-box">
+            <div class="buffer-title">Right Buffer (R)</div>
+            <div id="dr-buf-R" style="display: flex; gap: 6px;"></div>
+          </div>
+        </div>
+        
+        <div class="formula-panel" style="margin-top: 1rem; border-top: 1px solid var(--border2); padding-top: 1rem;">
+          <div class="formula-grid" style="grid-template-columns: repeat(7, 1fr); text-align: center;">
+            <div><p class="fitem-label">left</p><p class="fitem-val" id="dr-val-left">—</p><p class="fitem-sub">bound start</p></div>
+            <div><p class="fitem-label">right</p><p class="fitem-val" id="dr-val-right">—</p><p class="fitem-sub">bound end</p></div>
+            <div><p class="fitem-label">mid</p><p class="fitem-val" id="dr-val-mid">—</p><p class="fitem-sub">split index</p></div>
+            <div><p class="fitem-label">i</p><p class="fitem-val" id="dr-val-i">—</p><p class="fitem-sub">L pointer</p></div>
+            <div><p class="fitem-label">j</p><p class="fitem-val" id="dr-val-j">—</p><p class="fitem-sub">R pointer</p></div>
+            <div><p class="fitem-label">k</p><p class="fitem-val" id="dr-val-k">—</p><p class="fitem-sub">nums pointer</p></div>
+            <div><p class="fitem-label">decision</p><p class="fitem-val" id="dr-val-decision" style="font-size: 13px; font-weight: 700;">—</p><p class="fitem-sub">action state</p></div>
+          </div>
+        </div>
+
+        <div class="step-panel" style="margin-top: 1rem; border-top: 1px solid var(--border2); padding-top: 1rem;">
+          <div class="step-what" id="dr-narration">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ SECTION 5: CODE ═══ -->
+    <section class="section" id="code">
+      <div class="sec-label">Section 5</div>
+      <h2 class="sec-title">C++ code</h2>
+      <button class="reveal-btn" onclick="toggleEl('code-main', this)">▶ Reveal Code</button>
+      <div id="code-main" class="code-block">
+        <pre class="cb"><span class="tp">void</span> <span class="fn">merge</span>(<span class="tp">vector</span>&lt;<span class="tp">int</span>&gt;&amp; nums, <span class="tp">int</span> left, <span class="tp">int</span> mid, <span class="tp">int</span> right) {
+    <span class="tp">int</span> n1 = mid - left + <span class="nu">1</span>;
+    <span class="tp">int</span> n2 = right - mid;
+    <span class="tp">vector</span>&lt;<span class="tp">int</span>&gt; <span class="fn">L</span>(n1);
+    <span class="tp">vector</span>&lt;<span class="tp">int</span>&gt; <span class="fn">R</span>(n2);
+
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="nu">0</span>; i &lt; n1; i++) {
+        L[i] = nums[left + i];
+    }
+    <span class="kw">for</span> (<span class="tp">int</span> j = <span class="nu">0</span>; j &lt; n2; j++) {
+        R[j] = nums[mid + <span class="nu">1</span> + j];
+    }
+
+    <span class="tp">int</span> i = <span class="nu">0</span>;
+    <span class="tp">int</span> j = <span class="nu">0</span>;
+    <span class="tp">int</span> k = left;
+    <span class="kw">while</span> (i &lt; n1 && j &lt; n2) {
+        <span class="kw">if</span> (L[i] &lt;= R[j]) {
+            nums[k] = L[i];
+            i++;
+        } <span class="kw">else</span> {
+            nums[k] = R[j];
+            j++;
+        }
+        k++;
+    }
+
+    <span class="kw">while</span> (i &lt; n1) {
+        nums[k] = L[i];
+        i++;
+        k++;
+    }
+
+    <span class="kw">while</span> (j &lt; n2) {
+        nums[k] = R[j];
+        j++;
+        k++;
+    }
+}
+
+<span class="tp">void</span> <span class="fn">mergeSort</span>(<span class="tp">vector</span>&lt;<span class="tp">int</span>&gt;&amp; nums, <span class="tp">int</span> left, <span class="tp">int</span> right) {
+    <span class="kw">if</span> (left &gt;= right) {
+        <span class="kw">return</span>;
+    }
+    <span class="tp">int</span> mid = left + (right - left) / <span class="nu">2</span>;
+    <span class="fn">mergeSort</span>(nums, left, mid);
+    <span class="fn">mergeSort</span>(nums, mid + <span class="nu">1</span>, right);
+    <span class="fn">merge</span>(nums, left, mid, right);
+}</pre>
+      </div>
+    </section>
+
+    <!-- ═══ SECTION 6: CODE WALKTHROUGH ═══ -->
+    <section class="section cv-section" id="walkthrough">
+      <div class="sec-label">Section 6</div>
+      <h2 class="sec-title">Line-by-line code walkthrough</h2>
+      <p class="body">Trace the execution of C++ MergeSort line-by-line. Cards remain dimmed until their declaration line executes; active changing variables light up cyan.</p>
+
+      <div class="ctrl-row">
+        <button class="ctrl-btn pri" id="cv-bplay">▶ Auto</button>
+        <button class="ctrl-btn" onclick="cvPrev()">← Prev</button>
+        <button class="ctrl-btn" onclick="cvNext()">Next →</button>
+        <button class="ctrl-btn" onclick="cvReset()">↺ Reset</button>
+        <span class="step-ctr" id="cv-count">0/0</span>
+      </div>
+
+      <div class="cv-split">
+        <div id="cv-code-panel" class="cv-code-panel" style="overflow: hidden; max-height: none; font-size: 13.5px; line-height: 1.45;"></div>
+        <div class="cv-state-panel">
+          <div id="cv-var-grid" class="cv-var-grid" style="grid-template-columns: repeat(3, 1fr);">
+            <div class="cv-var-card dim" id="cv-v-left"><div class="cv-var-name">left</div><div class="cv-var-val">—</div></div>
+            <div class="cv-var-card dim" id="cv-v-right"><div class="cv-var-name">right</div><div class="cv-var-val">—</div></div>
+            <div class="cv-var-card dim" id="cv-v-mid"><div class="cv-var-name">mid</div><div class="cv-var-val">—</div></div>
+            <div class="cv-var-card dim" id="cv-v-i"><div class="cv-var-name">i</div><div class="cv-var-val">—</div></div>
+            <div class="cv-var-card dim" id="cv-v-j"><div class="cv-var-name">j</div><div class="cv-var-val">—</div></div>
+            <div class="cv-var-card dim" id="cv-v-k"><div class="cv-var-name">k</div><div class="cv-var-val">—</div></div>
+          </div>
+          
+          <div id="cv-arr-con" style="background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px; padding: .5rem 1rem; margin: 1rem 0;"></div>
+          
+          <div id="cv-buffers-con" class="buffers-container" style="display: none; margin-top: 1rem;">
+            <div class="buffer-box">
+              <div class="buffer-title">Left Buffer (L)</div>
+              <div id="cv-buf-L" style="display: flex; gap: 4px;"></div>
+            </div>
+            <div class="buffer-box">
+              <div class="buffer-title">Right Buffer (R)</div>
+              <div id="cv-buf-R" style="display: flex; gap: 4px;"></div>
+            </div>
+          </div>
+
+          <div id="cv-narration" class="cv-narration">Press ▶ Auto or Step to begin walking the code.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ SECTION 7: COMPLEXITY ═══ -->
+    <section class="section" id="complexity">
+      <div class="sec-label">Section 7</div>
+      <h2 class="sec-title">Time and space complexity</h2>
+      <div class="cplx-grid">
+        <div class="ccard">
+          <div class="ccard-l">Time</div>
+          <div class="ccard-v">O(n log n)</div>
+          <div class="ccard-n">The recursion tree has a depth of log n. At each level of the tree, merging n elements across various segments takes O(n) total operations. Therefore, overall time is O(n log n) in all cases (best, average, worst).</div>
+        </div>
+        <div class="ccard">
+          <div class="ccard-l">Space</div>
+          <div class="ccard-v">O(n)</div>
+          <div class="ccard-n">Allocating auxiliary temporary arrays L and R of combined size n is required during the merge step, alongside O(log n) stack frame space for recursion depth.</div>
+        </div>
+      </div>
+      
+      <div class="infobox info" style="margin-top: 1rem;">
+        <p class="infobox-t">Common misconception</p>
+        <p class="infobox-d">MergeSort always requires O(n) extra space. While true for arrays, it can sort linked lists in O(1) auxiliary space (using only O(log n) call stack space) because node links can be re-pointed without copying values.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="../../static/lesson.js"></script>
+  <script>
+    /* ═══════════════════════════════════════════════════
+       PROBLEM PRESETS
+       ═══════════════════════════════════════════════════ */
+    const PRESETS = [
+      { nums: [5, 2, 4, 1, 3] },
+      { nums: [5, 4, 3, 2, 1] },
+      { nums: [2, 3, 2, 1, 3] }
+    ];
+
+    const CODE_LINES = [
+      { n: 1, c: "void merge(vector<int>& nums, int left, int mid, int right) {" },
+      { n: 2, c: "    int n1 = mid - left + 1;" },
+      { n: 3, c: "    int n2 = right - mid;" },
+      { n: 4, c: "    vector<int> L(n1);" },
+      { n: 5, c: "    vector<int> R(n2);" },
+      { n: 6, c: "" },
+      { n: 7, c: "    for (int i = 0; i < n1; i++) {" },
+      { n: 8, c: "        L[i] = nums[left + i];" },
+      { n: 9, c: "    }" },
+      { n: 10, c: "    for (int j = 0; j < n2; j++) {" },
+      { n: 11, c: "        R[j] = nums[mid + 1 + j];" },
+      { n: 12, c: "    }" },
+      { n: 13, c: "" },
+      { n: 14, c: "    int i = 0;" },
+      { n: 15, c: "    int j = 0;" },
+      { n: 16, c: "    int k = left;" },
+      { n: 17, c: "    while (i < n1 && j < n2) {" },
+      { n: 18, c: "        if (L[i] <= R[j]) {" },
+      { n: 19, c: "            nums[k] = L[i];" },
+      { n: 20, c: "            i++;" },
+      { n: 21, c: "        } else {" },
+      { n: 22, c: "            nums[k] = R[j];" },
+      { n: 23, c: "            j++;" },
+      { n: 24, c: "        }" },
+      { n: 25, c: "        k++;" },
+      { n: 26, c: "    }" },
+      { n: 27, c: "" },
+      { n: 28, c: "    while (i < n1) {" },
+      { n: 29, c: "        nums[k] = L[i];" },
+      { n: 30, c: "        i++;" },
+      { n: 31, c: "        k++;" },
+      { n: 32, c: "    }" },
+      { n: 33, c: "" },
+      { n: 34, c: "    while (j < n2) {" },
+      { n: 35, c: "        nums[k] = R[j];" },
+      { n: 36, c: "        j++;" },
+      { n: 37, c: "        k++;" },
+      { n: 38, c: "    }" },
+      { n: 39, c: "}" },
+      { n: 40, c: "" },
+      { n: 41, c: "void mergeSort(vector<int>& nums, int left, int right) {" },
+      { n: 42, c: "    if (left >= right) {" },
+      { n: 43, c: "        return;" },
+      { n: 44, c: "    }" },
+      { n: 45, c: "    int mid = left + (right - left) / 2;" },
+      { n: 46, c: "    mergeSort(nums, left, mid);" },
+      { n: 47, c: "    mergeSort(nums, mid + 1, right);" },
+      { n: 48, c: "    merge(nums, left, mid, right);" },
+      { n: 49, c: "}" }
+    ];
+
+    let current = JSON.parse(JSON.stringify(PRESETS[0]));
+
+    // Global variables for lesson.js compatibility
+    let drSteps = [], drCur = 0, drTimer = null;
+    let cvSteps = [], cvCur = 0, cvTimer = null;
+
+    /* ═══════════════════════════════════════════════════
+       TRACE BUILDERS
+       ═══════════════════════════════════════════════════ */
+
+    function range(a, b) {
+      const out = [];
+      for (let i = a; i <= b; i++) out.push(i);
+      return out;
+    }
+
+    // Build interactive visualizer trace (Section 4)
+    function buildDrTrace(nums) {
+      const frames = [];
+      const arr = [...nums];
+      
+      frames.push({
+        left: 0,
+        right: nums.length - 1,
+        mid: null,
+        i: null,
+        j: null,
+        k: null,
+        arr: [...arr],
+        tempL: [],
+        tempR: [],
+        action: "Initial unsorted array.",
+        decision: "start"
+      });
+
+      function merge(left, mid, right) {
+        const n1 = mid - left + 1;
+        const n2 = right - mid;
+        const L = [];
+        const R = [];
+        for (let i = 0; i < n1; i++) L.push(arr[left + i]);
+        for (let j = 0; j < n2; j++) R.push(arr[mid + 1 + j]);
+
+        frames.push({
+          left, right, mid,
+          i: null, j: null, k: null,
+          arr: [...arr],
+          tempL: [...L],
+          tempR: [...R],
+          action: `Merge step: Copy left segment [${left}...${mid}] to L = [${L.join(", ")}] and right segment [${mid+1}...${right}] to R = [${R.join(", ")}].`,
+          decision: "copy"
+        });
+
+        let i = 0, j = 0, k = left;
+        while (i < n1 && j < n2) {
+          frames.push({
+            left, right, mid,
+            i, j, k,
+            arr: [...arr],
+            tempL: [...L],
+            tempR: [...R],
+            action: `Compare L[${i}] (${L[i]}) and R[${j}] (${R[j]}).`,
+            decision: "compare"
+          });
+
+          if (L[i] <= R[j]) {
+            arr[k] = L[i];
+            i++;
+          } else {
+            arr[k] = R[j];
+            j++;
+          }
+          k++;
+
+          frames.push({
+            left, right, mid,
+            i, j, k,
+            arr: [...arr],
+            tempL: [...L],
+            tempR: [...R],
+            action: `Write smaller element back to slot nums[${k - 1}] = ${arr[k - 1]}.`,
+            decision: "write"
+          });
+        }
+
+        while (i < n1) {
+          frames.push({
+            left, right, mid,
+            i, j, k,
+            arr: [...arr],
+            tempL: [...L],
+            tempR: [...R],
+            action: `Copy remaining element L[${i}] (${L[i]}) back to nums[${k}].`,
+            decision: "leftover"
+          });
+          arr[k] = L[i];
+          i++;
+          k++;
+        }
+
+        while (j < n2) {
+          frames.push({
+            left, right, mid,
+            i, j, k,
+            arr: [...arr],
+            tempL: [...L],
+            tempR: [...R],
+            action: `Copy remaining element R[${j}] (${R[j]}) back to nums[${k}].`,
+            decision: "leftover"
+          });
+          arr[k] = R[j];
+          j++;
+          k++;
+        }
+
+        frames.push({
+          left, right, mid,
+          i: null, j: null, k: null,
+          arr: [...arr],
+          tempL: [],
+          tempR: [],
+          action: `Segment [${left}...${right}] is now fully merged and sorted: [${arr.slice(left, right + 1).join(", ")}].`,
+          decision: "sorted"
+        });
+      }
+
+      function sort(left, right) {
+        if (left >= right) {
+          return;
+        }
+        const mid = left + Math.floor((right - left) / 2);
+        
+        frames.push({
+          left, right, mid,
+          i: null, j: null, k: null,
+          arr: [...arr],
+          tempL: [],
+          tempR: [],
+          action: `Split segment [${left}...${right}] at index mid = ${mid}. Recurse on left side.`,
+          decision: "split"
+        });
+
+        sort(left, mid);
+
+        frames.push({
+          left, right, mid,
+          i: null, j: null, k: null,
+          arr: [...arr],
+          tempL: [],
+          tempR: [],
+          action: `Recurse on right side: indexes [${mid + 1}...${right}] of segment [${left}...${right}].`,
+          decision: "split"
+        });
+
+        sort(mid + 1, right);
+        merge(left, mid, right);
+      }
+
+      sort(0, nums.length - 1);
+
+      frames.push({
+        left: 0,
+        right: nums.length - 1,
+        mid: null,
+        i: null,
+        j: null,
+        k: null,
+        arr: [...arr],
+        tempL: [],
+        tempR: [],
+        action: `MergeSort complete! Final sorted array: [${arr.join(", ")}].`,
+        decision: "done"
+      });
+
+      return frames;
+    }
+
+    // Build fine-grained C++ line walkthrough trace (Section 6)
+    function buildCvTrace(nums) {
+      const frames = [];
+      const arr = [...nums];
+
+      function merge(left, mid, right) {
+        const n1 = mid - left + 1;
+        const n2 = right - mid;
+
+        // Line 2: n1
+        frames.push({
+          line: 2, left, right, mid, i: null, j: null, k: null,
+          arr: [...arr], tempL: [], tempR: [],
+          vars: ["left", "mid"], known: ["left", "right", "mid"],
+          action: `Calculate left subarray size n1 = mid - left + 1 = ${n1}.`
+        });
+
+        // Line 3: n2
+        frames.push({
+          line: 3, left, right, mid, i: null, j: null, k: null,
+          arr: [...arr], tempL: [], tempR: [],
+          vars: ["right", "mid"], known: ["left", "right", "mid"],
+          action: `Calculate right subarray size n2 = right - mid = ${n2}.`
+        });
+
+        const L = [];
+        const R = [];
+
+        // Line 4: L buffer allocation
+        frames.push({
+          line: 4, left, right, mid, i: null, j: null, k: null,
+          arr: [...arr], tempL: [], tempR: [],
+          vars: [], known: ["left", "right", "mid"],
+          action: `Allocate temporary array L of size ${n1}.`
+        });
+
+        // Line 5: R buffer allocation
+        frames.push({
+          line: 5, left, right, mid, i: null, j: null, k: null,
+          arr: [...arr], tempL: [], tempR: [],
+          vars: [], known: ["left", "right", "mid"],
+          action: `Allocate temporary array R of size ${n2}.`
+        });
+
+        // Copy elements to L
+        for (let i_copy = 0; i_copy < n1; i_copy++) {
+          L.push(arr[left + i_copy]);
+          // Line 8: L[i] = nums[left + i];
+          frames.push({
+            line: 8, left, right, mid, i: i_copy, j: null, k: null,
+            arr: [...arr], tempL: [...L], tempR: [...R],
+            vars: [], known: ["left", "right", "mid"],
+            action: `Copy nums[${left + i_copy}] (${arr[left + i_copy]}) into temporary buffer L[${i_copy}].`
+          });
+        }
+
+        // Copy elements to R
+        for (let j_copy = 0; j_copy < n2; j_copy++) {
+          R.push(arr[mid + 1 + j_copy]);
+          // Line 11: R[j] = nums[mid + 1 + j];
+          frames.push({
+            line: 11, left, right, mid, i: null, j: j_copy, k: null,
+            arr: [...arr], tempL: [...L], tempR: [...R],
+            vars: [], known: ["left", "right", "mid"],
+            action: `Copy nums[${mid + 1 + j_copy}] (${arr[mid + 1 + j_copy]}) into temporary buffer R[${j_copy}].`
+          });
+        }
+
+        let i = 0, j = 0, k = left;
+
+        // Line 14: int i = 0;
+        frames.push({
+          line: 14, left, right, mid, i, j: null, k: null,
+          arr: [...arr], tempL: [...L], tempR: [...R],
+          vars: ["i"], known: ["left", "right", "mid", "i"],
+          action: "Initialize temporary left pointer index i = 0."
+        });
+
+        // Line 15: int j = 0;
+        frames.push({
+          line: 15, left, right, mid, i, j, k: null,
+          arr: [...arr], tempL: [...L], tempR: [...R],
+          vars: ["j"], known: ["left", "right", "mid", "i", "j"],
+          action: "Initialize temporary right pointer index j = 0."
+        });
+
+        // Line 16: int k = left;
+        frames.push({
+          line: 16, left, right, mid, i, j, k,
+          arr: [...arr], tempL: [...L], tempR: [...R],
+          vars: ["k"], known: ["left", "right", "mid", "i", "j", "k"],
+          action: `Initialize output target pointer index k = left = ${left}.`
+        });
+
+        while (i < n1 && j < n2) {
+          // Line 17: while check
+          frames.push({
+            line: 17, left, right, mid, i, j, k,
+            arr: [...arr], tempL: [...L], tempR: [...R],
+            vars: ["i", "j"], known: ["left", "right", "mid", "i", "j", "k"],
+            action: `Check loop condition: i (${i}) < n1 (${n1}) and j (${j}) < n2 (${n2}) are true.`
+          });
+
+          // Line 18: compare L[i] <= R[j]
+          frames.push({
+            line: 18, left, right, mid, i, j, k,
+            arr: [...arr], tempL: [...L], tempR: [...R],
+            vars: ["i", "j"], known: ["left", "right", "mid", "i", "j", "k"],
+            action: `Compare L[${i}] (${L[i]}) with R[${j}] (${R[j]}).`
+          });
+
+          if (L[i] <= R[j]) {
+            arr[k] = L[i];
+            // Line 19: write L[i]
+            frames.push({
+              line: 19, left, right, mid, i, j, k,
+              arr: [...arr], tempL: [...L], tempR: [...R],
+              vars: ["k"], known: ["left", "right", "mid", "i", "j", "k"],
+              action: `L[i] <= R[j] is true. Write L[${i}] (${L[i]}) to target index nums[${k}].`
+            });
+            i++;
+            // Line 20: i++
+            frames.push({
+              line: 20, left, right, mid, i, j, k,
+              arr: [...arr], tempL: [...L], tempR: [...R],
+              vars: ["i"], known: ["left", "right", "mid", "i", "j", "k"],
+              action: `Increment left pointer index i to ${i}.`
+            });
+          } else {
+            arr[k] = R[j];
+            // Line 22: write R[j]
+            frames.push({
+              line: 22, left, right, mid, i, j, k,
+              arr: [...arr], tempL: [...L], tempR: [...R],
+              vars: ["k"], known: ["left", "right", "mid", "i", "j", "k"],
+              action: `L[i] <= R[j] is false. Write R[${j}] (${R[j]}) to target index nums[${k}].`
+            });
+            j++;
+            // Line 23: j++
+            frames.push({
+              line: 23, left, right, mid, i, j, k,
+              arr: [...arr], tempL: [...L], tempR: [...R],
+              vars: ["j"], known: ["left", "right", "mid", "i", "j", "k"],
+              action: `Increment right pointer index j to ${j}.`
+            });
+          }
+          k++;
+          // Line 25: k++
+          frames.push({
+            line: 25, left, right, mid, i, j, k,
+            arr: [...arr], tempL: [...L], tempR: [...R],
+            vars: ["k"], known: ["left", "right", "mid", "i", "j", "k"],
+            action: `Increment target pointer index k to ${k}.`
+          });
+        }
+
+        // Line 17 exit check
+        frames.push({
+          line: 17, left, right, mid, i, j, k,
+          arr: [...arr], tempL: [...L], tempR: [...R],
+          vars: ["i", "j"], known: ["left", "right", "mid", "i", "j", "k"],
+          action: `Check loop condition: i (${i}) < n1 (${n1}) and j (${j}) < n2 (${n2}) is false. Exit loop.`
+        });
+
+        // Flush L buffer
+        while (i < n1) {
+          // Line 28: while check
+          frames.push({
+            line: 28, left, right, mid, i, j, k,
+            arr: [...arr], tempL: [...L], tempR: [...R],
+            vars: ["i"], known: ["left", "right", "mid", "i", "j", "k"],
+            action: `Check left buffer leftovers: i (${i}) < n1 (${n1}) is true.`
+          });
+          arr[k] = L[i];
+          // Line 29: write L[i]
+          frames.push({
+            line: 29, left, right, mid, i, j, k,
+            arr: [...arr], tempL: [...L], tempR: [...R],
+            vars: ["k"], known: ["left", "right", "mid", "i", "j", "k"],
+            action: `Copy remaining element L[${i}] (${L[i]}) to target index nums[${k}].`
+          });
+          i++;
+          // Line 30: i++
+          frames.push({
+            line: 30, left, right, mid, i, j, k,
+            arr: [...arr], tempL: [...L], tempR: [...R],
+            vars: ["i"], known: ["left", "right", "mid", "i", "j", "k"],
+            action: `Increment left pointer index i to ${i}.`
+          });
+          k++;
+          // Line 31: k++
+          frames.push({
+            line: 31, left, right, mid, i, j, k,
+            arr: [...arr], tempL: [...L], tempR: [...R],
+            vars: ["k"], known: ["left", "right", "mid", "i", "j", "k"],
+            action: `Increment target pointer index k to ${k}.`
+          });
+        }
+        // Line 28 loop exit
+        frames.push({
+          line: 28, left, right, mid, i, j, k,
+          arr: [...arr], tempL: [...L], tempR: [...R],
+          vars: ["i"], known: ["left", "right", "mid", "i", "j", "k"],
+          action: `Check left buffer leftovers: i (${i}) < n1 (${n1}) is false.`
+        });
+
+        // Flush R buffer
+        while (j < n2) {
+          // Line 34: while check
+          frames.push({
+            line: 34, left, right, mid, i, j, k,
+            arr: [...arr], tempL: [...L], tempR: [...R],
+            vars: ["j"], known: ["left", "right", "mid", "i", "j", "k"],
+            action: `Check right buffer leftovers: j (${j}) < n2 (${n2}) is true.`
+          });
+          arr[k] = R[j];
+          // Line 35: write R[j]
+          frames.push({
+            line: 35, left, right, mid, i, j, k,
+            arr: [...arr], tempL: [...L], tempR: [...R],
+            vars: ["k"], known: ["left", "right", "mid", "i", "j", "k"],
+            action: `Copy remaining element R[${j}] (${R[j]}) to target index nums[${k}].`
+          });
+          j++;
+          // Line 36: j++
+          frames.push({
+            line: 36, left, right, mid, i, j, k,
+            arr: [...arr], tempL: [...L], tempR: [...R],
+            vars: ["j"], known: ["left", "right", "mid", "i", "j", "k"],
+            action: `Increment right pointer index j to ${j}.`
+          });
+          k++;
+          // Line 37: k++
+          frames.push({
+            line: 37, left, right, mid, i, j, k,
+            arr: [...arr], tempL: [...L], tempR: [...R],
+            vars: ["k"], known: ["left", "right", "mid", "i", "j", "k"],
+            action: `Increment target pointer index k to ${k}.`
+          });
+        }
+        // Line 34 loop exit
+        frames.push({
+          line: 34, left, right, mid, i, j, k,
+          arr: [...arr], tempL: [...L], tempR: [...R],
+          vars: ["j"], known: ["left", "right", "mid", "i", "j", "k"],
+          action: `Check right buffer leftovers: j (${j}) < n2 (${n2}) is false.`
+        });
+      }
+
+      function sort(left, right) {
+        // Line 41: enter mergeSort
+        frames.push({
+          line: 41, left, right, mid: null, i: null, j: null, k: null,
+          arr: [...arr], tempL: [], tempR: [],
+          vars: ["left", "right"], known: ["left", "right"],
+          action: `Enter mergeSort with subarray boundary indices [${left}...${right}].`
+        });
+
+        // Line 42: if (left >= right)
+        frames.push({
+          line: 42, left, right, mid: null, i: null, j: null, k: null,
+          arr: [...arr], tempL: [], tempR: [],
+          vars: ["left", "right"], known: ["left", "right"],
+          action: `Check recursion base case: left (${left}) >= right (${right}).`
+        });
+
+        if (left >= right) {
+          // Line 43: return
+          frames.push({
+            line: 43, left, right, mid: null, i: null, j: null, k: null,
+            arr: [...arr], tempL: [], tempR: [],
+            vars: [], known: ["left", "right"],
+            action: `Base case met: subarray size <= 1 is already sorted. Backtrack.`
+          });
+          return;
+        }
+
+        const mid = left + Math.floor((right - left) / 2);
+
+        // Line 45: int mid = ...
+        frames.push({
+          line: 45, left, right, mid, i: null, j: null, k: null,
+          arr: [...arr], tempL: [], tempR: [],
+          vars: ["mid"], known: ["left", "right", "mid"],
+          action: `Compute divide midpoint: mid = left + (right - left) / 2 = ${mid}.`
+        });
+
+        // Line 46: mergeSort(left, mid)
+        frames.push({
+          line: 46, left, right, mid, i: null, j: null, k: null,
+          arr: [...arr], tempL: [], tempR: [],
+          vars: [], known: ["left", "right", "mid"],
+          action: `Recursively sort left partition: [${left}...${mid}].`
+        });
+
+        sort(left, mid);
+
+        // Line 47: mergeSort(mid + 1, right)
+        frames.push({
+          line: 47, left, right, mid, i: null, j: null, k: null,
+          arr: [...arr], tempL: [], tempR: [],
+          vars: [], known: ["left", "right", "mid"],
+          action: `Recursively sort right partition: [${mid + 1}...${right}].`
+        });
+
+        sort(mid + 1, right);
+
+        // Line 48: merge(left, mid, right)
+        frames.push({
+          line: 48, left, right, mid, i: null, j: null, k: null,
+          arr: [...arr], tempL: [], tempR: [],
+          vars: [], known: ["left", "right", "mid"],
+          action: `Merge sorted partitions [${left}...${mid}] and [${mid + 1}...${right}] back together.`
+        });
+
+        merge(left, mid, right);
+      }
+
+      sort(0, nums.length - 1);
+
+      // Line 49: end
+      frames.push({
+        line: 49, left: 0, right: nums.length - 1, mid: null, i: null, j: null, k: null,
+        arr: [...arr], tempL: [], tempR: [],
+        vars: [], known: [],
+        action: `MergeSort execution complete. Full array is sorted!`
+      });
+
+      return frames;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       RENDER HELPERS
+       ═══════════════════════════════════════════════════ */
+
+    function renderCellHTML(val, i, frame, isBuffer = false, activePtr = null, isTargetArray = false) {
+      const live = !isBuffer && i >= frame.left && i <= frame.right;
+      const isPointerOnCell = activePtr !== null && activePtr === i;
+      
+      let cls = "";
+      if (isTargetArray) {
+        // In original array write phases:
+        const isCurrentlyWritten = frame.k !== null && i === frame.k - 1;
+        const alreadyMerged = frame.k !== null && i >= frame.left && i < frame.k;
+        const sortedDone = frame.decision === "sorted" || frame.decision === "done";
+        
+        if (sortedDone && live) {
+          cls = "found"; // full sorted highlighted green
+        } else if (isCurrentlyWritten) {
+          cls = "found"; // green when written
+        } else if (alreadyMerged) {
+          cls = "found"; // green when merged
+        } else if (frame.mid !== null && frame.decision === "compare" && i === frame.k) {
+          cls = "mid"; // amber when target
+        } else if (live) {
+          cls = "live"; // blue for active scope
+        } else {
+          cls = "muted";
+        }
+      } else if (isBuffer) {
+        if (isPointerOnCell) {
+          cls = "mid"; // compared elements highlighted amber
+        } else {
+          cls = "live";
+        }
+      } else {
+        // Walkthrough array defaults
+        const inScope = frame.line !== undefined && frame.left !== undefined && frame.right !== undefined && i >= frame.left && i <= frame.right;
+        const isCurrentWrite = frame.k !== null && i === frame.k;
+        const isSortedDone = frame.line === 49;
+        
+        if (isSortedDone) {
+          cls = "found";
+        } else if (isCurrentWrite) {
+          cls = "found";
+        } else if (inScope) {
+          cls = "live";
+        } else {
+          cls = "muted";
+        }
+      }
+
+      // Pointer labels below
+      const ptrs = [];
+      if (!isBuffer) {
+        if (i === frame.left) ptrs.push("left");
+        if (i === frame.right) ptrs.push("right");
+        if (i === frame.mid) ptrs.push("mid");
+        if (i === frame.k) ptrs.push("k");
+      } else {
+        if (isPointerOnCell) ptrs.push(isBuffer); // "i" or "j"
+      }
+      const ptrLabel = ptrs.join("·");
+
+      let ptrCls = "ptr";
+      if (ptrLabel) {
+        ptrCls += " on";
+        if (cls === "mid" || ptrLabel.includes("mid")) ptrCls += " mid-label";
+        if (cls === "found" || ptrLabel.includes("k")) ptrCls += " found-label";
+      }
+
+      return `
+        <div class="cell-wrap">
+          <div class="idx">${i}</div>
+          <div class="cell ${cls}">${val}</div>
+          <div class="${ptrCls}">${ptrLabel || "&nbsp;"}</div>
+        </div>
+      `;
+    }
+
+    // Render Section 4 Viz
+    function drRender(frame) {
+      const nums = current.nums;
+      
+      // Render main array
+      document.getElementById("dr-array").innerHTML = frame.arr.map((v, i) => 
+        renderCellHTML(v, i, frame, false, null, true)
+      ).join("");
+
+      // Render L and R buffers if active
+      const bufCon = document.getElementById("dr-buffers-con");
+      if (frame.tempL.length > 0 || frame.tempR.length > 0) {
+        bufCon.style.display = "flex";
+        document.getElementById("dr-buf-L").innerHTML = frame.tempL.map((v, i) => 
+          renderCellHTML(v, i, frame, "i", frame.i, false)
+        ).join("");
+        document.getElementById("dr-buf-R").innerHTML = frame.tempR.map((v, i) => 
+          renderCellHTML(v, i, frame, "j", frame.j, false)
+        ).join("");
+      } else {
+        bufCon.style.display = "none";
+      }
+
+      // Update variables in formula grid
+      document.getElementById("dr-val-left").textContent = frame.left;
+      document.getElementById("dr-val-right").textContent = frame.right;
+      document.getElementById("dr-val-mid").textContent = frame.mid === null ? "—" : frame.mid;
+      document.getElementById("dr-val-i").textContent = frame.i === null ? "—" : frame.i;
+      document.getElementById("dr-val-j").textContent = frame.j === null ? "—" : frame.j;
+      document.getElementById("dr-val-k").textContent = frame.k === null ? "—" : frame.k;
+      document.getElementById("dr-val-decision").textContent = frame.decision;
+
+      // Narration
+      document.getElementById("dr-narration").textContent = frame.action;
+
+      // Step count
+      document.getElementById("dr-count").textContent = `${drCur + 1}/${drSteps.length}`;
+    }
+
+    // Render Section 6 Walkthrough
+    function cvRender(frame) {
+      // Highlight code line
+      document.querySelectorAll("#cv-code-panel .cv-line").forEach(el => el.classList.remove("active", "active-match"));
+      const lineEl = document.getElementById("cvL" + frame.line);
+      if (lineEl) {
+        lineEl.classList.add(frame.line === 49 ? "active-match" : "active");
+      }
+
+      // Render array inside walkthrough state panel
+      document.getElementById("cv-arr-con").innerHTML = `
+        <div style="display: flex; gap: 6px; justify-content: center; align-items: flex-end;">
+          ${frame.arr.map((v, i) => renderCellHTML(v, i, frame, false, null, false)).join("")}
+        </div>
+      `;
+
+      // Render L and R buffers in walkthrough state panel
+      const bufCon = document.getElementById("cv-buffers-con");
+      if (frame.tempL.length > 0 || frame.tempR.length > 0) {
+        bufCon.style.display = "flex";
+        document.getElementById("cv-buf-L").innerHTML = frame.tempL.map((v, i) => 
+          renderCellHTML(v, i, frame, "i", frame.i, false)
+        ).join("");
+        document.getElementById("cv-buf-R").innerHTML = frame.tempR.map((v, i) => 
+          renderCellHTML(v, i, frame, "j", frame.j, false)
+        ).join("");
+      } else {
+        bufCon.style.display = "none";
+      }
+
+      // Update variable cards
+      const keys = ["left", "right", "mid", "i", "j", "k"];
+      const mapping = { left: frame.left, right: frame.right, mid: frame.mid, i: frame.i, j: frame.j, k: frame.k };
+      const active = new Set(frame.vars || []);
+      const known = new Set(frame.known || []);
+
+      keys.forEach(key => {
+        const el = document.getElementById("cv-v-" + key);
+        if (!el) return;
+        const val = mapping[key];
+        el.querySelector(".cv-var-val").textContent = (val === null || val === undefined) ? "—" : val;
+
+        el.classList.remove("hl", "hl-match", "dim");
+        if (!known.has(key)) {
+          el.classList.add("dim");
+        } else if (active.has(key)) {
+          el.classList.add(frame.line === 49 ? "hl-match" : "hl");
+        }
+      });
+
+      // Update narration
+      const narr = document.getElementById("cv-narration");
+      narr.textContent = frame.action;
+      narr.className = "cv-narration" + (frame.line === 49 ? " is-match" : " is-active");
+
+      // Step count
+      document.getElementById("cv-count").textContent = `${cvCur + 1}/${cvSteps.length}`;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       INTERACTION CONTROL FUNCTIONS
+       ═══════════════════════════════════════════════════ */
+
+    function drNext() {
+      if (drCur < drSteps.length - 1) {
+        drCur++;
+        drRender(drSteps[drCur]);
+      } else {
+        drStopPlay();
+      }
+    }
+
+    function drPrev() {
+      if (drCur > 0) {
+        drCur--;
+        drRender(drSteps[drCur]);
+      }
+    }
+
+    function drReset() {
+      drStopPlay();
+      drCur = 0;
+      drRender(drSteps[0]);
+    }
+
+    function cvNext() {
+      if (cvCur < cvSteps.length - 1) {
+        cvCur++;
+        cvRender(cvSteps[cvCur]);
+      } else {
+        cvStopPlay();
+      }
+    }
+
+    function cvPrev() {
+      if (cvCur > 0) {
+        cvCur--;
+        cvRender(cvSteps[cvCur]);
+      }
+    }
+
+    function cvReset() {
+      cvStopPlay();
+      cvCur = 0;
+      cvRender(cvSteps[0]);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       EXAMPLES & CUSTOM LOADER WIRING
+       ═══════════════════════════════════════════════════ */
+
+    function loadExample(idx) {
+      current = JSON.parse(JSON.stringify(PRESETS[idx]));
+
+      // Update custom form inputs
+      document.getElementById("custom-array").value = current.nums.join(", ");
+      
+      document.querySelectorAll(".ex-btn").forEach((b, i) => b.classList.toggle("active", i === idx));
+      document.getElementById("custom-msg").className = "small-msg";
+      document.getElementById("custom-msg").textContent = `Loaded preset ${idx + 1}.`;
+
+      rebuildAllTraces();
+    }
+
+    function parseCustom() {
+      const arrInput = document.getElementById("custom-array").value;
+      const msg = document.getElementById("custom-msg");
+
+      try {
+        const nums = arrInput.split(",").map(s => s.trim()).filter(Boolean).map(Number);
+        
+        if (nums.some(Number.isNaN) || nums.length === 0) {
+          throw new Error("Invalid array. Enter numbers separated by commas.");
+        }
+
+        if (nums.length > 10) {
+          throw new Error("Keep elements limit <= 10 for interactive visual tree readability.");
+        }
+
+        current = { nums };
+        document.querySelectorAll(".ex-btn").forEach(b => b.classList.remove("active"));
+        msg.className = "small-msg";
+        msg.textContent = "Custom array loaded successfully.";
+
+        rebuildAllTraces();
+      } catch (err) {
+        msg.className = "small-msg bad";
+        msg.textContent = err.message;
+      }
+    }
+
+    function rebuildAllTraces() {
+      // Rebuild visualization (Section 4)
+      drSteps = buildDrTrace(current.nums);
+      drReset();
+
+      // Rebuild walkthrough (Section 6)
+      cvSteps = buildCvTrace(current.nums);
+      cvReset();
+    }
+
+    /* ═══════════════════════════════════════════════════
+       INITIALIZATIONS
+       ═══════════════════════════════════════════════════ */
+
+    function initStaticSection2() {
+      // Static zipping array rendering
+      const staticNums = [2, 5, 4, 1, 3];
+      const staticFrame = {
+        left: 0,
+        right: 2,
+        mid: 1,
+        i: 1,
+        j: 0,
+        k: 1,
+        tempL: [2, 5],
+        tempR: [4]
+      };
+      
+      document.getElementById("structure-array").innerHTML = staticNums.map((v, i) => 
+        renderCellHTML(v, i, staticFrame, false, null, true)
+      ).join("");
+      
+      document.getElementById("structure-buf-L").innerHTML = staticFrame.tempL.map((v, i) => 
+        renderCellHTML(v, i, staticFrame, "i", staticFrame.i, false)
+      ).join("");
+      
+      document.getElementById("structure-buf-R").innerHTML = staticFrame.tempR.map((v, i) => 
+        renderCellHTML(v, i, staticFrame, "j", staticFrame.j, false)
+      ).join("");
+    }
+
+    // Connect auto-play buttons to controllers
+    document.getElementById("dr-bplay").addEventListener("click", () => {
+      const speedSelect = document.getElementById("dr-speed");
+      window.drTimerSpeed = Number(speedSelect.value);
+      drTogglePlay();
+    });
+
+    document.getElementById("cv-bplay").addEventListener("click", cvTogglePlay);
+
+    // Watch play speed selector change
+    document.getElementById("dr-speed").addEventListener("change", (e) => {
+      if (drTimer) {
+        drStopPlay();
+        drTogglePlay();
+      }
+    });
+
+    // Custom helper for manual overlay of 1, 2, 3 example shortcut keys
+    document.addEventListener("keydown", e => {
+      if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
+      if (["1", "2", "3"].includes(e.key)) {
+        e.preventDefault();
+        loadExample(Number(e.key) - 1);
+      }
+    });
+
+    // Page Load
+    initStaticSection2();
+    cvBuildCode(CODE_LINES);
+    rebuildAllTraces();
+  </script>
+</body>
+</html>

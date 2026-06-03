@@ -213,8 +213,8 @@
       "merge-k-sorted-lists",
       "count-of-smaller-numbers-after-self"
     ],
-    "lesson_status": "generated",
-    "lesson_path": "algorithms/merge-sort/lesson.html"
+    "lesson_status": "none",
+    "lesson_path": null
   },
   {
     "id": "quicksort",
