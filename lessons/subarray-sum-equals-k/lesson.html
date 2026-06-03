@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subarray Sum Equals K — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC CSS ONLY — prefix-sum counter panel + light Medium badge */
+  /* Do not redefine any class already in static/lesson.css */
+
+  /* badge-med is already in lesson.css — no override needed */
+
+  /* Prefix sum map display — sum → count */
+  .ss-psum-map{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:var(--mono);font-size:12px;padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);border-radius:6px;min-height:40px;}
+  .ss-psum-map-label{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-right:6px;}
+  .ss-psum-map-empty{color:var(--text3);font-style:italic;font-size:11px;}
+  .ss-psum-entry{display:inline-flex;gap:4px;align-items:center;padding:3px 8px;background:var(--bg);border:0.5px solid var(--border);border-radius:4px;color:var(--text2);}
+  .ss-psum-entry .k{font-weight:600;color:var(--text);}
+  .ss-psum-entry .cnt{color:var(--text3);}
+  .ss-psum-entry.hl{background:var(--bg-info);border-color:var(--border-info);color:var(--text-info);}
+  .ss-psum-entry.hl .k,.ss-psum-entry.hl .cnt{color:var(--text-info);}
+
+  /* Array cell colouring */
+  .nl-num.ss-i{background:var(--bg-warn);border-color:var(--border-warn);color:var(--text-warn);}
+  .nl-num.ss-match{background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Subarray Sum Equals K</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/subarray-sum-equals-k/" target="_blank">LC #560</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Arrays · Hash Map · Prefix Sum</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <p class="acard-q">What is a 'contiguous subarray'?</p>
+      <p class="acard-a">A contiguous subarray is defined by a start and end index. All elements between (inclusive) must be included.</p>
+      <span class="acard-u">→ track positions; compute sums over ranges</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">If no subarray sums to K, what do I return?</p>
+      <p class="acard-a">Return 0 — no such subarray exists.</p>
+      <span class="acard-u">→ answer is always ≥ 0; count subarrays</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Can K be negative, or elements be negative?</p>
+      <p class="acard-a">Yes — K can be any integer, and elements can be negative.</p>
+      <span class="acard-u">→ prefix-sum approach handles negative numbers naturally</span>
+    </div>
+    <div class="acard">
+      <p class="acard-q">Do I need to return indices, or just the count?</p>
+      <p class="acard-a">Just the count of subarrays. Return type is an integer.</p>
+      <span class="acard-u">→ count occurrences; use a frequency map</span>
+    </div>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">Assumptions we carry forward</p>
+    <p class="infobox-d">Input is an array of integers (positive, negative, or zero). K is an integer (positive, negative, or zero). We want the count of contiguous subarrays that sum to K. Output is a single integer: the count.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Trade 'check every subarray' for 'prefix sums and their complements'.</p>
+
+  <p class="body">The naive approach checks every subarray and sums it — O(n²) subarrays times O(n) summing each = O(n³), or O(n²) with a running sum. The key insight: if the cumulative sum up to index j is S_j and the cumulative sum up to index i is S_i (where i < j), then the subarray [i+1, j] sums to S_j − S_i. So if we want a subarray summing to K, we ask: "for the current cumulative sum S, how many times have I seen the value (S − K) before?" Each prior occurrence marks the start of a subarray that ends here with sum K.</p>
+
+  <!-- Foundational visual: a strip of array cells with cumulative sum line below. -->
+  <div style="margin:1.25rem 0;padding:1rem;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border)">
+
+    <!-- Legend -->
+    <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:.75rem;padding:.375rem .625rem;background:var(--bg);border-radius:var(--r);border:0.5px dashed var(--border)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-info);border:1.5px solid var(--border-info);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>current i</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-warn);border:1.5px solid var(--border-warn);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>prefix sum seen before</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg-success);border:1.5px solid var(--border-success);border-radius:2px;vertical-align:middle;margin-right:.25rem"></span>match found (sum = K)</span>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.5rem">nums = [1, 1, 1] &nbsp;·&nbsp; K = 2</div>
+
+    <!-- Array row -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:.625rem">
+      <div style="width:80px;font-family:var(--mono);font-size:10px;color:var(--text3);text-align:right">nums</div>
+      <div id="si-strip" class="number-line" style="gap:4px"></div>
+    </div>
+
+    <!-- Prefix sum computation -->
+    <div style="display:flex;gap:1rem;align-items:center;margin:.625rem 0;font-family:var(--mono);font-size:13px;flex-wrap:wrap">
+      <span>prefix_sum += <b id="si-delta" style="color:var(--text-info)">—</b> → <b id="si-psum" style="color:var(--text-info)">—</b></span>
+      <span id="si-count-pill" style="display:none;padding:3px 10px;border-radius:6px;background:var(--bg-success);border:0.5px solid var(--border-success);color:var(--text-success);font-weight:700">count: <span id="si-count-val">—</span></span>
+    </div>
+
+    <!-- Prefix sum map display -->
+    <div style="display:flex;gap:8px;align-items:center;margin:.625rem 0;font-family:var(--mono);font-size:12px;flex-wrap:wrap">
+      <span style="color:var(--text3)">prefix_count =</span>
+      <span id="si-map">{}</span>
+    </div>
+
+    <!-- Caption -->
+    <div id="si-caption" style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:.5rem;padding-top:.5rem;border-top:0.5px dashed var(--border);min-height:32px">—</div>
+
+    <!-- Controls -->
+    <div class="ctrl-row" style="margin-top:.875rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ctrl-btn" onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn" onclick="siNext()">Next →</button>
+      <button class="ctrl-btn" onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr" style="margin-left:.5rem;font-family:var(--mono);font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Walk <code>i</code> from <code>0</code> to <code>n−1</code>. Keep a hash map <code>prefix_count</code> from cumulative sum to frequency. Initialize it with {0: 1}. At each i, add nums[i] to prefix_sum. Check if (prefix_sum - K) exists in the map; if yes, add its count to the result. Then increment the map entry for the current prefix_sum. The initial entry {0: 1} handles subarrays starting at index 0.</p>
+  </div>
+
+  <!-- Equivalence chain -->
+  <p class="body" style="margin-top:1rem">Why a hash map is the right structure:</p>
+  <div class="chain-box">
+    <div class="chain-row">
+      <span class="chain-sym"></span>
+      <div class="chain-content">
+        <div class="chain-text">find the total number of contiguous subarrays that sum to K</div>
+        <div class="chain-note">the problem</div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">for each i: if the cumulative sum prefix[j] - prefix[i-1] = K, then subarray [i, j] sums to K</div>
+        <div class="chain-note">reframe "check every subarray" as "count prefix complements" — one question per element</div>
+        <div class="chain-example">
+          <span class="pill n">prefix[j]=5, K=2</span><span class="arrow">→</span>
+          <span class="pill n">count how many times prefix=3 appeared before</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text">"have I seen prefix (S - K) before, and how many times?" → hash map answers in O(1)</div>
+        <div class="chain-note">replace per-step prefix scan with a cumsum → frequency dictionary</div>
+        <div class="chain-example">
+          <span class="pill n">scan: O(n) per query</span><span class="arrow">→</span>
+          <span class="pill ok">hash probe: O(1)</span>
+          <span style="margin:0 4px;color:var(--text3)">·</span>
+          <span class="pill n">total: O(n²)</span><span class="arrow">→</span>
+          <span class="pill ok">O(n)</span>
+        </div>
+      </div>
+    </div>
+    <div class="chain-row">
+      <span class="chain-sym">≡</span>
+      <div class="chain-content">
+        <div class="chain-text"><span class="chain-hl">count occurrences</span> of each prefix sum — every match is a valid subarray</div>
+        <div class="chain-note">store frequency, not just presence; each occurrence contributes to the result</div>
+        <div class="chain-example">
+          <span class="pill n">prefix seen 3 times</span><span class="arrow">→</span>
+          <span class="pill n">find complement</span><span class="arrow">→</span>
+          <span class="pill ok">add 3 to count</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force: check every subarray</p>
+  <p class="body">For each start index <code>i</code>, try every end index <code>j ≥ i</code>; compute the sum of the subarray, and if it equals K, increment a counter. About n²/2 subarrays to check. Each sum is O(n), so total is O(n³), or O(n²) with a running sum.</p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">[1, 1, 1], k=2</button>
+    <button class="ex-btn" id="bf-ex1" onclick="bfLoadEx(1)">[1, 2, 1, 2, 1], k=3</button>
+    <button class="ex-btn" id="bf-ex2" onclick="bfLoadEx(2)">[1], k=1</button>
+  </div>
+  <div class="bf-nums" id="bf-nums"></div>
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text2);margin:.5rem 0">
+    i=<span id="bf-i" style="font-weight:600;color:var(--text)">—</span>
+    &nbsp;j=<span id="bf-j" style="font-weight:600;color:var(--text-info)">—</span>
+    &nbsp;·&nbsp; sum: <span id="bf-sum" style="font-weight:600;color:var(--text2)">0</span>
+    &nbsp;count: <span id="bf-count" style="font-weight:600;color:var(--text-danger)">0</span>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:.625rem">
+    <button class="ctrl-btn" id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn" onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(n²) time, O(1) space</p>
+    <p class="infobox-d">Two nested loops over n elements. In the worst case (answer at the very end), we check all n(n+1)/2 ≈ n²/2 subarrays. With a running sum, we avoid recalculating, giving O(n²) total. For LC's 10⁴ limit that is up to 5×10⁷ operations — borderline TLE.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal Code</button>
+  <div id="code-bf" class="code-block">
+<pre class="cb"><span class="kw">int</span> <span class="fn">subarraySum_BF</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums, <span class="kw">int</span> k) {
+    <span class="kw">int</span> n = nums.size();
+    <span class="kw">int</span> count = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        <span class="kw">int</span> sum = <span class="nu">0</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> j = i; j &lt; n; j++) {
+            sum += nums[j];
+            <span class="kw">if</span> (sum == k) {
+                count++;
+            }
+        }
+    }
+    <span class="kw">return</span> count;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Two translations from O(n²) to O(n)</p>
+  <p class="body">The brute force checks "does this subarray sum to K?" once per subarray. Two translations turn that into one lookup per element.</p>
+
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 1 — Subarray sums → prefix sum complements</p>
+        <p class="wt-desc">Instead of summing each subarray [i, j] individually, note that every subarray sum is the difference of two prefix sums: nums[i..j] = prefix[j] - prefix[i-1]. So if we want a subarray summing to K, we ask: "for the current prefix sum, how many times have I seen (current_sum - K) before?" Each occurrence tells us about a different subarray ending at this position that sums to K.</p>
+        <p class="wt-gain">→ the problem is now "count prefix-sum complements", not "check each subarray"</p>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <p class="wt-name">Translation 2 — Track frequency of prefix sums, in one pass</p>
+        <p class="wt-desc">For each prefix sum value, maintain its frequency (how many times it's appeared). At each position, compute the current prefix sum and ask: "how many times have I seen (current_sum - K)?" Add that count to the result. Then increment the frequency of the current sum. One pass; each step is O(1) average. Initialize with {0: 1} because an empty prefix has sum 0.</p>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:.625rem .875rem;margin:.5rem 0;font-family:var(--mono);font-size:12px;line-height:2;color:var(--text2)">
+          <div>prefix_sum += nums[i]</div>
+          <div>complement = prefix_sum - k</div>
+          <div>if complement in prefix_count  →  count += prefix_count[complement]</div>
+          <div>prefix_count[prefix_sum]++  &nbsp;<span style="color:var(--text3)">// record this sum</span></div>
+        </div>
+        <p class="wt-gain">→ O(n²) pair-check becomes O(n) hash-map lookup</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox info" style="margin-top:.875rem">
+    <p class="infobox-t">Why initialise prefix_count[0] = 1?</p>
+    <p class="infobox-d">The empty prefix (before any elements) has sum 0. If a subarray from index 0 to j sums to K, then prefix[j] - prefix[-1] = K, i.e., prefix[j] = K. When we compute (prefix[j] - K), we'd look for value 0 (the empty prefix). By pre-storing {0: 1}, we automatically count subarrays starting at index 0 without special-casing.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t"><b>Initialise</b> a hash map <code>prefix_count</code> with entry {0: 1}.</span></div>
+    <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t"><b>Set</b> count = 0 and prefix_sum = 0.</span></div>
+    <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t"><b>Walk</b> <code>i</code> from <code>0</code> to <code>n−1</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t"><b>Update</b> prefix_sum by adding <code>nums[i]</code>.</span></div>
+    <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t"><b>Compute</b> complement = prefix_sum - K.</span></div>
+    <div class="algo-step"><span class="algo-n">6.</span><span class="algo-t"><b>If</b> complement is in <code>prefix_count</code>, add <code>prefix_count[complement]</code> to count.</span></div>
+    <div class="algo-step"><span class="algo-n">7.</span><span class="algo-t"><b>Increment</b> <code>prefix_count[prefix_sum]</code> by 1.</span></div>
+    <div class="algo-step"><span class="algo-n">8.</span><span class="algo-t"><b>Return</b> count after the loop completes.</span></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+<pre class="cb"><span class="kw">int</span> <span class="fn">subarraySum</span>(<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums, <span class="kw">int</span> k) {
+    <span class="tp">unordered_map</span>&lt;<span class="kw">int</span>, <span class="kw">int</span>&gt; prefix_count;  <span class="cm">// prefix_sum → frequency</span>
+    prefix_count[<span class="nu">0</span>] = <span class="nu">1</span>;                          <span class="cm">// empty prefix</span>
+    <span class="kw">int</span> count = <span class="nu">0</span>;
+    <span class="kw">int</span> prefix_sum = <span class="nu">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; nums.size(); i++) {
+        prefix_sum += nums[i];
+        <span class="kw">int</span> complement = prefix_sum - k;
+        <span class="kw">if</span> (prefix_count.count(complement)) {
+            count += prefix_count[complement];    <span class="cm">// add frequency</span>
+        }
+        prefix_count[prefix_sum]++;               <span class="cm">// record this prefix</span>
+    }
+    <span class="kw">return</span> count;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Walk through the optimal C++ code one statement at a time. Variable cards dim until their initialising line fires; the active card lights cyan. The <code>prefix_count</code> map on the right shows the frequency of prefix sums recorded so far.</p>
+
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-k">
+          <div class="cv-var-name">k</div>
+          <div class="cv-var-val">—</div>
+        </div>
+        <div class="cv-var-card dim" id="cv-v-count">
+          <div class="cv-var-name">count</div>
+          <div class="cv-var-val">—</div>
+        </div>
+        <div class="cv-var-card dim" id="cv-v-prefix_sum">
+          <div class="cv-var-name">prefix_sum</div>
+          <div class="cv-var-val">—</div>
+        </div>
+        <div class="cv-var-card dim" id="cv-v-i">
+          <div class="cv-var-name">i</div>
+          <div class="cv-var-val">—</div>
+        </div>
+        <div class="cv-var-card dim" id="cv-v-x">
+          <div class="cv-var-name">nums[i]</div>
+          <div class="cv-var-val">—</div>
+        </div>
+        <div class="cv-var-card dim" id="cv-v-complement">
+          <div class="cv-var-name">complement</div>
+          <div class="cv-var-val">—</div>
+        </div>
+        <div class="cv-var-card dim" id="cv-v-freq">
+          <div class="cv-var-name">freq in map</div>
+          <div class="cv-var-val">—</div>
+        </div>
+      </div>
+      <div id="cv-arr-con" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--r);padding:.5rem .75rem;margin:.5rem 0;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:.375rem">nums = [...]</div>
+        <div id="cv-strip" class="number-line" style="gap:4px"></div>
+      </div>
+      <div style="margin-top:.5rem">
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">prefix_count (sum → frequency)</div>
+        <div class="ss-psum-map" id="cv-map">
+          <span class="ss-psum-map-empty">empty</span>
+        </div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">Ex 1 · [1, 1, 1], k=2</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">Ex 2 · [1, 2, 1, 2, 1], k=3</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">Ex 3 · edge case</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Interactive dry run</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">fast: [1, 1, 1], k=2</button>
+    <button class="ex-btn" id="dr-ex1" onclick="drLoadEx(1)">medium: [1, 2, 1, 2, 1], k=3</button>
+    <button class="ex-btn" id="dr-ex2" onclick="drLoadEx(2)">edge: [1], k=1</button>
+  </div>
+  <div class="num-strip" id="dr-strip"></div>
+  <div style="margin:.5rem 0">
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">prefix_count (sum → frequency)</div>
+    <div class="ss-psum-map" id="dr-map"><span class="ss-psum-map-empty">empty</span></div>
+  </div>
+  <div class="panels-fixed">
+    <div class="formula-panel" id="dr-formula">
+      <div class="formula-grid">
+        <div><p class="fitem-label">i</p><p class="fitem-val" id="f-i">—</p><p class="fitem-sub">current idx</p></div>
+        <div><p class="fitem-label">nums[i]</p><p class="fitem-val" id="f-x">—</p><p class="fitem-sub">current value</p></div>
+        <div><p class="fitem-label" style="color:var(--text-info)">prefix_sum</p><p class="fitem-val" id="f-psum">—</p><p class="fitem-sub">cumulative</p></div>
+        <div><p class="fitem-label" style="color:var(--text-info)">complement</p><p class="fitem-val" id="f-comp">—</p><p class="fitem-sub">sum - k</p></div>
+        <div><p class="fitem-label" style="color:var(--text-success)">matches</p><p class="fitem-val" id="f-match">—</p><p class="fitem-sub">if found</p></div>
+      </div>
+      <div class="formula-eq" id="dr-feq">Select an example to begin.</div>
+    </div>
+    <div class="step-panel" id="dr-step">
+      <p class="step-what" id="dr-what">—</p>
+      <p class="step-why" id="dr-why">Use the controls below to step through.</p>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="ctrl-btn" id="dr-bp" onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn" id="dr-bn" onclick="drNext()">Next →</button>
+    <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+  <div style="margin-top:.875rem">
+    <p style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-bottom:4px">Total Count</p>
+    <p id="dr-result" style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--text)">—</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+  <div class="corner"><div class="cnum">1</div><div>
+    <p class="corner-title">All elements are 0, K = 0 — [0, 0, 0]</p>
+    <p class="corner-body">Prefix sums are all 0. At i=0, prefix=0, complement=0, found 1 (the initial entry). At i=1, prefix=0, complement=0, found 2 (initial + i=0). At i=2, found 3. Total: 1+2+3 = 6 = n(n+1)/2. Correct.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">2</div><div>
+    <p class="corner-title">All elements are K — [5, 5, 5], K = 5</p>
+    <p class="corner-body">Prefix sums are 0, 5, 10, 15. At i=0, prefix=5, complement=0, found 1. At i=1, prefix=10, complement=5, found 1. At i=2, prefix=15, complement=10, found 1. Total: 3 (subarrays [0], [1], [2] alone). Correct.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">3</div><div>
+    <p class="corner-title">No subarray sums to K — [1, 2, 3], K = 100</p>
+    <p class="corner-body">Prefix sums are 0, 1, 3, 6. Complements are 100, 99, 97, 94 — none match. Count stays 0. Correct.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">4</div><div>
+    <p class="corner-title">Negative elements — [1, -1, 1, 1], K = 1</p>
+    <p class="corner-body">Prefix sums are 0, 1, 0, 1, 2. At i=0, prefix=1, complement=0, found 1. At i=1, prefix=0, complement=−1, not found. At i=2, prefix=1, complement=0, found 2. At i=3, prefix=2, complement=1, found 2. Total: 1+2+2=5. Subarrays: [0..0]=[1], [0..2]=[1,−1,1], [1..3]=[−1,1,1], [2..2]=[1], [3..3]=[1]. Correct.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">5</div><div>
+    <p class="corner-title">Single element equals K — [5], K = 5</p>
+    <p class="corner-body">At i=0, prefix=5, complement=0, found 1 (the initial entry). Count=1. Correct.</p>
+  </div></div>
+  <div class="corner"><div class="cnum">6</div><div>
+    <p class="corner-title">Duplicate prefix sums — [1, 1, -1, 1], K = 2</p>
+    <p class="corner-body">Prefix sums are 0, 1, 2, 1, 2. At i=1, prefix=2, complement=0, found 1. At i=2, prefix=1, complement=-1, not found. At i=3, prefix=2, complement=0, found 1. Total: 1+1=2. The map correctly tracks frequency: {0:1, 1:2, 2:2} at the end. Each occurrence of value 2 represents a different subarray summing to K. Correct.</p>
+  </div></div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Initialise prefix_count[0] = 1:</b> the empty prefix (sum 0) represents subarrays starting at index 0. Do not omit.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Count, not just check:</b> use a frequency map. When (prefix_sum - K) is found, add its frequency to the result, not just 1.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Use count() or find(), not operator[]:</b> <code>prefix_count[complement]</code> would insert a default-zero entry on a miss, corrupting the map. Use <code>if (prefix_count.count(complement))</code> to check safely.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>Order of operations: probe before increment:</b> compute the complement, check the map (which contains only indices < i), then increment. This ensures we don't count an element with itself.</p></div>
+    <div class="chk-item"><div class="chk-icon">✓</div><p class="chk-text"><b>K and prefix_sum must be signed:</b> both can be negative. Use <code>int</code> or <code>long long</code> depending on input bounds.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Hash map prefix sum (optimal)</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Brute force</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">Time O(n)</span><span class="tag tag-space">Space O(n)</span>
+    <p class="body" style="margin-top:.5rem">The solution taught above. Walk once, maintain a prefix-sum frequency map. Optimal time complexity. You must read every element at least once, and each step involves O(1) average lookups.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">Time O(n²)</span><span class="tag tag-space">Space O(1)</span>
+    <p class="body" style="margin-top:.5rem">Nested loops over all subarrays; compute each sum. Correct and simple, but slow. Passes LC's 10⁴ limit with tight constants, but a clear signal of not reaching for the optimal O(n) technique.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard"><p class="ccard-l">Time</p><p class="ccard-v">O(n)</p><p class="ccard-n">One pass; each step does an O(1) average hash probe and an O(1) increment. Worst case is O(n) per step under adversarial hashing, but amortised guarantees on <code>unordered_map</code> give O(n) total in practice.</p></div>
+    <div class="ccard"><p class="ccard-l">Space</p><p class="ccard-v">O(n)</p><p class="ccard-n">The map stores at most n unique prefix sums. In practice, many prefixes may repeat (especially with large arrays and random values), so the map size is often much smaller. No recursion, no stack concerns.</p></div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">What to remember for similar problems</p>
+  <div class="takehome">
+    <p class="body">The pattern: <strong>scan once with a running prefix value, count how many times the complement (value - target) has been seen, and maintain a frequency map</strong>. This technique applies to any problem asking for the count of subarrays with a cumulative property tied to prefix value.</p>
+    <p class="body">Key difference from Contiguous Array: instead of checking "balance returns to previous value", we ask "how many times has the complement appeared?" The frequency map is essential.</p>
+    <p class="body">Related problems:</p>
+    <p class="body"><b>LC 525 — Contiguous Array</b> — same prefix-sum technique, but checking for balance (equal 0s and 1s) instead of a target sum. Only tracks first occurrence, not frequency.</p>
+    <p class="body"><b>LC 523 — Continuous Subarray Sum</b> — asks if there exists a subarray whose sum is divisible by K. Use (sum % K) as the prefix key; same structure, different modulo condition.</p>
+    <p class="body"><b>LC 974 — Subarray Sums Divisible by K</b> — asks for the count of subarrays whose sum is divisible by K. Use (sum % K) as the prefix key; otherwise identical to this problem.</p>
+    <p class="body"><b>LC 1099 — Two Sum Less Than K</b> — asks for the maximum sum *less than* K. Hash map breaks (range query); optimal is sort + two-pointer.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+
+<script>
+  // Hardcoded examples
+  const EXAMPLES = [
+    { nums: [1, 1, 1], k: 2, desc: "fast: [1, 1, 1], k=2" },
+    { nums: [1, 2, 1, 2, 1], k: 3, desc: "medium: [1, 2, 1, 2, 1], k=3" },
+    { nums: [1], k: 1, desc: "edge: [1], k=1" },
+  ];
+
+  /* ══════════════════════════════
+     §1 animation
+  ══════════════════════════════ */
+  function siGenSteps(nums, k) {
+    const steps = [];
+    const prefix_count = {};
+    prefix_count[0] = 1;
+    let prefix_sum = 0;
+    let count = 0;
+
+    steps.push({
+      i: -1, prefix_sum, prefix_count: Object.assign({}, prefix_count), complement: null, matches: 0, count: 0, phase: 'init',
+      caption: `Init: prefix_count[0] = 1. Walk i from 0 to n-1; update prefix and count complements.`,
+    });
+
+    for (let i = 0; i < nums.length; i++) {
+      const delta = nums[i];
+      const oldSum = prefix_sum;
+      prefix_sum += delta;
+      
+      // Step 1: Show the update
+      steps.push({
+        i, prefix_sum, prefix_count: Object.assign({}, prefix_count), complement: null, matches: 0, count, phase: 'update',
+        caption: `i=${i}: nums[${i}]=${delta} → prefix_sum = ${oldSum} + ${delta} = ${prefix_sum}`,
+      });
+      
+      // Step 2: Check complement
+      const complement = prefix_sum - k;
+      const matches = prefix_count[complement] || 0;
+      
+      if (matches > 0) {
+        count += matches;
+        steps.push({
+          i, prefix_sum, prefix_count: Object.assign({}, prefix_count), complement, matches, count, phase: 'match',
+          caption: `complement = ${prefix_sum} - ${k} = ${complement}. Found ${matches} time(s) → count += ${matches} = ${count}`,
+        });
+      } else {
+        steps.push({
+          i, prefix_sum, prefix_count: Object.assign({}, prefix_count), complement, matches: 0, count, phase: 'nomatch',
+          caption: `complement = ${prefix_sum} - ${k} = ${complement}. Not found.`,
+        });
+      }
+      
+      // Step 3: Increment map
+      if (!prefix_count[prefix_sum]) prefix_count[prefix_sum] = 0;
+      prefix_count[prefix_sum]++;
+      
+      steps.push({
+        i, prefix_sum, prefix_count: Object.assign({}, prefix_count), complement: null, matches: 0, count, phase: 'store',
+        caption: `prefix_count[${prefix_sum}]++ → now ${prefix_count[prefix_sum]}`,
+      });
+    }
+    
+    return steps;
+  }
+
+  let siSteps = [], siCur = 0, siTimer = null;
+
+  function siRender(st) {
+    const strip = document.getElementById('si-strip');
+    strip.innerHTML = '';
+    const nums = EXAMPLES[0].nums;
+    
+    nums.forEach((v, idx) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'nl-wrap';
+      const cell = document.createElement('div');
+      cell.className = 'nl-num';
+      if (idx === st.i && st.i >= 0) cell.classList.add('ss-i');
+      cell.textContent = v;
+      const lbl = document.createElement('div');
+      lbl.className = 'nl-label';
+      lbl.textContent = idx === st.i && st.i >= 0 ? `${idx} ← i` : idx;
+      wrap.appendChild(cell);
+      wrap.appendChild(lbl);
+      strip.appendChild(wrap);
+    });
+
+    document.getElementById('si-delta').textContent = st.i >= 0 ? nums[st.i] : '—';
+    document.getElementById('si-psum').textContent = st.prefix_sum;
+
+    const mapEl = document.getElementById('si-map');
+    if (Object.keys(st.prefix_count).length === 0) {
+      mapEl.textContent = '{}';
+    } else {
+      const entries = Object.entries(st.prefix_count)
+        .map(([k, v]) => {
+          const isMatch = st.phase === 'match' && k == st.complement;
+          const style = isMatch ? 'background:var(--bg-info);border-color:var(--border-info);color:var(--text-info);' : '';
+          return `<span class="ss-psum-entry" style="${style}"><span class="k">${k}</span>: <span class="cnt">${v}</span></span>`;
+        })
+        .join('');
+      mapEl.innerHTML = entries;
+    }
+
+    const countPill = document.getElementById('si-count-pill');
+    if (st.matches > 0) {
+      countPill.style.display = 'inline-block';
+      document.getElementById('si-count-val').textContent = st.count;
+    } else {
+      countPill.style.display = 'none';
+    }
+
+    document.getElementById('si-caption').textContent = st.caption;
+    const ctr = document.getElementById('si-sctr');
+    if (ctr) ctr.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+
+  function siNext() { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev() { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) { siNext(); } else { siStopPlay(); } }, 1000);
+  }
+
+  /* ══════════════════════════════
+     §2 brute force
+  ══════════════════════════════ */
+  let bfSteps = [], bfCur = 0, bfTimer = null;
+
+  function bfGenSteps(nums, k) {
+    const steps = [];
+    const n = nums.length;
+    let count = 0;
+    for (let i = 0; i < n; i++) {
+      let sum = 0;
+      for (let j = i; j < n; j++) {
+        sum += nums[j];
+        if (sum === k) count++;
+        steps.push({ i, j, sum, count });
+      }
+    }
+    return steps;
+  }
+
+  function bfRenderNums(nums) {
+    const con = document.getElementById('bf-nums');
+    con.innerHTML = '';
+    const nl = document.createElement('div');
+    nl.className = 'number-line';
+    nl.style.gap = '4px';
+    nums.forEach((v, idx) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'nl-wrap';
+      const cell = document.createElement('div');
+      cell.className = 'nl-num';
+      cell.textContent = v;
+      cell.style.minWidth = '32px';
+      const lbl = document.createElement('div');
+      lbl.className = 'nl-label';
+      lbl.textContent = idx;
+      wrap.appendChild(cell);
+      wrap.appendChild(lbl);
+      nl.appendChild(wrap);
+    });
+    con.appendChild(nl);
+  }
+
+  function bfRender(st) {
+    document.getElementById('bf-i').textContent = st.i;
+    document.getElementById('bf-j').textContent = st.j;
+    document.getElementById('bf-sum').textContent = st.sum;
+    document.getElementById('bf-count').textContent = st.count;
+    document.getElementById('bf-sctr').textContent = `${bfCur + 1} / ${bfSteps.length}`;
+    document.getElementById('bf-prev').disabled = bfCur === 0;
+    document.getElementById('bf-next').disabled = bfCur === bfSteps.length - 1;
+  }
+
+  function bfNext() { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev() { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+  function bfLoadEx(idx) {
+    bfStopPlay();
+    const nums = EXAMPLES[idx].nums;
+    const k = EXAMPLES[idx].k;
+    bfRenderNums(nums);
+    bfSteps = bfGenSteps(nums, k);
+    bfCur = 0;
+    bfRender(bfSteps[0]);
+    [0, 1, 2].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+  }
+
+  /* ══════════════════════════════
+     §5 code visualization
+  ══════════════════════════════ */
+  const CV_LINES = [
+    { n: 1,  c: 'int subarraySum(vector<int>& nums, int k) {' },
+    { n: 2,  c: '    unordered_map<int, int> prefix_count;  // prefix_sum → frequency' },
+    { n: 3,  c: '    prefix_count[0] = 1;                          // empty prefix' },
+    { n: 4,  c: '    int count = 0;' },
+    { n: 5,  c: '    int prefix_sum = 0;' },
+    { n: 6,  c: '    for (int i = 0; i < nums.size(); i++) {' },
+    { n: 7,  c: '        prefix_sum += nums[i];' },
+    { n: 8,  c: '        int complement = prefix_sum - k;' },
+    { n: 9,  c: '        if (prefix_count.count(complement)) {' },
+    { n: 10, c: '            count += prefix_count[complement];    // add frequency' },
+    { n: 11, c: '        }' },
+    { n: 12, c: '        prefix_count[prefix_sum]++;               // record this prefix' },
+    { n: 13, c: '    }' },
+    { n: 14, c: '    return count;' },
+    { n: 15, c: '}' }
+  ];
+
+  let cvSteps = [], cvCur = 0, cvTimer = null;
+
+  function cvGenSteps(ex) {
+    const nums = ex.nums.slice();
+    const k = ex.k;
+    const n = nums.length;
+    const out = [];
+    const prefix_count = {};
+    
+    let curI = -1, curX = null, curPsum = 0, curCount = 0, curComp = null, curFreq = null;
+    let recentKey = null, matchKey = null;
+
+    const snap = (line, narr, phase, changed) => {
+      out.push({
+        line, narr, phase: phase || 'active', changed: changed || [],
+        nums, k, n,
+        i: curI, x: curX, prefix_sum: curPsum, count: curCount, complement: curComp, freq: curFreq,
+        prefix_count: Object.assign({}, prefix_count), recentKey, matchKey
+      });
+    };
+
+    snap(1, `Enter subarraySum with nums = [${nums.join(', ')}] and k = ${k}.`, 'init', ['k']);
+    snap(2, 'Create empty hash map prefix_count (stores prefix_sum → frequency).', 'init', []);
+    
+    prefix_count[0] = 1; recentKey = 0;
+    snap(3, 'Initialize prefix_count[0] = 1 to handle subarrays starting at index 0.', 'init', []);
+    
+    curCount = 0;
+    snap(4, 'Initialize count = 0 (count of subarrays summing to k).', 'init', ['count']);
+    
+    curPsum = 0;
+    snap(5, 'Initialize running prefix_sum = 0.', 'init', ['prefix_sum']);
+
+    for (let i = 0; i < n; i++) {
+      curI = i; curX = nums[i]; curComp = null; curFreq = null; recentKey = null; matchKey = null;
+      snap(6, `Loop iteration: i = ${i} < nums.size() (${n}).`, 'active', ['i', 'x']);
+
+      curPsum += curX;
+      snap(7, `Add nums[${i}] (${curX}) to prefix_sum → prefix_sum = ${curPsum}.`, 'active', ['prefix_sum']);
+
+      curComp = curPsum - k;
+      snap(8, `Compute complement = prefix_sum - k = ${curPsum} - ${k} = ${curComp}.`, 'active', ['complement']);
+
+      const has = prefix_count[curComp] !== undefined;
+      curFreq = has ? prefix_count[curComp] : 0;
+      snap(9, `Check if complement ${curComp} exists in map. Count is ${curFreq}.`, 'active', ['freq']);
+
+      if (has) {
+        matchKey = curComp;
+        curCount += curFreq;
+        snap(10, `Found complement ${curComp} in map (appeared ${curFreq} times before) → add frequency to count → count = ${curCount}.`, 'match', ['count']);
+      }
+
+      if (!prefix_count[curPsum]) prefix_count[curPsum] = 0;
+      prefix_count[curPsum]++; recentKey = curPsum;
+      snap(12, `Increment prefix_count[${curPsum}] to record current prefix sum. Map frequency is now ${prefix_count[curPsum]}.`, 'active', []);
+    }
+
+    curI = -1; curX = null; curComp = null; curFreq = null; recentKey = null; matchKey = null;
+    snap(6, `Loop exhausted: i = ${n} >= n. Loop terminates.`, 'active', []);
+    snap(14, `Return final count = ${curCount}.`, 'done', ['count']);
+    snap(15, 'Function returns.', 'done', []);
+
+    return out;
+  }
+
+  function cvRender(st) {
+    // 1. Highlight active code line
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const lineEl = document.getElementById('cvL' + st.line);
+    if (lineEl) {
+      lineEl.classList.add(st.phase === 'match' || st.phase === 'done' ? 'active-match' : 'active');
+    }
+
+    // 2. Variable cards
+    const setCard = (id, val, active, matchCard) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (matchCard) card.classList.add('hl-match');
+      else if (active) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+
+    const wantMatch = st.phase === 'match';
+    setCard('cv-v-k', st.k != null ? st.k : '—', st.changed.includes('k'), false);
+    setCard('cv-v-count', st.count != null && st.line >= 4 ? st.count : '—', st.changed.includes('count'), wantMatch && st.changed.includes('count'));
+    setCard('cv-v-prefix_sum', st.prefix_sum != null && st.line >= 5 ? st.prefix_sum : '—', st.changed.includes('prefix_sum'), false);
+    setCard('cv-v-i', st.i >= 0 && st.line >= 6 ? st.i : '—', st.changed.includes('i'), false);
+    setCard('cv-v-x', st.x != null && st.line >= 6 ? st.x : '—', st.changed.includes('x'), false);
+    setCard('cv-v-complement', st.complement != null && st.line >= 8 ? st.complement : '—', st.changed.includes('complement'), wantMatch);
+    setCard('cv-v-freq', st.freq != null && st.line >= 9 ? st.freq : '—', st.changed.includes('freq'), wantMatch);
+
+    // 3. Render array strip
+    const strip = document.getElementById('cv-strip');
+    if (strip && st.nums) {
+      strip.innerHTML = st.nums.map((v, idx) => {
+        const isCur = idx === st.i && st.i >= 0;
+        let cellStyle = 'background:var(--bg3);border-color:var(--border2);color:var(--text2)';
+        if (isCur) {
+          cellStyle = st.phase === 'match'
+            ? 'background:var(--bg-success);border-color:var(--border-success);color:var(--text-success)'
+            : 'background:var(--bg-info);border-color:var(--border-info);color:var(--text-info)';
+        }
+        const topLbl = isCur ? `<div style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text-info);min-height:14px">i</div>` : `<div style="min-height:14px"></div>`;
+        return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">` +
+          topLbl +
+          `<div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;` +
+          `font-family:var(--mono);font-size:14px;font-weight:600;border-radius:var(--r2);` +
+          `border:1.5px solid;${cellStyle}">${v}</div>` +
+          `<div style="font-size:10px;color:var(--text3);font-family:var(--mono)">${idx}</div></div>`;
+      }).join('');
+    }
+
+    // 4. Render map
+    const mapEl = document.getElementById('cv-map');
+    if (mapEl) {
+      const entries = Object.keys(st.prefix_count);
+      if (entries.length === 0) {
+        mapEl.innerHTML = '<span class="ss-psum-map-empty">empty</span>';
+      } else {
+        mapEl.innerHTML = Object.entries(st.prefix_count)
+          .map(([k, v]) => {
+            let style = '';
+            if (String(k) === String(st.matchKey)) {
+              style = 'background:var(--bg-success);border-color:var(--border-success);color:var(--text-success);font-weight:600';
+            } else if (String(k) === String(st.recentKey)) {
+              style = 'background:var(--bg-info);border-color:var(--border-info);color:var(--text-info);';
+            }
+            return `<span class="ss-psum-entry" style="${style}"><span class="k">${k}</span>: <span class="cnt">${v}</span></span>`;
+          })
+          .join(' ');
+      }
+    }
+
+    // 5. Narration
+    const narr = document.getElementById('cv-narration');
+    if (narr) {
+      narr.textContent = st.narr;
+      narr.className = 'cv-narration' + (st.phase === 'match' ? ' is-match' : st.phase === 'init' ? '' : ' is-active');
+    }
+
+    // 6. Step counters and buttons
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+  function cvLoadEx(idx) {
+    document.querySelectorAll('[id^="cv-ex"]').forEach((b, i) => b.classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(EXAMPLES[idx]);
+    cvCur = 0;
+    cvRender(cvSteps[0]);
+  }
+
+  /* ══════════════════════════════
+     §7 dry run
+  ══════════════════════════════ */
+  let drSteps = [], drCur = 0, drTimer = null, drExIdx = 0;
+
+  function drGenSteps(nums, k) {
+    const steps = [];
+    const prefix_count = {};
+    prefix_count[0] = 1;
+    let prefix_sum = 0;
+    let count = 0;
+
+    steps.push({
+      i: -1, prefix_sum, prefix_count: Object.assign({}, prefix_count), complement: null, matches: 0, count, phase: 'init',
+      what: `nums = [${nums.join(', ')}], k = ${k}`,
+      why: 'Walk i from 0 to n-1. At each i: update prefix, count complements, increment map.',
+    });
+
+    for (let i = 0; i < nums.length; i++) {
+      const delta = nums[i];
+      prefix_sum += delta;
+      const complement = prefix_sum - k;
+      const matches = prefix_count[complement] || 0;
+
+      steps.push({
+        i, prefix_sum, prefix_count: Object.assign({}, prefix_count), complement, matches: 0, count, phase: 'update',
+        what: `i = ${i}: nums[${i}] = ${delta}, prefix_sum = ${prefix_sum}`,
+        why: `Compute prefix: ${prefix_sum}`,
+      });
+
+      if (matches > 0) {
+        count += matches;
+        steps.push({
+          i, prefix_sum, prefix_count: Object.assign({}, prefix_count), complement, matches, count, phase: 'match',
+          what: `complement = ${prefix_sum} - ${k} = ${complement}. Found ${matches} time(s).`,
+          why: `Prefix ${complement} appeared ${matches} times before. Add ${matches} to count.`,
+        });
+      } else {
+        steps.push({
+          i, prefix_sum, prefix_count: Object.assign({}, prefix_count), complement, matches: 0, count, phase: 'nomatch',
+          what: `complement = ${complement}. Not in map.`,
+          why: `No subarray ending here sums to ${k}.`,
+        });
+      }
+
+      if (!prefix_count[prefix_sum]) prefix_count[prefix_sum] = 0;
+      prefix_count[prefix_sum]++;
+      
+      steps.push({
+        i, prefix_sum, prefix_count: Object.assign({}, prefix_count), complement: null, matches: 0, count, phase: 'store',
+        what: `prefix_count[${prefix_sum}]++ → ${prefix_count[prefix_sum]}`,
+        why: `Record this prefix for future matches.`,
+      });
+    }
+
+    steps.push({
+      i: -1, prefix_sum, prefix_count, complement: null, matches: 0, count, phase: 'done',
+      what: 'Done',
+      why: `Final answer: count = ${count}`,
+    });
+
+    return steps;
+  }
+
+  function drRenderStrip(nums, i) {
+    const con = document.getElementById('dr-strip');
+    con.innerHTML = '';
+    const nl = document.createElement('div');
+    nl.className = 'number-line';
+    nl.style.gap = '4px';
+    nums.forEach((v, idx) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'nl-wrap';
+      const cell = document.createElement('div');
+      cell.className = 'nl-num';
+      if (idx === i && i >= 0) cell.classList.add('ss-i');
+      cell.textContent = v;
+      const lbl = document.createElement('div');
+      lbl.className = 'nl-label';
+      lbl.textContent = idx;
+      wrap.appendChild(cell);
+      wrap.appendChild(lbl);
+      nl.appendChild(wrap);
+    });
+    con.appendChild(nl);
+  }
+
+  function drRenderMap(pc, highlightVal) {
+    const mapEl = document.getElementById('dr-map');
+    if (Object.keys(pc).length === 0) {
+      mapEl.innerHTML = '<span class="ss-psum-map-empty">empty</span>';
+    } else {
+      const entries = Object.entries(pc)
+        .map(([k, v]) => {
+          const classes = `ss-psum-entry ${k == highlightVal ? 'hl' : ''}`;
+          return `<span class="${classes}"><span class="k">${k}</span>: <span class="cnt">${v}</span></span>`;
+        })
+        .join('');
+      mapEl.innerHTML = entries;
+    }
+  }
+
+  function drRender(st) {
+    const curEx = EXAMPLES[drExIdx];
+    drRenderStrip(curEx.nums, st.i);
+    drRenderMap(st.prefix_count, st.phase === 'match' ? st.complement : null);
+
+    document.getElementById('f-i').textContent = st.i >= 0 ? st.i : '—';
+    document.getElementById('f-x').textContent = st.i >= 0 ? curEx.nums[st.i] : '—';
+    document.getElementById('f-psum').textContent = st.prefix_sum;
+    document.getElementById('f-comp').textContent = st.complement !== null ? st.complement : '—';
+    document.getElementById('f-match').textContent = st.matches > 0 ? st.matches : '—';
+
+    document.getElementById('dr-feq').innerHTML = st.phase === 'done' ? `<span class="eq-hl">Final: count = ${st.count}</span>` :
+      st.phase === 'match' ? `<span class="eq-hl">Match! +${st.matches}</span>` : st.phase === 'store' ? `Store: prefix[${st.prefix_sum}]` : 'Press ▶ Auto or ► Next to begin.';
+
+    document.getElementById('dr-what').textContent = st.what;
+    document.getElementById('dr-why').textContent = st.why;
+    const sp = document.getElementById('dr-step');
+    sp.className = 'step-panel' + (st.phase === 'match' ? ' match' : '');
+
+    document.getElementById('dr-result').textContent = st.count;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    document.getElementById('dr-bp').disabled = drCur === 0;
+    document.getElementById('dr-bn').disabled = drCur === drSteps.length - 1;
+  }
+
+  function drNext() { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev() { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  function drLoadEx(idx) {
+    drStopPlay();
+    drExIdx = idx;
+    drCur = 0;
+    drSteps = drGenSteps(EXAMPLES[idx].nums, EXAMPLES[idx].k);
+    drRender(drSteps[0]);
+    [0, 1, 2].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+  }
+
+  /* ══════════════════════════════
+     INIT
+  ══════════════════════════════ */
+  cvBuildCode(CV_LINES);
+  siSteps = siGenSteps(EXAMPLES[0].nums, EXAMPLES[0].k);
+  siRender(siSteps[0]);
+  cvLoadEx(0);
+  bfLoadEx(0);
+  drLoadEx(0);
+</script>
+
+</body>
+</html>

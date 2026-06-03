@@ -1,0 +1,896 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Binary Search | Interactive Lesson</title>
+  <link rel="stylesheet" href="../../static/lesson.css">
+  <style>
+    .cell-wrap { display: flex; flex-direction: column; align-items: center; }
+    .idx { font-family: var(--mono); font-size: 13px; color: var(--text3); height: 18px; }
+    .cell {
+      width: 44px;
+      height: 40px;
+      border-radius: 6px;
+      border: 1px solid var(--border2);
+      background: var(--bg3);
+      color: var(--text1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 16px;
+      font-weight: 700;
+      transition: background .2s, border-color .2s, color .2s, transform .2s, opacity .2s;
+    }
+    /* Color states */
+    .cell.live { background: var(--bg-info); border-color: var(--border-info); color: var(--text-info); }
+    .cell.mid { background: var(--bg-warn); border-color: var(--border-warn); color: var(--text-warn); transform: translateY(-2px); }
+    .cell.found { background: var(--bg-success); border-color: var(--border-success); color: var(--text-success); transform: translateY(-2px); }
+    .cell.drop { background: var(--bg-danger); border-color: var(--border-danger); color: var(--text-danger); opacity: 0.72; }
+    .cell.muted { opacity: 0.35; }
+
+    /* Pointers */
+    .ptr { font-family: var(--mono); font-size: 11px; font-weight: 700; color: transparent; height: 16px; margin-top: 4px; transition: color .2s; }
+    .ptr.on { color: var(--text-info); }
+    .ptr.on.mid-label { color: var(--text-warn); }
+    .ptr.on.found-label { color: var(--text-success); }
+
+    /* Layout tweaks */
+    .array-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin: 1rem 0; min-height: 80px; }
+    .input-row { display: grid; grid-template-columns: 1fr 120px auto; gap: 10px; margin: 1rem 0; align-items: center; }
+    .input-row input { font-family: var(--mono); font-size: 15px; border: 1px solid var(--border); background: var(--bg2); border-radius: 6px; padding: 7px 10px; color: var(--text1); }
+    .small-msg { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; color: var(--text3); margin-top: -8px; margin-bottom: 12px; }
+    .small-msg.bad { color: var(--text-danger); }
+    
+    @media (max-width: 680px) {
+      .input-row { grid-template-columns: 1fr; }
+      .cell { width: 36px; height: 32px; font-size: 14px; }
+      .idx, .ptr { font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+  <main style="max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 4rem;">
+    <header class="header">
+      <div class="header-eyebrow">Algorithm lesson</div>
+      <h1>Binary Search</h1>
+      <div class="header-meta">
+        <span class="badge badge-arr">Foundational Algorithms</span>
+        <span class="badge badge-med">Tier 1</span>
+        <span class="badge badge-med">LC #704</span>
+      </div>
+    </header>
+
+    <!-- ═══ SECTION 1: EXPLAIN THE ALGORITHM ═══ -->
+    <section class="section" id="explain">
+      <div class="sec-label">Section 1</div>
+      <h2 class="sec-title">Explain the algorithm in plain English</h2>
+      <p class="body">Binary Search is the moment where sorted order starts paying rent. Instead of scanning every single value linearly, we keep an active boundary of possible indices and inspect the midpoint. Since the collection is sorted, this single midpoint check tells us which half of the boundaries can be permanently discarded.</p>
+      
+      <div class="asgrid" style="margin-top: 1rem;">
+        <div class="acard">
+          <div class="acard-q">Is the array sorted?</div>
+          <div class="acard-a">Yes, non-decreasing order. If not sorted, Binary Search cannot be applied.</div>
+          <div class="acard-u">→ unlocks: compare against the middle and discard half the range</div>
+        </div>
+        <div class="acard">
+          <div class="acard-q">What if the target is absent?</div>
+          <div class="acard-a">Return -1.</div>
+          <div class="acard-u">→ unlocks: loop while left &lt;= right, otherwise exit and return -1</div>
+        </div>
+      </div>
+
+      <div class="infobox success" style="margin-top: 1rem;">
+        <p class="infobox-t">The kernel</p>
+        <p class="infobox-d">Maintain the invariant that the target, if it exists, is always within the closed interval <code>[left, right]</code>. At each iteration, examine the middle element <code>mid = left + (right - left) / 2</code>. If it matches target, return <code>mid</code>. If it is smaller, search the right half by setting <code>left = mid + 1</code>. If it is larger, search the left half by setting <code>right = mid - 1</code>. When <code>left &gt; right</code>, return <code>-1</code>.</p>
+      </div>
+    </section>
+
+    <!-- ═══ SECTION 2: VISUALIZE THE DATA STRUCTURE ═══ -->
+    <section class="section" id="structure">
+      <div class="sec-label">Section 2</div>
+      <h2 class="sec-title">Visualize the data structure</h2>
+      <p class="body">Binary Search does not rely on complex data structures like heaps, queues, or stacks. Its state is defined purely by three pointers: <code>left</code>, <code>right</code>, and <code>mid</code>, tracking a shrinking window over the array.</p>
+      
+      <div class="visual-card" style="background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 1.25rem; margin: 1rem 0;">
+        <div class="infobox-t">Active Search Range</div>
+        <div id="structure-array" class="array-row"></div>
+        <div class="legend" style="justify-content: center;">
+          <div class="leg-item"><span class="leg-dot" style="background: var(--bg-info);"></span><span class="leg-label">Active Range</span></div>
+          <div class="leg-item"><span class="leg-dot" style="background: var(--bg-warn);"></span><span class="leg-label">Midpoint</span></div>
+          <div class="leg-item"><span class="leg-dot" style="background: var(--bg-success);"></span><span class="leg-label">Matched Target</span></div>
+          <div class="leg-item"><span class="leg-dot" style="background: var(--bg-danger); opacity: 0.72;"></span><span class="leg-label">Discarded</span></div>
+          <div class="leg-item"><span class="leg-dot" style="background: var(--bg3); opacity: 0.35;"></span><span class="leg-label">Eliminated</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ SECTION 3: ALGORITHM IN PLAIN ENGLISH ═══ -->
+    <section class="section" id="plain">
+      <div class="sec-label">Section 3</div>
+      <h2 class="sec-title">Algorithm in plain English</h2>
+      
+      <div class="skeleton" style="margin-bottom: 1rem;">
+        <div class="wt-item">
+          <div class="wt-num">1</div>
+          <div class="wt-body">
+            <div class="wt-name">Linear Scan → Use Sorted Order</div>
+            <div class="wt-desc">Leverage sorted order. A single comparison tells us about a whole range of values rather than just one.</div>
+            <div class="wt-gain">→ stops checking elements one by one</div>
+          </div>
+        </div>
+        <div class="wt-item">
+          <div class="wt-num">2</div>
+          <div class="wt-body">
+            <div class="wt-name">Search Space → Inspect Midpoint</div>
+            <div class="wt-desc">Check the midpoint value to determine whether the target lies in the left, right, or is located exactly here.</div>
+            <div class="wt-gain">→ divides remaining search space in half</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="algo-steps">
+        <div class="algo-step"><div class="algo-n">1</div><div class="algo-t"><b>Start</b> with <code>left = 0</code> and <code>right = n - 1</code>.</div></div>
+        <div class="algo-step"><div class="algo-n">2</div><div class="algo-t">While <code>left &lt;= right</code>, <b>compute</b> <code>mid = left + (right - left) / 2</code>.</div></div>
+        <div class="algo-step"><div class="algo-n">3</div><div class="algo-t">If <code>nums[mid] == target</code>, <b>return</b> <code>mid</code>.</div></div>
+        <div class="algo-step"><div class="algo-n">4</div><div class="algo-t">If <code>nums[mid] &lt; target</code>, <b>set</b> <code>left = mid + 1</code>.</div></div>
+        <div class="algo-step"><div class="algo-n">5</div><div class="algo-t">Otherwise, <b>set</b> <code>right = mid - 1</code>.</div></div>
+        <div class="algo-step"><div class="algo-n">6</div><div class="algo-t">If the loop exits without a match, <b>return</b> <code>-1</code>.</div></div>
+      </div>
+    </section>
+
+    <!-- ═══ SECTION 4: INTERACTIVE VISUALIZATION ═══ -->
+    <section class="section dr-section" id="visualizer">
+      <div class="sec-label">Section 4</div>
+      <h2 class="sec-title">Interactive visualization</h2>
+      <p class="body">Run the algorithm trace with custom values or predefined presets. Use the controls below, or trigger them via keyboard shortcuts: <code>Space</code> to play/pause, <code>ArrowLeft</code>/<code>ArrowRight</code> to step, <code>R</code> to reset, and <code>1</code>/<code>2</code>/<code>3</code> to switch presets.</p>
+      
+      <div class="ctrl-row">
+        <button class="ctrl-btn pri" id="dr-bplay">▶ Auto</button>
+        <button class="ctrl-btn" onclick="drPrev()">← Prev</button>
+        <button class="ctrl-btn" onclick="drNext()">Next →</button>
+        <button class="ctrl-btn" onclick="drReset()">↺ Reset</button>
+        <select id="dr-speed" aria-label="speed" style="font-family: var(--mono); font-size: 14px; border: 1px solid var(--border); background: var(--bg2); padding: 4px 8px; border-radius: 6px; color: var(--text1);">
+          <option value="1500">Slow</option>
+          <option value="1000" selected>Normal</option>
+          <option value="500">Fast</option>
+        </select>
+        <span class="step-ctr" id="dr-count">0/0</span>
+      </div>
+
+      <div class="ctrl-row" style="margin-top: .5rem;">
+        <button class="ex-btn active" id="dr-ex0" onclick="loadExample(0)">Preset 1</button>
+        <button class="ex-btn" id="dr-ex1" onclick="loadExample(1)">Preset 2</button>
+        <button class="ex-btn" id="dr-ex2" onclick="loadExample(2)">Preset 3</button>
+      </div>
+
+      <div class="input-row">
+        <input id="custom-array" value="-10, -3, 0, 4, 4, 9, 12" aria-label="Custom sorted array">
+        <input id="custom-target" value="4" aria-label="Custom target value">
+        <button class="ctrl-btn pri" id="custom-run" onclick="parseCustom()">Run custom</button>
+      </div>
+      <div id="custom-msg" class="small-msg">Custom array must be sorted in non-decreasing order.</div>
+
+      <div class="visual-card" style="background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 1.25rem;">
+        <div id="dr-array" class="array-row"></div>
+        
+        <div class="formula-panel" style="margin-top: 1rem; border-top: 1px solid var(--border2); padding-top: 1rem;">
+          <div class="formula-grid" style="grid-template-columns: repeat(6, 1fr); text-align: center;">
+            <div><p class="fitem-label">left</p><p class="fitem-val" id="dr-val-left">—</p><p class="fitem-sub">lower bound</p></div>
+            <div><p class="fitem-label">right</p><p class="fitem-val" id="dr-val-right">—</p><p class="fitem-sub">upper bound</p></div>
+            <div><p class="fitem-label">mid</p><p class="fitem-val" id="dr-val-mid">—</p><p class="fitem-sub">midpoint index</p></div>
+            <div><p class="fitem-label">nums[mid]</p><p class="fitem-val" id="dr-val-val">—</p><p class="fitem-sub">value at mid</p></div>
+            <div><p class="fitem-label">target</p><p class="fitem-val" id="dr-val-target">—</p><p class="fitem-sub">sought value</p></div>
+            <div><p class="fitem-label">decision</p><p class="fitem-val" id="dr-val-decision" style="font-size: 14px; font-weight: 700;">—</p><p class="fitem-sub">action result</p></div>
+          </div>
+        </div>
+
+        <div class="step-panel" style="margin-top: 1rem; border-top: 1px solid var(--border2); padding-top: 1rem;">
+          <div class="step-what" id="dr-narration">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ SECTION 5: CODE ═══ -->
+    <section class="section" id="code">
+      <div class="sec-label">Section 5</div>
+      <h2 class="sec-title">C++ code</h2>
+      <button class="reveal-btn" onclick="toggleEl('code-main', this)">▶ Reveal Code</button>
+      <div id="code-main" class="code-block">
+        <pre class="cb"><span class="tp">int</span> <span class="fn">binarySearch</span>(<span class="kw">const</span> <span class="tp">vector</span>&lt;<span class="tp">int</span>&gt;&amp; nums, <span class="tp">int</span> target) {
+    <span class="tp">int</span> left = <span class="nu">0</span>;
+    <span class="tp">int</span> right = <span class="kw">static_cast</span>&lt;<span class="tp">int</span>&gt;(nums.size()) - <span class="nu">1</span>;
+
+    <span class="kw">while</span> (left &lt;= right) {
+        <span class="tp">int</span> mid = left + (right - left) / <span class="nu">2</span>;
+
+        <span class="kw">if</span> (nums[mid] == target) {
+            <span class="kw">return</span> mid;
+        }
+
+        <span class="kw">if</span> (nums[mid] &lt; target) {
+            left = mid + <span class="nu">1</span>;
+        } <span class="kw">else</span> {
+            right = mid - <span class="nu">1</span>;
+        }
+    }
+
+    <span class="kw">return</span> -<span class="nu">1</span>;
+}</pre>
+      </div>
+    </section>
+
+    <!-- ═══ SECTION 6: CODE WALKTHROUGH ═══ -->
+    <section class="section cv-section" id="walkthrough">
+      <div class="sec-label">Section 6</div>
+      <h2 class="sec-title">Line-by-line code walkthrough</h2>
+      <p class="body">Trace the execution of the C++ code line-by-line. Variable cards remain dimmed until their declaration line executes; the currently active variable lights up cyan.</p>
+
+      <div class="ctrl-row">
+        <button class="ctrl-btn pri" id="cv-bplay">▶ Auto</button>
+        <button class="ctrl-btn" onclick="cvPrev()">← Prev</button>
+        <button class="ctrl-btn" onclick="cvNext()">Next →</button>
+        <button class="ctrl-btn" onclick="cvReset()">↺ Reset</button>
+        <span class="step-ctr" id="cv-count">0/0</span>
+      </div>
+
+      <div class="cv-split">
+        <div id="cv-code-panel" class="cv-code-panel" style="overflow: hidden; max-height: none;"></div>
+        <div class="cv-state-panel">
+          <div id="cv-var-grid" class="cv-var-grid">
+            <div class="cv-var-card dim" id="cv-v-left">
+              <div class="cv-var-name">left</div>
+              <div class="cv-var-val">—</div>
+            </div>
+            <div class="cv-var-card dim" id="cv-v-right">
+              <div class="cv-var-name">right</div>
+              <div class="cv-var-val">—</div>
+            </div>
+            <div class="cv-var-card dim" id="cv-v-mid">
+              <div class="cv-var-name">mid</div>
+              <div class="cv-var-val">—</div>
+            </div>
+            <div class="cv-var-card dim" id="cv-v-value">
+              <div class="cv-var-name">nums[mid]</div>
+              <div class="cv-var-val">—</div>
+            </div>
+            <div class="cv-var-card dim" id="cv-v-target">
+              <div class="cv-var-name">target</div>
+              <div class="cv-var-val">—</div>
+            </div>
+          </div>
+          
+          <div id="cv-arr-con" style="background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px; padding: .5rem 1rem; margin: 1rem 0;"></div>
+          <div id="cv-narration" class="cv-narration">Press ▶ Auto or Step to begin walking the code.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ SECTION 7: COMPLEXITY ═══ -->
+    <section class="section" id="complexity">
+      <div class="sec-label">Section 7</div>
+      <h2 class="sec-title">Time and space complexity</h2>
+      <div class="cplx-grid">
+        <div class="ccard">
+          <div class="ccard-l">Time</div>
+          <div class="ccard-v">O(log n)</div>
+          <div class="ccard-n">Each iteration discards half of the active search range. An array of size n can be divided in half at most log₂ n times.</div>
+        </div>
+        <div class="ccard">
+          <div class="ccard-l">Space</div>
+          <div class="ccard-v">O(1)</div>
+          <div class="ccard-n">The iterative version only allocates constant space for tracking the left, right, and midpoint indices.</div>
+        </div>
+      </div>
+      
+      <div class="infobox info" style="margin-top: 1rem;">
+        <p class="infobox-t">Common misconception</p>
+        <p class="infobox-d">Binary Search is not limited to checking elements inside arrays. It applies to any monotonic space (e.g. range of bounds, sorted outputs, monotonic functions) to locate the first or last value satisfying a specific condition (often called 'binary search on the answer').</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="../../static/lesson.js"></script>
+  <script>
+    /* ═══════════════════════════════════════════════════
+       PROBLEM PRESETS
+       ═══════════════════════════════════════════════════ */
+    const PRESETS = [
+      { nums: [1, 3, 5, 7, 9], target: 7 },
+      { nums: [2, 4, 6, 8, 10, 12], target: 5 },
+      { nums: [-10, -3, 0, 4, 4, 9, 12], target: 4 }
+    ];
+
+    const CODE_LINES = [
+      { n: 1, c: "int binarySearch(const vector<int>& nums, int target) {" },
+      { n: 2, c: "    int left = 0;" },
+      { n: 3, c: "    int right = static_cast<int>(nums.size()) - 1;" },
+      { n: 4, c: "" },
+      { n: 5, c: "    while (left <= right) {" },
+      { n: 6, c: "        int mid = left + (right - left) / 2;" },
+      { n: 7, c: "" },
+      { n: 8, c: "        if (nums[mid] == target) {" },
+      { n: 9, c: "            return mid;" },
+      { n: 10, c: "        }" },
+      { n: 11, c: "" },
+      { n: 12, c: "        if (nums[mid] < target) {" },
+      { n: 13, c: "            left = mid + 1;" },
+      { n: 14, c: "        } else {" },
+      { n: 15, c: "            right = mid - 1;" },
+      { n: 16, c: "        }" },
+      { n: 17, c: "    }" },
+      { n: 18, c: "" },
+      { n: 19, c: "    return -1;" },
+      { n: 20, c: "}" }
+    ];
+
+    let current = JSON.parse(JSON.stringify(PRESETS[0]));
+
+    // Global variables for lesson.js compatibility
+    let drSteps = [], drCur = 0, drTimer = null;
+    let cvSteps = [], cvCur = 0, cvTimer = null;
+
+    /* ═══════════════════════════════════════════════════
+       TRACE BUILDERS
+       ═══════════════════════════════════════════════════ */
+
+    function range(a, b) {
+      const out = [];
+      for (let i = a; i <= b; i++) out.push(i);
+      return out;
+    }
+
+    // Build the high-level iteration trace for the interactive visualizer (Section 4)
+    function buildDrTrace(nums, target) {
+      const frames = [];
+      let left = 0;
+      let right = nums.length - 1;
+      
+      // Step 0: Initialization
+      frames.push({
+        left,
+        right,
+        mid: null,
+        target,
+        value: null,
+        result: null,
+        vars: ["left", "right"],
+        action: `Initialize left = 0 and right = ${right}.`,
+        decision: "init"
+      });
+
+      while (left <= right) {
+        const mid = left + Math.floor((right - left) / 2);
+        const value = nums[mid];
+        
+        // Phase 1: midpoint selection
+        frames.push({
+          left,
+          right,
+          mid,
+          target,
+          value,
+          result: null,
+          vars: ["mid", "value"],
+          action: `Inspect midpoint index mid = ${mid} (value = ${value}).`,
+          decision: "compare"
+        });
+
+        // Phase 2: comparison & update decision
+        if (value === target) {
+          frames.push({
+            left,
+            right,
+            mid,
+            target,
+            value,
+            result: mid,
+            found: mid,
+            vars: ["result"],
+            action: `Match found! nums[${mid}] = ${value} equals target ${target}. Return index ${mid}.`,
+            decision: "match"
+          });
+          return frames;
+        } else if (value < target) {
+          const oldLeft = left;
+          left = mid + 1;
+          frames.push({
+            left,
+            right,
+            mid,
+            target,
+            value,
+            result: null,
+            drop: range(oldLeft, mid),
+            vars: ["left"],
+            action: `nums[mid] = ${value} is less than target ${target}. Shift left boundary to mid + 1 = ${left}.`,
+            decision: "too small"
+          });
+        } else {
+          const oldRight = right;
+          right = mid - 1;
+          frames.push({
+            left,
+            right,
+            mid,
+            target,
+            value,
+            result: null,
+            drop: range(mid, oldRight),
+            vars: ["right"],
+            action: `nums[mid] = ${value} is greater than target ${target}. Shift right boundary to mid - 1 = ${right}.`,
+            decision: "too large"
+          });
+        }
+      }
+
+      // Step done: Loop exited
+      frames.push({
+        left,
+        right,
+        mid: null,
+        target,
+        value: null,
+        result: -1,
+        vars: ["result"],
+        action: `Search space is empty (left > right). Target not found. Return -1.`,
+        decision: "not found"
+      });
+      return frames;
+    }
+
+    // Build the fine-grained C++ line-by-line trace for Section 6
+    function buildCvTrace(nums, target) {
+      const frames = [];
+      let left = 0;
+      let right = nums.length - 1;
+
+      // Line 2: int left = 0;
+      frames.push({
+        line: 2,
+        left,
+        right: "—",
+        mid: null,
+        target,
+        value: null,
+        result: null,
+        vars: ["left"],
+        known: ["target", "left"],
+        action: "Initialize left boundary pointer to 0."
+      });
+
+      // Line 3: int right = nums.size() - 1;
+      frames.push({
+        line: 3,
+        left,
+        right,
+        mid: null,
+        target,
+        value: null,
+        result: null,
+        vars: ["right"],
+        known: ["target", "left", "right"],
+        action: `Initialize right boundary pointer to ${right}.`
+      });
+
+      while (left <= right) {
+        // Line 5: while (left <= right) {
+        frames.push({
+          line: 5,
+          left,
+          right,
+          mid: null,
+          target,
+          value: null,
+          result: null,
+          vars: ["left", "right"],
+          known: ["target", "left", "right"],
+          action: `Loop check: left (${left}) <= right (${right}) is true. Keep searching.`
+        });
+
+        const mid = left + Math.floor((right - left) / 2);
+        const value = nums[mid];
+
+        // Line 6: int mid = left + (right - left) / 2;
+        frames.push({
+          line: 6,
+          left,
+          right,
+          mid,
+          target,
+          value: null,
+          vars: ["mid"],
+          known: ["target", "left", "right", "mid"],
+          action: `Compute midpoint index mid = left + (right - left) / 2 = ${mid}.`
+        });
+
+        // Line 8: if (nums[mid] == target) {
+        frames.push({
+          line: 8,
+          left,
+          right,
+          mid,
+          target,
+          value,
+          vars: ["value"],
+          known: ["target", "left", "right", "mid", "value"],
+          action: `Check comparison: nums[mid] (${value}) == target (${target}).`
+        });
+
+        if (value === target) {
+          // Line 9: return mid;
+          frames.push({
+            line: 9,
+            left,
+            right,
+            mid,
+            target,
+            value,
+            result: mid,
+            found: mid,
+            vars: ["result"],
+            known: ["target", "left", "right", "mid", "value"],
+            action: `Match! Return midpoint index ${mid}.`
+          });
+          return frames;
+        }
+
+        // Line 12: if (nums[mid] < target) {
+        frames.push({
+          line: 12,
+          left,
+          right,
+          mid,
+          target,
+          value,
+          vars: ["value"],
+          known: ["target", "left", "right", "mid", "value"],
+          action: `Check range condition: nums[mid] (${value}) < target (${target}).`
+        });
+
+        if (value < target) {
+          const oldLeft = left;
+          left = mid + 1;
+          // Line 13: left = mid + 1;
+          frames.push({
+            line: 13,
+            left,
+            right,
+            mid,
+            target,
+            value,
+            drop: range(oldLeft, mid),
+            vars: ["left"],
+            known: ["target", "left", "right", "mid", "value"],
+            action: `nums[mid] is smaller than target. Move left boundary past mid to ${left}.`
+          });
+        } else {
+          const oldRight = right;
+          right = mid - 1;
+          // Line 15: right = mid - 1;
+          frames.push({
+            line: 15,
+            left,
+            right,
+            mid,
+            target,
+            value,
+            drop: range(mid, oldRight),
+            vars: ["right"],
+            known: ["target", "left", "right", "mid", "value"],
+            action: `nums[mid] is larger than target. Move right boundary below mid to ${right}.`
+          });
+        }
+      }
+
+      // Loop condition exits: left > right
+      frames.push({
+        line: 5,
+        left,
+        right,
+        mid: null,
+        target,
+        value: null,
+        result: null,
+        vars: ["left", "right"],
+        known: ["target", "left", "right"],
+        action: `Loop check: left (${left}) <= right (${right}) is false. Exit loop.`
+      });
+
+      // Line 19: return -1;
+      frames.push({
+        line: 19,
+        left,
+        right,
+        mid: null,
+        target,
+        value: null,
+        result: -1,
+        vars: ["result"],
+        known: ["target", "left", "right"],
+        action: `Target not found in array. Return -1.`
+      });
+
+      return frames;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       RENDERERS
+       ═══════════════════════════════════════════════════ */
+
+    function renderCellHTML(val, i, frame) {
+      const drop = new Set(frame.drop || []);
+      const live = i >= frame.left && i <= frame.right;
+      const isMid = frame.mid === i;
+      const found = frame.found === i;
+
+      let cls = "";
+      if (found) {
+        cls = "found";
+      } else if (isMid) {
+        cls = "mid";
+      } else if (drop.has(i)) {
+        cls = "drop";
+      } else if (live) {
+        cls = "live";
+      } else {
+        cls = "muted";
+      }
+
+      const ptrs = [];
+      if (i === frame.left) ptrs.push("left");
+      if (i === frame.right) ptrs.push("right");
+      if (i === frame.mid) ptrs.push("mid");
+      const ptrLabel = ptrs.join("·");
+
+      let ptrCls = "ptr";
+      if (ptrLabel) {
+        ptrCls += " on";
+        if (isMid) ptrCls += " mid-label";
+        if (found) ptrCls += " found-label";
+      }
+
+      return `
+        <div class="cell-wrap">
+          <div class="idx">${i}</div>
+          <div class="cell ${cls}">${val}</div>
+          <div class="${ptrCls}">${ptrLabel || "&nbsp;"}</div>
+        </div>
+      `;
+    }
+
+    // Render interactive visualization (Section 4)
+    function drRender(frame) {
+      const nums = current.nums;
+      document.getElementById("dr-array").innerHTML = nums.map((v, i) => renderCellHTML(v, i, frame)).join("");
+
+      // Update values in formula row
+      document.getElementById("dr-val-left").textContent = frame.left;
+      document.getElementById("dr-val-right").textContent = frame.right;
+      document.getElementById("dr-val-mid").textContent = frame.mid == null ? "—" : frame.mid;
+      document.getElementById("dr-val-val").textContent = frame.value == null ? "—" : frame.value;
+      document.getElementById("dr-val-target").textContent = frame.target;
+      document.getElementById("dr-val-decision").textContent = frame.decision;
+
+      // Update style and text of narration block
+      const narr = document.getElementById("dr-narration");
+      narr.textContent = frame.action;
+
+      // Update counters
+      document.getElementById("dr-count").textContent = `${drCur + 1}/${drSteps.length}`;
+    }
+
+    // Render code walkthrough visualization (Section 6)
+    function cvRender(frame) {
+      // Highlight code line
+      document.querySelectorAll("#cv-code-panel .cv-line").forEach(el => el.classList.remove("active", "active-match"));
+      const lineEl = document.getElementById("cvL" + frame.line);
+      if (lineEl) {
+        lineEl.classList.add(frame.found != null ? "active-match" : "active");
+      }
+
+      // Render array inside state panel
+      const nums = current.nums;
+      document.getElementById("cv-arr-con").innerHTML = `
+        <div style="display: flex; gap: 6px; justify-content: center; align-items: flex-end;">
+          ${nums.map((v, i) => renderCellHTML(v, i, frame)).join("")}
+        </div>
+      `;
+
+      // Update variable cards
+      const keys = ["left", "right", "mid", "value", "target"];
+      const mapping = { left: frame.left, right: frame.right, mid: frame.mid, value: frame.value, target: frame.target };
+      const active = new Set(frame.vars || []);
+      const known = new Set(frame.known || []);
+
+      keys.forEach(key => {
+        const el = document.getElementById("cv-v-" + key);
+        if (!el) return;
+        const val = mapping[key];
+        el.querySelector(".cv-var-val").textContent = (val === null || val === undefined) ? "—" : val;
+
+        // Clean classes
+        el.classList.remove("hl", "hl-match", "dim");
+        if (!known.has(key)) {
+          el.classList.add("dim");
+        } else if (active.has(key)) {
+          el.classList.add(frame.found != null ? "hl-match" : "hl");
+        }
+      });
+
+      // Update narration text
+      const narr = document.getElementById("cv-narration");
+      narr.textContent = frame.action;
+      narr.className = "cv-narration" + (frame.found != null ? " is-match" : " is-active");
+
+      // Update counters
+      document.getElementById("cv-count").textContent = `${cvCur + 1}/${cvSteps.length}`;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       INTERACTION ACTIONS
+       ═══════════════════════════════════════════════════ */
+
+    function drNext() {
+      if (drCur < drSteps.length - 1) {
+        drCur++;
+        drRender(drSteps[drCur]);
+      } else {
+        drStopPlay();
+      }
+    }
+
+    function drPrev() {
+      if (drCur > 0) {
+        drCur--;
+        drRender(drSteps[drCur]);
+      }
+    }
+
+    function drReset() {
+      drStopPlay();
+      drCur = 0;
+      drRender(drSteps[0]);
+    }
+
+    function cvNext() {
+      if (cvCur < cvSteps.length - 1) {
+        cvCur++;
+        cvRender(cvSteps[cvCur]);
+      } else {
+        cvStopPlay();
+      }
+    }
+
+    function cvPrev() {
+      if (cvCur > 0) {
+        cvCur--;
+        cvRender(cvSteps[cvCur]);
+      }
+    }
+
+    function cvReset() {
+      cvStopPlay();
+      cvCur = 0;
+      cvRender(cvSteps[0]);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       EXAMPLES & CUSTOM LOADERS
+       ═══════════════════════════════════════════════════ */
+
+    function loadExample(idx) {
+      current = JSON.parse(JSON.stringify(PRESETS[idx]));
+      
+      // Update custom form fields to match preset values
+      document.getElementById("custom-array").value = current.nums.join(", ");
+      document.getElementById("custom-target").value = current.target;
+      
+      document.querySelectorAll(".ex-btn").forEach((b, i) => b.classList.toggle("active", i === idx));
+      
+      document.getElementById("custom-msg").className = "small-msg";
+      document.getElementById("custom-msg").textContent = `Loaded preset ${idx + 1}.`;
+
+      rebuildAllTraces();
+    }
+
+    function parseCustom() {
+      const arrInput = document.getElementById("custom-array").value;
+      const targetInput = document.getElementById("custom-target").value;
+      const msg = document.getElementById("custom-msg");
+
+      try {
+        const nums = arrInput.split(",").map(s => s.trim()).filter(Boolean).map(Number);
+        const target = Number(targetInput.trim());
+
+        if (nums.some(Number.isNaN) || Number.isNaN(target) || nums.length === 0) {
+          throw new Error("Invalid format. Use comma-separated numbers only.");
+        }
+
+        if (nums.length > 14) {
+          throw new Error("Please limit array length to at most 14 elements for visual clarity.");
+        }
+
+        for (let i = 1; i < nums.length; i++) {
+          if (nums[i - 1] > nums[i]) {
+            throw new Error("Input array is not sorted. Sort elements in non-decreasing order first.");
+          }
+        }
+
+        // Load custom input
+        current = { nums, target };
+        document.querySelectorAll(".ex-btn").forEach(b => b.classList.remove("active"));
+        msg.className = "small-msg";
+        msg.textContent = "Custom input loaded successfully.";
+
+        rebuildAllTraces();
+      } catch (err) {
+        msg.className = "small-msg bad";
+        msg.textContent = err.message;
+      }
+    }
+
+    function rebuildAllTraces() {
+      // Rebuild high-level trace (Section 4)
+      drSteps = buildDrTrace(current.nums, current.target);
+      drReset();
+
+      // Rebuild line-by-line trace (Section 6)
+      cvSteps = buildCvTrace(current.nums, current.target);
+      cvReset();
+    }
+
+    /* ═══════════════════════════════════════════════════
+       INITIALIZATIONS
+       ═══════════════════════════════════════════════════ */
+
+    function initStaticSection2() {
+      // Renders the static diagram inside Section 2
+      const staticFrame = {
+        left: 0,
+        right: 6,
+        mid: 3,
+        found: 3,
+        drop: [],
+        target: 4
+      };
+      const staticNums = [-10, -3, 0, 4, 4, 9, 12];
+      document.getElementById("structure-array").innerHTML = staticNums.map((v, i) => renderCellHTML(v, i, staticFrame)).join("");
+    }
+
+    // Set up play action buttons
+    document.getElementById("dr-bplay").addEventListener("click", () => {
+      // drTogglePlay is defined globally by lesson.js, we adjust speed value on change
+      const speedSelect = document.getElementById("dr-speed");
+      // override interval dynamically
+      window.drTimerSpeed = Number(speedSelect.value); 
+      drTogglePlay();
+    });
+
+    document.getElementById("cv-bplay").addEventListener("click", cvTogglePlay);
+
+    // Watch play speed selector change and update speed dynamically if running
+    document.getElementById("dr-speed").addEventListener("change", (e) => {
+      if (drTimer) {
+        drStopPlay();
+        drTogglePlay();
+      }
+    });
+
+    // Custom helper for manual overlay of 1, 2, 3 example shortcut keys
+    document.addEventListener("keydown", e => {
+      if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
+      if (["1", "2", "3"].includes(e.key)) {
+        e.preventDefault();
+        loadExample(Number(e.key) - 1);
+      }
+    });
+
+    // Page Load
+    initStaticSection2();
+    cvBuildCode(CODE_LINES);
+    rebuildAllTraces();
+  </script>
+</body>
+</html>
