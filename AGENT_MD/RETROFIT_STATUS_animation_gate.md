@@ -11,8 +11,10 @@ This file tracks the in-progress work to make every lesson pass the animation
   the linter.
 - **b (in progress — this file):** retrofit every existing generated lesson so
   it passes the gate.
-- **c (not started):** rewrite `.claude/commands/batch-lesson.md` for autonomy
-  (drop the manual PAUSE, wire lint+verify as hard gates, bounded auto-retry).
+- **c (done, 2026-06-03):** `.claude/commands/batch-lesson.md` was rewritten for
+  autonomy (no manual PAUSE; lint + verify wired as hard gates with bounded
+  auto-retry). PLAN-019 then added a third hard gate (`render_check.mjs`) and an
+  optional independent `verify.py` cross-check.
 
 ## What the gate actually checks
 

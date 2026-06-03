@@ -48,7 +48,7 @@ Drifted lessons open §1 with phrasing like "Use array indices as a hash table" 
 
 ### 1.3 Dependency on PLAN-016
 
-This plan executes against the lint gate from [PLAN-016](PLAN-016_self_healing_pipeline.md). Every rewrite must pass `python3 scripts/lint_lesson.py <slug>` before being marked `lesson_status=generated`. If PLAN-016 ships first, the audit baseline in `REPORT-016_audit_baseline.md` becomes the authoritative scope of this plan.
+This plan executes against the lint gate from [PLAN-016](PLAN-016_self_healing_pipeline.md). Every rewrite must pass `python3 scripts/lint_lesson.py <slug>` before being marked `lesson_status=generated`. If PLAN-016 ships first, the audit baseline in `baseline_audit_2026-05-19.md` becomes the authoritative scope of this plan.
 
 ### 1.4 Schema drift (subset of the work)
 

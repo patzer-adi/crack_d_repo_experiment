@@ -292,7 +292,7 @@ Do NOT load:
 | 7 | Test lint against all four goldens — must exit 0 | 20 min | 6 |
 | 8 | Test lint against three known-drifted lessons (spiral-matrix, first-missing-positive, maximum-subarray) — must exit 1 | 15 min | 6 |
 | 9 | Write `scripts/audit_lessons.py` — wraps lint per §4.4 | 30 min | 6 |
-| 10 | Run audit, capture output as `AGENT_MD/plan/reports/REPORT-016_audit_baseline.md` (informs PLAN-015 scope) | 15 min | 9 |
+| 10 | Run audit, capture output as `AGENT_MD/plan/reports/baseline_audit_2026-05-19.md` (informs PLAN-015 scope) | 15 min | 9 |
 | 11 | Update `.claude/commands/batch-lesson.md` per §4.5 | 30 min | 6 |
 | 12 | Insert "Token budget per lesson" block into `lessons/LESSON_DESIGN.md` per §4.6 | 15 min | — |
 | 13 | `git mv lessons/LESSON_DESIGN_v2.md lessons/archive/LESSON_DESIGN_v2.md` and update one reference in `LESSON_DESIGN.md` | 10 min | — |
@@ -333,7 +333,7 @@ Do NOT load:
 
 ✅ **Audit operational:**
 - `python3 scripts/audit_lessons.py` prints a pass/warn/fail table over all lessons.
-- Output is captured into `REPORT-016_audit_baseline.md`.
+- Output is captured into `baseline_audit_2026-05-19.md`.
 
 ✅ **batch-lesson enforces lint:**
 - The skill step 6 explicitly calls lint and refuses PATCH on non-zero exit.

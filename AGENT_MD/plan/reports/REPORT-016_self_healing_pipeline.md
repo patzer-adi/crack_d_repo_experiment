@@ -50,7 +50,7 @@ All four named goldens (3sum, permutation-in-string, trapping-rain-water, median
 ### 3.5 Plan artifacts
 
 - [`AGENT_MD/plan/plans/PLAN-016_self_healing_pipeline.md`](../plans/PLAN-016_self_healing_pipeline.md) — Status moved Draft → In-Progress → Completed (this report).
-- [`AGENT_MD/plan/reports/REPORT-016_audit_baseline.md`](REPORT-016_audit_baseline.md) — new. Snapshot of the very first audit run; seeds PLAN-015's remediation scope.
+- [`AGENT_MD/plan/reports/baseline_audit_2026-05-19.md`](baseline_audit_2026-05-19.md) — new. Snapshot of the very first audit run; seeds PLAN-015's remediation scope.
 - [`AGENT_MD/plan/plans/PLAN-015_lesson_generation_drift_remediation.md`](../plans/PLAN-015_lesson_generation_drift_remediation.md) — rewritten (in PLAN-016 prep): the diagnosis was corrected from "schema mismatch" to "quality drift in §1", scope set to 8 lessons.
 
 ## 4. Testing & validation
@@ -78,7 +78,7 @@ valid-palindrome              → exit 0  (17 pass, 0 warn, 0 fail)
   captured in PLAN-015 §2.
 ```
 
-Full audit: see [REPORT-016_audit_baseline.md](REPORT-016_audit_baseline.md). Totals: 3 pass / 4 warn / 12 fail of 19 lessons.
+Full audit: see [baseline_audit_2026-05-19.md](baseline_audit_2026-05-19.md). Totals: 3 pass / 4 warn / 12 fail of 19 lessons.
 
 No automated test suite for the project. Validation was manual: lint output reviewed by eye against the named goldens (must pass) and the user-flagged drifted lessons (must fail). Both groups behaved as expected after one threshold adjustment (kernel char floor lowered from 200 to 180 to accommodate permutation-in-string at 188 and median at 186; visual-led path tightened to require kernel ≤ 350 chars to catch find-the-duplicate-number's 587-char algorithm-dump kernel).
 

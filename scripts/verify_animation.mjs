@@ -34,6 +34,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -272,7 +273,35 @@ function verify(slug) {
       ...r,
     });
   }
+  report.independence = runIndependence(slug, examples);
   return report;
+}
+
+// PLAN-019 G4: cross-check the answers against an INDEPENDENT brute force
+// committed at lessons/<slug>/verify.py. The oracle check above only proves the
+// animation agrees with the EX answers; if those answers were copied from the
+// generator that is a tautology. verify.py recomputes them a different way — we
+// feed it the EX inputs (JSON on stdin) and compare its JSON output to the
+// declared answers. Enforced ON PRESENCE: a lesson without verify.py is reported
+// (backfill pending) but not failed, so the pre-G4 corpus keeps passing.
+function runIndependence(slug, examples) {
+  const py = path.join(ROOT, "lessons", slug, "verify.py");
+  if (!fs.existsSync(py)) return { status: "absent" };
+  const inputs = examples.map(({ answer, label, ...rest }) => rest);
+  const res = spawnSync("python3", [py], { input: JSON.stringify(inputs), encoding: "utf8", timeout: 20000 });
+  if (res.status !== 0)
+    return { status: "error", reason: (res.stderr || res.error?.message || "non-zero exit").trim().split("\n").slice(-1)[0] };
+  let computed;
+  try { computed = JSON.parse(res.stdout); }
+  catch { return { status: "error", reason: "verify.py stdout is not JSON" }; }
+  if (!Array.isArray(computed) || computed.length !== examples.length)
+    return { status: "error", reason: `verify.py returned ${Array.isArray(computed) ? computed.length : "non-array"} answers for ${examples.length} examples` };
+  const cases = examples.map((e, i) => ({
+    label: e.label ?? `EX[${i}]`,
+    ok: JSON.stringify(computed[i]) === JSON.stringify(e.answer),
+    computed: computed[i], expected: e.answer,
+  }));
+  return { status: "checked", cases };
 }
 
 // ── output ─────────────────────────────────────────────────────────────────
@@ -307,6 +336,15 @@ function main() {
         );
       else console.log(`  ⚠ ${c.gen}  ${c.example}  UNVERIFIABLE — ${c.reason}`);
     }
+    const ind = report.independence || { status: "absent" };
+    if (ind.status === "absent")
+      console.log("  · independent reference: none — add lessons/" + report.slug + "/verify.py (PLAN-019 G4)");
+    else if (ind.status === "error")
+      console.log(`  ✗ independent reference (verify.py): ${ind.reason}`);
+    else
+      for (const c of ind.cases)
+        console.log(`  ${c.ok ? "✓" : "✗"} verify.py  ${c.label}  → ${JSON.stringify(c.computed)}` +
+          (c.ok ? "" : ` ≠ declared ${JSON.stringify(c.expected)}`));
     console.log("");
     console.log(
       `  totals: ${matched.length} verified, ${mismatched.length} WRONG, ${unusable.length} unverifiable`
@@ -317,8 +355,11 @@ function main() {
   // failure too (a lesson with no checkable oracle cannot be auto-approved),
   // EXCEPT when there were structural errors that already make it clear the
   // lesson predates the contract — those still exit 1 so the pipeline stops.
+  const ind = report.independence || { status: "absent" };
+  const indFail = ind.status === "error" || (ind.status === "checked" && ind.cases.some((c) => !c.ok));
   if (mismatched.length > 0) process.exit(1);
   if (matched.length === 0) process.exit(1); // nothing could be verified
+  if (indFail) process.exit(1); // independent reference present but disagrees / errored
   process.exit(0);
 }
 

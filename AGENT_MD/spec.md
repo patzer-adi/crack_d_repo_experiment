@@ -1,9 +1,18 @@
 # crack_d — DSA Intuition Lab
 
+> ⚠️ **HISTORICAL SNAPSHOT (2026-05-07).** This spec captures the original v1.1
+> plan and is **not** maintained — it predates the two-gate quality system, the
+> design-file partition, the algorithms reference, and ~all generated lessons.
+> The "living document" promise below was not kept past PLAN-003. For current
+> state read [`README.md`](../README.md) + [`CLAUDE.md`](../CLAUDE.md), the
+> reports under `plan/reports/`, and run `python3 scripts/audit_lessons.py` /
+> `python3 scripts/doctor.py`. Kept for provenance; do not treat as current.
+> (Demotion recorded in PLAN-019, 2026-06-03.)
+
 > **Version:** 1.1
 > **Created:** 2026-05-07
-> **Last Updated:** 2026-05-07
-> **Status:** 🟡 In Planning
+> **Last Updated:** 2026-05-07 (historical — see banner above)
+> **Status:** 🟡 In Planning (historical)
 >
 > Living document — the AI agent updates Codebase Inventory, Decision Log,
 > and Current Focus at the end of every working session. Do not edit those

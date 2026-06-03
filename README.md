@@ -2,7 +2,7 @@
 
 A personal LeetCode study platform. Each problem gets an interactive HTML lesson — visual explanations, step-through animations, and C++ code — all browsable from a local dashboard.
 
-The lesson-authoring side is AI-driven: a single `/batch-lesson` slash command in Claude Code generates lessons end-to-end against the design system in `lessons/design/`. Every lesson is held to a machine-checkable bar — a structural linter plus a headless **animation-correctness gate** that runs each lesson's step-through generators and asserts the computed answer matches an independently hand-derived one. All 26 lessons currently pass. See [Quality gate](#quality-gate) below.
+The lesson-authoring side is AI-driven: a single `/batch-lesson` slash command in Claude Code generates lessons end-to-end against the design system in `lessons/design/`. Every lesson is held to a machine-checkable bar: a structural **linter**, a headless **animation-correctness gate** (runs each lesson's step generators and asserts the computed answer matches an independently hand-derived one), and a headless **render check** (loads the lesson in Chromium and asserts no JS error, every code-viz step lights a code line, and nothing overflows). Run `python3 scripts/audit_lessons.py` for live corpus status (it is baseline-aware — see [Quality gate](#quality-gate)). See [Quality gate](#quality-gate) below.
 
 ---
 
@@ -43,14 +43,14 @@ This is the AI-assisted path. You run it in a Claude Code session.
    /batch-lesson <slug1> <slug2> <slug3>
    ```
    Up to 5 slugs per invocation. Slugs match the `slug` field in `data/problems.json` (URL-style: `two-sum`, `3sum-closest`, `find-all-anagrams-in-a-string` — **not** `Two Sum`).
-3. The agent runs the workflow for each slug interleaved:
+3. The agent runs the workflow for each slug, one at a time:
    - Scaffolds `lessons/<slug>/` from the template.
-   - Fills `plan.md` (kernel, archetype, translations, examples).
-   - Runs a Python algorithm trace to verify correctness on every example.
-   - **Pauses for your review** before writing HTML.
-4. You review the plan in plain text. Approve or request changes.
-5. On approval, the agent writes `lesson.html`, runs the [quality gate](#quality-gate) (lint + animation-correctness) and only marks the lesson `generated` once it passes, then PATCHes the dashboard so the lesson shows up immediately.
-6. Repeats for the next slug.
+   - Fills `plan.md` (kernel, archetype, translations, examples with hand-derived answers).
+   - Writes `lesson.html`.
+   - Runs the [quality gate](#quality-gate) (lint + animation-correctness + render) with bounded auto-retry, and only marks the lesson `generated` once all checks pass, then PATCHes the dashboard so the lesson shows up immediately.
+4. Repeats for the next slug.
+
+There is **no manual approval checkpoint** — the gates stand in for human review, so they are non-negotiable and may never be weakened to force a pass (`.claude/commands/batch-lesson.md`).
 
 The full workflow specification lives in [`.claude/commands/batch-lesson.md`](.claude/commands/batch-lesson.md). It loads only when the command fires, so it costs nothing on other sessions.
 
@@ -83,9 +83,12 @@ crack_d/
 │   ├── server.py               # local file server + API
 │   ├── import_problems.py      # one-time HTML → JSON problem importer
 │   ├── new_lesson.py           # scaffolds lessons/<slug>/ from _template.html + problems.json
-│   ├── verify_animation.mjs    # animation-correctness gate (Node) — runs drGenSteps headlessly
+│   ├── verify_animation.mjs    # animation-correctness gate (Node) — runs drGenSteps + optional verify.py
+│   ├── render_check.mjs        # headless render gate (Chromium/CDP) — JS errors, active code line, overflow
 │   ├── lint_lesson.py          # structural + scaffold linter; delegates to the gate for §7
-│   └── audit_lessons.py        # corpus-wide status sweep across all lessons
+│   ├── audit_lessons.py        # corpus-wide sweep: full lint + render, baseline-aware regression gate
+│   ├── audit_baseline.json     # known pre-existing lint/render drift (grandfathered; list only shrinks)
+│   └── doctor.py               # planning-doc / lesson-status reconciliation invariants
 ├── .claude/
 │   └── commands/
 │       └── batch-lesson.md     # /batch-lesson slash command (Claude Code)
@@ -142,21 +145,31 @@ Every generated lesson HTML follows the same 13-section layout (§0–§12), enf
 
 ## Quality gate
 
-Generated lessons are not trusted on faith. Two checks (PLAN-016) gate a lesson before it may be marked `generated`; `/batch-lesson` enforces both, and you can run them by hand:
+Generated lessons are not trusted on faith. Three checks (PLAN-016, extended by PLAN-019) gate a lesson before it may be marked `generated`; `/batch-lesson` enforces all of them, and you can run them by hand:
 
 ```bash
 # 1. Animation-correctness gate (Node). The dry-run generator (drGenSteps) is the oracle:
 #    it is run headlessly over answer-bearing examples and its terminal `result` is
-#    deep-compared to each example's independently hand-derived `answer`.
+#    deep-compared to each example's independently hand-derived `answer`. If a
+#    lessons/<slug>/verify.py exists, it is run too and cross-checked (PLAN-019 G4).
 node scripts/verify_animation.mjs <slug>
 
 # 2. Structural + scaffold linter (Python). Section order/markers, the §1/§2/§6/§7
-#    canonical chassis (element ids, button handlers, function names), and the §1
-#    insight rules. It delegates to the gate above for §7.
+#    canonical chassis (ids, handlers, function names), the §1 insight rules, and
+#    the §6 code-line-resolves check. It delegates to the gate above for §7.
 python3 scripts/lint_lesson.py <slug>
 
-# 3. Corpus-wide sweep — status across every lesson at once.
+# 3. Render check (Node + headless Chromium). Loads the lesson, drives every
+#    animation, asserts no JS error, every §6 step lights an active code line, and
+#    no horizontal overflow. Catches layout/runtime drift the other two cannot see.
+node scripts/render_check.mjs <slug>
+
+# Corpus-wide sweep — full lint + render over every lesson, baseline-aware (it
+# grandfathers pre-PLAN-019 known failures and fails only on NEW regressions).
 python3 scripts/audit_lessons.py
+
+# Planning-doc / lesson-status reconciliation invariants (PLAN-019 G5).
+python3 scripts/doctor.py
 ```
 
 **The contract a lesson must satisfy to pass the gate:**
@@ -322,7 +335,9 @@ Implementation work is tracked under `AGENT_MD/plan/`:
 - `current_state_report.md` — living snapshot of project state.
 - `rules.md` — authoring conventions for plan and report documents.
 
-The latest plan: [PLAN-016](AGENT_MD/plan/plans/PLAN-016_self_healing_pipeline.md) — self-healing lesson-generation pipeline (the animation-correctness gate + lint as a hard gate), landed 2026-05-20. It delivers what PLAN-011's deferred Phase 2 anticipated: a headless verifier that blocks any lesson whose dry-run animation computes a wrong answer.
+The latest plan: [PLAN-019](AGENT_MD/plan/plans/PLAN-019_antidrift_visual_gate_and_doc_reconciliation.md) — anti-drift hardening (headless render gate, corpus re-verification, independent `verify.py` references, and a `doctor.py` for planning-doc/lesson reconciliation), landed 2026-06-03. It builds on [PLAN-016](AGENT_MD/plan/plans/PLAN-016_self_healing_pipeline.md), the self-healing pipeline that first made the animation-correctness gate a hard gate.
+
+> `AGENT_MD/spec.md` is a historical 2026-05-07 snapshot (it predates the gates and most lessons). For current state, read this README + `CLAUDE.md`, or run `python3 scripts/audit_lessons.py` and `python3 scripts/doctor.py`.
 
 ---
 
@@ -338,4 +353,4 @@ Add the problem first — either via the dashboard's **+ Add problem** button or
 Confirm `.claude/commands/batch-lesson.md` exists in the project root. Slash commands are loaded per-project; the file must be in the working directory when the session starts.
 
 **The agent is loading way too many design files.**
-The load-on-demand rule lives in `lessons/LESSON_DESIGN.md`. If an agent ignores it, the cheapest mitigation is to remind it in the prompt; the more durable fix is PLAN-012 (mechanical context-assembly script), not yet planned.
+The load-on-demand rule lives in `lessons/LESSON_DESIGN.md`. If an agent ignores it, the cheapest mitigation is to remind it in the prompt; a more durable fix (a mechanical context-assembly script) is anticipated by PLAN-011's deferred Phase 2 but not yet planned.

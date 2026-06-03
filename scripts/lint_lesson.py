@@ -165,6 +165,62 @@ def extract_section(html: str, section_index: int) -> tuple[str, int, int]:
     return "\n".join(lines[start:end]), start, end
 
 
+# ── JS source helpers (mirror scripts/verify_animation.mjs) ──────────────────
+# Used by the §6 code-line-reference check so a textual scan never trips on a
+# keyword/number that only appears in a narration string.
+
+def js_strip(code: str) -> str:
+    """Blank string/template literals and comments (strings first, like the
+    verifier, so `http://` inside a string is not mistaken for a comment)."""
+    code = re.sub(r"`(?:\\.|[^\\`])*`", "``", code, flags=re.S)
+    code = re.sub(r"'(?:\\.|[^'\\])*'", "''", code)
+    code = re.sub(r'"(?:\\.|[^"\\])*"', '""', code)
+    code = re.sub(r"/\*.*?\*/", "", code, flags=re.S)
+    code = re.sub(r"//[^\n]*", "", code)
+    return code
+
+
+def js_inline_scripts(html: str) -> str:
+    """Concatenate the inline <script> blocks (those without a src= attribute)."""
+    return "\n".join(re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S))
+
+
+def js_extract_function(src: str, name: str) -> str | None:
+    """Source of `function <name>(...) { ... }` via brace-matching; None if absent."""
+    m = re.search(rf"function\s+{name}\s*\(", src)
+    if not m:
+        return None
+    brace = src.find("{", m.end())
+    if brace < 0:
+        return None
+    depth = 0
+    for j in range(brace, len(src)):
+        if src[j] == "{":
+            depth += 1
+        elif src[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return src[m.start():j + 1]
+    return None
+
+
+def js_extract_array(src: str, name: str) -> str | None:
+    """Source of `const <name> = [ ... ]` via bracket-matching; None if absent."""
+    m = re.search(rf"const\s+{name}\s*=\s*\[", src)
+    if not m:
+        return None
+    start = src.find("[", m.start())
+    depth = 0
+    for j in range(start, len(src)):
+        if src[j] == "[":
+            depth += 1
+        elif src[j] == "]":
+            depth -= 1
+            if depth == 0:
+                return src[start:j + 1]
+    return None
+
+
 def lint_section1(report: LintReport, html: str, slug: str = "") -> None:
     """§1 Insight checks per sec1_insight.md acceptance criteria."""
 
@@ -406,6 +462,31 @@ def lint_section6(report: LintReport, html: str, slug: str = "") -> None:
                    f"need ≥ 3 (use canonical .cv-var-card markup, not inline-styled divs)")
     else:
         report.add("§6:variable cards", True, f"{card_count} cards")
+
+    # Every code-line cvGenSteps highlights must exist in CV_LINES. A phantom
+    # ref (e.g. `line:35` with no `{n:35}` in CV_LINES) leaves the code panel
+    # with no active line on that step — the animation looks dead while the
+    # verifier (which never runs cvGenSteps) stays green. See PLAN-019 G1.
+    # Scope: cvGenSteps only — it is the generator cvRender turns into a
+    # `cvL<line>` highlight. A `line:` field on dr/si/bf generators is unrelated
+    # to the code panel (often vestigial) and must not be matched here.
+    script = js_strip(js_inline_scripts(html))
+    cv_lit = js_extract_array(script, "CV_LINES")
+    cv_ns = set(re.findall(r"\bn\s*:\s*(\d+)", cv_lit)) if cv_lit else set()
+    cv_src = js_extract_function(script, "cvGenSteps")
+    phantom: list[str] = []
+    if cv_src:
+        for seg in re.findall(r"\bline\s*:\s*([^,\n}]+)", cv_src):
+            for num in re.findall(r"\d+", seg):
+                if num not in cv_ns:
+                    phantom.append(num)
+    if phantom:
+        report.add("§6:code-line refs resolve", False,
+                   "cvGenSteps highlights line(s) absent from CV_LINES: "
+                   f"{', '.join(sorted(set(phantom), key=int))} — the code panel shows "
+                   "no active line there. Add the line to CV_LINES or fix the ref.")
+    else:
+        report.add("§6:code-line refs resolve", True)
 
 
 def lint_section7(report: LintReport, html: str, slug: str = "") -> None:

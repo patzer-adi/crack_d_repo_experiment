@@ -665,21 +665,25 @@ const CV_LINES = [
   { n: 2,  c: '    int m = h.size(), n = h[0].size();' },
   { n: 3,  c: '    vector<vector<bool>> pac(m, ...), atl(m, ...);' },
   { n: 4,  c: '    queue<pair<int,int>> qp, qa;' },
-  { n: 5,  c: '    for (int c = 0; c < n; c++) {' },
-  { n: 6,  c: '        pac[0][c] = atl[m-1][c] = true;' },
-  { n: 7,  c: '        qp.push({0,c}); qa.push({m-1,c});' },
-  { n: 8,  c: '    }' },
-  { n: 9,  c: '    for (int r = 0; r < m; r++) {' },
-  { n: 10, c: '        pac[r][0] = atl[r][n-1] = true;' },
-  { n: 11, c: '        qp.push({r,0}); qa.push({r,n-1});' },
-  { n: 12, c: '    }' },
-  { n: 13, c: '    flood(h, pac, qp);' },
-  { n: 14, c: '    flood(h, atl, qa);' },
-  { n: 15, c: '    vector<vector<int>> res;' },
-  { n: 16, c: '    for (int r = 0; r < m; r++)' },
-  { n: 17, c: '      for (int c = 0; c < n; c++)' },
-  { n: 18, c: '        if (pac[r][c] && atl[r][c]) res.push_back({r,c});' },
-  { n: 21, c: '    return res;' },
+  { n: 5,  c: '    for (int c=0;c<n;c++){ pac[0][c]=atl[m-1][c]=1; qp.push({0,c}); qa.push({m-1,c}); }' },
+  { n: 6,  c: '    for (int r=0;r<m;r++){ pac[r][0]=atl[r][n-1]=1; qp.push({r,0}); qa.push({r,n-1}); }' },
+  { n: 7,  c: '    flood(h, pac, qp);                 // Pacific, uphill' },
+  { n: 8,  c: '    flood(h, atl, qa);                 // Atlantic, uphill' },
+  { n: 9,  c: '    vector<vector<int>> res;' },
+  { n: 10, c: '    for (int r=0;r<m;r++) for (int c=0;c<n;c++)' },
+  { n: 11, c: '        if (pac[r][c] && atl[r][c]) res.push_back({r,c});' },
+  { n: 12, c: '    return res;' },
+  { n: 13, c: '}' },
+  { n: 14, c: 'void flood(grid& h, visited& seen, queue& q) {' },
+  { n: 15, c: '    while (!q.empty()) {' },
+  { n: 16, c: '        auto [r,c] = q.front(); q.pop();' },
+  { n: 17, c: '        for (auto& [dr,dc] : dirs) {' },
+  { n: 18, c: '            int nr=r+dr, nc=c+dc;' },
+  { n: 19, c: '            if (oob(nr,nc) || seen[nr][nc] || h[nr][nc] < h[r][c]) continue;' },
+  { n: 20, c: '            seen[nr][nc]=true; q.push({nr,nc});' },
+  { n: 21, c: '        }' },
+  { n: 22, c: '    }' },
+  { n: 23, c: '}' },
 ];
 
 function cvGenSteps(heights) {
@@ -691,17 +695,27 @@ function cvGenSteps(heights) {
     a.sort((p,q) => p[0]-q[0] || p[1]-q[1]); return a;
   };
   const steps = [];
+
+  // seed both shores up front — mirrors the two border loops in the code
+  const pac = new Set(), atl = new Set(), qp = [], qa = [];
+  for (let c=0;c<n;c++){ pac.add(c); qp.push([0,c]); atl.add((m-1)*n+c); qa.push([m-1,c]); }
+  for (let r=0;r<m;r++){
+    if(!pac.has(r*n)){ pac.add(r*n); qp.push([r,0]); }
+    const ka=r*n+(n-1); if(!atl.has(ka)){ atl.add(ka); qa.push([r,n-1]); }
+  }
+  const pacSeed = dump(pac), atlSeed = dump(atl);
+
   steps.push({ line:2, phase:'init', m, n, grid:heights, pac:[], atl:[], cur:null,
     phaseLbl:'init', cellLbl:'—', changed:['phase'],
     narr:`Grid is ${m}×${n}. Build two empty visited grids, pac and atl.` });
+  steps.push({ line:5, phase:'seed', m, n, grid:heights, pac:pacSeed, atl:atlSeed, cur:null,
+    phaseLbl:'seed', cellLbl:'borders', changed:['phase','pac','atl'],
+    narr:`Seed all borders: Pacific = top row + left column (blue), Atlantic = bottom row + right column (orange). A corner that touches both shores is already green.` });
 
-  // ---- Pacific flood ----
-  const pac = new Set(), qp = [];
-  for (let c=0;c<n;c++){ const k=c; if(!pac.has(k)){pac.add(k); qp.push([0,c]);} }
-  for (let r=0;r<m;r++){ const k=r*n; if(!pac.has(k)){pac.add(k); qp.push([r,0]);} }
-  steps.push({ line:6, phase:'seedP', m, n, grid:heights, pac:dump(pac), atl:[], cur:null,
-    phaseLbl:'seed Pacific', cellLbl:'border', changed:['phase','pac'],
-    narr:`Seed every Pacific-border cell into qp — ${pac.size} cells, all marked blue.` });
+  // ---- Pacific flood: flood(h, pac, qp) ----
+  steps.push({ line:7, phase:'floodP', m, n, grid:heights, pac:dump(pac), atl:atlSeed, cur:null,
+    phaseLbl:'flood Pacific', cellLbl:'—', changed:['phase'],
+    narr:`flood(h, pac, qp): walk the Pacific queue, climbing to every neighbour at least as tall.` });
   let qi = 0;
   while (qi < qp.length) {
     const [r,c] = qp[qi++];
@@ -710,19 +724,17 @@ function cvGenSteps(heights) {
       const nr=r+dr, nc=c+dc, k=nr*n+nc;
       if (inB(nr,nc) && !pac.has(k) && heights[nr][nc] >= heights[r][c]) { pac.add(k); qp.push([nr,nc]); added.push([nr,nc]); }
     }
-    steps.push({ line: added.length?35:29, phase:'floodP', m, n, grid:heights, pac:dump(pac), atl:[], cur:[r,c],
+    steps.push({ line: added.length?20:16, phase:'floodP', m, n, grid:heights, pac:dump(pac), atl:atlSeed, cur:[r,c],
       phaseLbl:'flood Pacific', cellLbl:`(${r},${c})`, changed: added.length?['cell','pac']:['cell'],
-      narr: added.length ? `Pop (${r},${c}); add taller neighbour(s) ${added.map(a=>`(${a[0]},${a[1]})`).join(', ')} to pac.`
-                         : `Pop (${r},${c}); no unvisited taller neighbour.` });
+      narr: added.length ? `Pop (${r},${c}); climb to taller neighbour(s) ${added.map(a=>`(${a[0]},${a[1]})`).join(', ')} — mark them blue.`
+                         : `Pop (${r},${c}); every neighbour is lower or already visited — nothing to add.` });
   }
+  const pacFinal = dump(pac);
 
-  // ---- Atlantic flood ----
-  const atl = new Set(), qa = [];
-  for (let c=0;c<n;c++){ const k=(m-1)*n+c; if(!atl.has(k)){atl.add(k); qa.push([m-1,c]);} }
-  for (let r=0;r<m;r++){ const k=r*n+(n-1); if(!atl.has(k)){atl.add(k); qa.push([r,n-1]);} }
-  steps.push({ line:10, phase:'seedA', m, n, grid:heights, pac:dump(pac), atl:dump(atl), cur:null,
-    phaseLbl:'seed Atlantic', cellLbl:'border', changed:['phase','atl'],
-    narr:`Seed every Atlantic-border cell into qa — ${atl.size} cells, orange. Overlap with blue shows green.` });
+  // ---- Atlantic flood: flood(h, atl, qa) ----
+  steps.push({ line:8, phase:'floodA', m, n, grid:heights, pac:pacFinal, atl:dump(atl), cur:null,
+    phaseLbl:'flood Atlantic', cellLbl:'—', changed:['phase'],
+    narr:`flood(h, atl, qa): the same uphill walk from the Atlantic queue. A blue cell the orange flood reaches turns green.` });
   let qj = 0;
   while (qj < qa.length) {
     const [r,c] = qa[qj++];
@@ -731,21 +743,21 @@ function cvGenSteps(heights) {
       const nr=r+dr, nc=c+dc, k=nr*n+nc;
       if (inB(nr,nc) && !atl.has(k) && heights[nr][nc] >= heights[r][c]) { atl.add(k); qa.push([nr,nc]); added.push([nr,nc]); }
     }
-    steps.push({ line: added.length?35:29, phase:'floodA', m, n, grid:heights, pac:dump(pac), atl:dump(atl), cur:[r,c],
+    steps.push({ line: added.length?20:16, phase:'floodA', m, n, grid:heights, pac:pacFinal, atl:dump(atl), cur:[r,c],
       phaseLbl:'flood Atlantic', cellLbl:`(${r},${c})`, changed: added.length?['cell','atl']:['cell'],
-      narr: added.length ? `Pop (${r},${c}); add ${added.map(a=>`(${a[0]},${a[1]})`).join(', ')} to atl.`
+      narr: added.length ? `Pop (${r},${c}); climb to ${added.map(a=>`(${a[0]},${a[1]})`).join(', ')} — add to atl.`
                          : `Pop (${r},${c}); no unvisited taller neighbour.` });
   }
 
-  // ---- intersection ----
+  // ---- intersection scan ----
   const both = [];
   pac.forEach(k => { if (atl.has(k)) both.push(k); });
   both.sort((a,b) => a-b);
   const bothCoords = both.map(k => [Math.floor(k/n), k%n]);
-  steps.push({ line:18, phase:'collect', m, n, grid:heights, pac:dump(pac), atl:dump(atl), cur:null,
+  steps.push({ line:11, phase:'collect', m, n, grid:heights, pac:pacFinal, atl:dump(atl), cur:null,
     phaseLbl:'collect', cellLbl:'scan', changed:['phase','both'],
-    narr:`Scan the grid: a cell goes into res when pac && atl. ${bothCoords.length} cells qualify.` });
-  steps.push({ line:21, phase:'done', m, n, grid:heights, pac:dump(pac), atl:dump(atl), cur:null,
+    narr:`Scan every cell: it joins res when pac && atl. ${bothCoords.length} cells qualify (green).` });
+  steps.push({ line:12, phase:'done', m, n, grid:heights, pac:pacFinal, atl:dump(atl), cur:null,
     phaseLbl:'done', cellLbl:'—', changed:['both'], both:bothCoords, result:bothCoords,
     narr:`Return ${bothCoords.length} cells reachable from both oceans (the green cells).` });
   return steps;
