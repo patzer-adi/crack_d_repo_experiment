@@ -224,15 +224,16 @@
     } else if (s.isDupSkip) {
       document.getElementById('si-calc').innerHTML = `<div style="color:var(--text-warn)">↹ Skip i = ${s.i} — nums[${s.i}] duplicates nums[${s.i - 1}].</div>`;
     } else {
-      document.getElementById('si-i').textContent = s.i;
-      document.getElementById('si-tgt').textContent = s.target;
-      document.getElementById('si-a').textContent = SI_NUMS[s.L];
-      document.getElementById('si-b').textContent = SI_NUMS[s.R];
-      document.getElementById('si-sum').textContent = s.sum;
-      const badge = document.getElementById('si-decision-badge');
-      if (s.decision === 'match') { badge.textContent = '★ match → record'; badge.style.color = 'var(--text-success)'; }
-      else if (s.decision === 'low') { badge.textContent = 'too small → L++'; badge.style.color = 'var(--text-info)'; }
-      else { badge.textContent = 'too large → R−−'; badge.style.color = 'var(--text-warn)'; }
+      // Rebuild the whole panel each render: the pivot/skip/terminal branches
+      // above replace si-calc.innerHTML, so the value spans cannot be assumed to
+      // still exist. Inlining the values keeps every branch self-contained.
+      const [badgeText, badgeColor] =
+        s.decision === 'match' ? ['★ match → record', 'var(--text-success)']
+        : s.decision === 'low' ? ['too small → L++', 'var(--text-info)']
+        : ['too large → R−−', 'var(--text-warn)'];
+      document.getElementById('si-calc').innerHTML =
+        `<div>fix i = <span style="color:var(--text-warn);font-weight:600">${s.i}</span> · target = −nums[i] = <span style="font-weight:600">${s.target}</span></div>` +
+        `<div>sum = nums[L] + nums[R] = <span style="font-weight:600">${SI_NUMS[s.L]}</span> + <span style="font-weight:600">${SI_NUMS[s.R]}</span> = <span style="color:var(--text);font-weight:700">${s.sum}</span> <span class="decision-badge" style="color:${badgeColor}">${badgeText}</span></div>`;
     }
     document.getElementById('si-trips').textContent = s.triplets.length === 0
       ? '(none yet)'

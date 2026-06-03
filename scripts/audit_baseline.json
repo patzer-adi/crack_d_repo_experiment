@@ -18,10 +18,7 @@
     "valid-palindrome": "§6:canonical element ids; §6:variable cards"
   },
   "render": {
-    "3sum": "siRender overwrites si-calc.innerHTML on pivot/terminal steps, deleting child spans (si-i/si-a/...); next comparison step sets textContent on null -> throws.",
-    "count-permutations-with-inversion-requirement": "same si-calc.innerHTML overwrite pattern as 3sum; also 2 §6 steps with no active code line.",
-    "majority-element": "same si-calc.innerHTML overwrite pattern as 3sum.",
-    "majority-element-ii": "same si-calc.innerHTML overwrite pattern as 3sum.",
+    "count-permutations-with-inversion-requirement": "2 §6 cv steps carry no active code line (the si-calc.innerHTML-overwrite throw was fixed 2026-06-03).",
     "container-with-most-water": "2 of 60 §6 steps carry no line, so the code panel shows no active line on those steps.",
     "trapping-rain-water": "4 of 29 §6 steps carry no line.",
     "valid-palindrome": "drRender sets textContent on a missing element id; all 3 §6 steps light no active code line (non-canonical §6/§7)."

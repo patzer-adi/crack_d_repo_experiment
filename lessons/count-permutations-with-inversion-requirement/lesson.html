@@ -263,12 +263,13 @@
     } else if (s.isInit || s.isPivot) {
       document.getElementById('si-calc').innerHTML = `<div style="color:var(--text-warn)">${s.caption}</div>`;
     } else {
-      document.getElementById('si-i').textContent = s.i;
-      document.getElementById('si-j').textContent = s.j;
-      document.getElementById('si-eq').textContent = s.sum;
-      const badge = document.getElementById('si-decision-badge');
-      badge.textContent = s.sum > 0 ? `= ${s.sum}` : '= 0';
-      badge.style.color = s.sum > 0 ? 'var(--text-info)' : 'var(--text3)';
+      // Rebuild si-calc fully: the init/pivot/terminal branches above replace its
+      // innerHTML, so the child spans cannot be assumed to still exist.
+      const bColor = s.sum > 0 ? 'var(--text-info)' : 'var(--text3)';
+      const bText = s.sum > 0 ? `= ${s.sum}` : '= 0';
+      document.getElementById('si-calc').innerHTML =
+        `<div>filling: dp[<span style="color:var(--text-info);font-weight:600">${s.i}</span>][<span style="color:var(--text-info);font-weight:600">${s.j}</span>]</div>` +
+        `<div>= sum dp[i−1][j−k] for k = 0..min(i,j) = <span style="color:var(--text);font-weight:700">${s.sum}</span> &nbsp;<span class="decision-badge" style="color:${bColor}">${bText}</span></div>`;
     }
     const rowSum = !s.terminal && s.i !== undefined && s.dpSnapshot[s.i] ? s.dpSnapshot[s.i].reduce((a, b) => a + b, 0) : '—';
     document.getElementById('si-rowsum').textContent = rowSum;
