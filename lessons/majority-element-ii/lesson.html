@@ -193,13 +193,14 @@
     } else if (s.isInit) {
       document.getElementById('si-calc').innerHTML = `<div style="color:var(--text3)">${s.caption}</div>`;
     } else {
-      document.getElementById('si-i').textContent = s.i;
-      document.getElementById('si-num').textContent = s.num;
-      document.getElementById('si-action').textContent = s.action;
-      const badge = document.getElementById('si-decision-badge');
-      if (s.kind === 'cancel') { badge.textContent = '⤴ triple cancel'; badge.style.color = 'var(--text-warn)'; }
-      else if (s.kind === 'fill1' || s.kind === 'fill2') { badge.textContent = `★ fill ${s.kind === 'fill1' ? 'slot 1' : 'slot 2'}`; badge.style.color = 'var(--text-success)'; }
-      else { badge.textContent = `+1 vote ${s.kind === 'match1' ? '(c1)' : '(c2)'}`; badge.style.color = 'var(--text-info)'; }
+      // Rebuild si-calc fully: the init/terminal branches above replace its
+      // innerHTML, so the child spans cannot be assumed to still exist.
+      const [bText, bColor] = s.kind === 'cancel' ? ['⤴ triple cancel', 'var(--text-warn)']
+        : (s.kind === 'fill1' || s.kind === 'fill2') ? [`★ fill ${s.kind === 'fill1' ? 'slot 1' : 'slot 2'}`, 'var(--text-success)']
+        : [`+1 vote ${s.kind === 'match1' ? '(c1)' : '(c2)'}`, 'var(--text-info)'];
+      document.getElementById('si-calc').innerHTML =
+        `<div>i = <span style="color:var(--text-info);font-weight:600">${s.i}</span> · num = <span style="color:var(--text-info);font-weight:600">${s.num}</span></div>` +
+        `<div>step: <span style="color:var(--text);font-weight:700">${s.action}</span> &nbsp;<span class="decision-badge" style="color:${bColor}">${bText}</span></div>`;
     }
     document.getElementById('si-c1').textContent = s.c1 === null ? '—' : s.c1;
     document.getElementById('si-c2').textContent = s.c2 === null ? '—' : s.c2;

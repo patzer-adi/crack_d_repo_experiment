@@ -338,7 +338,84 @@
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
+    /* ── PATTERNS TAB ── */
+    .pat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+      gap: 16px; margin-bottom: 8px; align-items: start;
+    }
+    .pat-card {
+      border: 1px solid var(--border2); border-radius: var(--r);
+      background: var(--bg2); overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .pat-card-hdr {
+      display: flex; align-items: center; gap: 11px;
+      padding: 14px 16px 12px; border-bottom: 1px solid var(--border);
+    }
+    .pat-icon {
+      font-size: 20px; width: 36px; height: 36px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg3); border: 0.5px solid var(--border); border-radius: 8px;
+      font-family: var(--mono); color: var(--text2);
+    }
+    .pat-head-text { flex: 1; min-width: 0; }
+    .pat-title { font-size: 18px; font-weight: 700; line-height: 1.25; }
+    .pat-tagline { font-size: 14px; color: var(--text3); margin-top: 1px; }
+    .pat-count {
+      font-size: 14px; padding: 3px 10px; border-radius: 20px; flex-shrink: 0;
+      border: 0.5px solid var(--border-info); background: var(--bg-info);
+      color: var(--text-info); cursor: pointer; white-space: nowrap; font-weight: 500;
+      text-decoration: none;
+    }
+    .pat-count:hover { background: var(--text-info); color: #fff; }
+    .pat-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 15px; }
+    .pat-sec-label {
+      font-size: 12px; font-weight: 600; color: var(--text3);
+      text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px;
+    }
+    .pat-idea { font-size: 16px; color: var(--text); line-height: 1.55; }
+    .pat-signals { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .pat-signals li {
+      font-size: 15px; color: var(--text2); line-height: 1.45; padding-left: 18px; position: relative;
+    }
+    .pat-signals li::before {
+      content: "▸"; position: absolute; left: 2px; color: var(--text3); font-size: 12px; top: 2px;
+    }
+    .pat-var { border-left: 2px solid var(--border2); padding-left: 12px; }
+    .pat-var + .pat-var { margin-top: 12px; }
+    .pat-var-name { font-size: 15px; font-weight: 600; color: var(--text); }
+    .pat-var-desc { font-size: 15px; color: var(--text2); line-height: 1.45; margin-top: 1px; }
+    .pat-code {
+      font-family: var(--mono); font-size: 13.5px; line-height: 1.55;
+      background: var(--bg3); border: 0.5px solid var(--border); border-radius: 6px;
+      padding: 9px 12px; overflow-x: auto; white-space: pre; margin-top: 7px;
+      color: var(--text);
+    }
+    .pat-meta { font-size: 14px; color: var(--text3); line-height: 1.5; }
+    .pat-meta strong { color: var(--text2); font-weight: 600; }
+    .pat-pitfalls {
+      background: var(--bg-warn); border: 0.5px solid var(--border-warn); border-radius: 6px;
+      padding: 9px 12px 9px 14px;
+    }
+    .pat-pitfalls .pat-sec-label { color: var(--text-warn); }
+    .pat-pitfalls ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .pat-pitfalls li {
+      font-size: 14px; color: var(--text-warn); line-height: 1.45; padding-left: 16px; position: relative;
+    }
+    .pat-pitfalls li::before { content: "!"; position: absolute; left: 3px; font-weight: 700; }
+    .pat-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+    .pat-pill-row + .pat-pill-row { margin-top: 9px; }
+    /* inline code / bold inside pattern prose */
+    .pat-idea code, .pat-signals code, .pat-var-desc code, .pat-meta code, .pat-pitfalls code {
+      font-family: var(--mono); font-size: .88em;
+      background: var(--bg3); border: 0.5px solid var(--border);
+      padding: 0 4px; border-radius: 4px; white-space: nowrap;
+    }
+    .pat-pitfalls code { background: rgba(0,0,0,.05); border-color: var(--border-warn); }
+
     @media (max-width: 700px) {
+      .pat-grid { grid-template-columns: 1fr; }
       .col-topic, .col-lc, .col-time { display: none; }
       .filter-search { width: 140px; }
     }
@@ -355,6 +432,9 @@
   </button>
   <button class="tab-btn" id="tab-btn-algorithms" onclick="switchTab('algorithms')">
     Algorithms <span id="tab-count-algorithms" style="color:var(--text3);font-weight:400"></span>
+  </button>
+  <button class="tab-btn" id="tab-btn-patterns" onclick="switchTab('patterns')">
+    Patterns <span id="tab-count-patterns" style="color:var(--text3);font-weight:400"></span>
   </button>
 </div>
 
@@ -463,6 +543,37 @@
 
 </div><!-- /tab-panel-algorithms -->
 
+<!-- ══════════════════════════════════════════════════════════════
+     PATTERNS TAB
+     ══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-panel-patterns">
+
+  <!-- ── PATTERN STATS BAR ── -->
+  <div class="stats-bar" id="pat-stats-bar">
+    <span class="stat-chip" id="pst-total">— patterns</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip new"    id="pst-groups">— groups</span>
+    <span class="stat-chip purple" id="pst-topics">— topics</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip gen"    id="pst-problems">— problems mapped</span>
+  </div>
+
+  <!-- ── PATTERN FILTER BAR ── -->
+  <div class="filter-bar">
+    <input class="filter-search" id="pf-search" type="search" placeholder="Search patterns…" oninput="applyPatternFilters()">
+    <div class="filter-sep"></div>
+    <select class="filter-select" id="pf-group" onchange="applyPatternFilters()">
+      <option value="">All Groups</option>
+    </select>
+  </div>
+
+  <!-- ── PATTERN CONTENT ── -->
+  <div class="content" id="pat-content">
+    <div class="loading">Loading patterns…</div>
+  </div>
+
+</div><!-- /tab-panel-patterns -->
+
 <div id="toast"></div>
 
 <!-- ── ACTION BAR (problems only) ── -->
@@ -535,15 +646,17 @@ document.getElementById('site-logo').src = `img/logo_${Math.floor(Math.random() 
 // ══════════════════════════════════════════════════════════════
 // DATA
 // ══════════════════════════════════════════════════════════════
-let ALL   = [];   // LC problems
-let ALGOS = [];   // algorithm entries
+let ALL      = [];   // LC problems
+let ALGOS    = [];   // algorithm entries
+let PATTERNS = [];   // problem-solving patterns / topics
 
 // Cross-link indices (built after both datasets load)
 let slugToAlgos  = {};  // slug → algo[]
 let algoIdToLCPS = {};  // algoId → problem[]
 
-let filters     = { search: '', topic: '', diff: '', status: '', lesson: '' };
-let algoFilters = { search: '', cat: '', kind: '', rel: [] };
+let filters        = { search: '', topic: '', diff: '', status: '', lesson: '' };
+let algoFilters    = { search: '', cat: '', kind: '', rel: [] };
+let patternFilters = { search: '', group: '' };
 const SELECTED  = new Set();
 
 // Default relevance filter: show high + medium, not low
@@ -594,32 +707,32 @@ const TOPIC_SKILL_MAP = {
 // ══════════════════════════════════════════════════════════════
 // TAB ROUTING
 // ══════════════════════════════════════════════════════════════
+const TABS = ['problems', 'algorithms', 'patterns'];
+
 function switchTab(tab) {
-  ['problems', 'algorithms'].forEach(t => {
+  if (!TABS.includes(tab)) tab = 'problems';
+  TABS.forEach(t => {
     document.getElementById(`tab-panel-${t}`).classList.toggle('active', t === tab);
     document.getElementById(`tab-btn-${t}`).classList.toggle('active', t === tab);
   });
-  // Hide action bar when on algorithms tab
-  if (tab === 'algorithms') document.getElementById('action-bar').classList.remove('visible');
+  // Action bar (problem selection) only makes sense on the problems tab
+  if (tab !== 'problems') document.getElementById('action-bar').classList.remove('visible');
   history.replaceState(null, '', `#${tab}`);
 }
 
 function initTabFromHash() {
-  const hash = location.hash.replace('#', '');
-  if (hash === 'algorithms') switchTab('algorithms');
-  else switchTab('problems');
+  switchTab(location.hash.replace('#', ''));
 }
 
 window.addEventListener('hashchange', () => {
-  const hash = location.hash.replace('#', '');
-  switchTab(hash === 'algorithms' ? 'algorithms' : 'problems');
+  switchTab(location.hash.replace('#', ''));
 });
 
 // ══════════════════════════════════════════════════════════════
 // DATA LOAD
 // ══════════════════════════════════════════════════════════════
 async function init() {
-  const [probsOk, algosOk] = await Promise.all([loadProblems(), loadAlgorithms()]);
+  const [probsOk, algosOk] = await Promise.all([loadProblems(), loadAlgorithms(), loadPatterns()]);
   if (probsOk && algosOk) buildCrossLinkIndices();
   initTabFromHash();
 }
@@ -658,6 +771,24 @@ async function loadAlgorithms() {
   }
 }
 
+async function loadPatterns() {
+  try {
+    const r = await fetch('../data/patterns.json');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    PATTERNS = await r.json();
+    PATTERNS.sort((a, b) =>
+      (a.group_order - b.group_order) || (a.order - b.order));
+    document.getElementById('tab-count-patterns').textContent = `(${PATTERNS.length})`;
+    populatePatternGroups();
+    applyPatternFilters();
+    return true;
+  } catch (e) {
+    document.getElementById('pat-content').innerHTML =
+      `<div class="empty-state">Could not load patterns.json.</div>`;
+    return false;
+  }
+}
+
 function buildCrossLinkIndices() {
   // slug → list of algos that reference this slug
   const probBySlug = {};
@@ -677,9 +808,10 @@ function buildCrossLinkIndices() {
       .filter(Boolean);
   });
 
-  // Re-render both to pick up cross-link chips
+  // Re-render to pick up cross-link chips and live problem counts
   applyFilters();
   applyAlgoFilters();
+  if (PATTERNS.length) applyPatternFilters();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1034,6 +1166,193 @@ function buildAlgoRow(a) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// PATTERNS — FILTERING & RENDERING
+// ══════════════════════════════════════════════════════════════
+function populatePatternGroups() {
+  const sel = document.getElementById('pf-group');
+  const groups = [];
+  PATTERNS.forEach(p => { if (!groups.includes(p.group)) groups.push(p.group); });
+  groups.forEach(g => {
+    const o = document.createElement('option');
+    o.value = g; o.textContent = g;
+    sel.appendChild(o);
+  });
+}
+
+// Count of problems (from the Problems tab) mapped to a pattern's topic(s).
+function patternProblemCount(p) {
+  if (!ALL.length) return 0;
+  const topics = new Set(p.topics || []);
+  return ALL.filter(pr => topics.has(pr.topic)).length;
+}
+
+function applyPatternFilters() {
+  patternFilters.search = document.getElementById('pf-search').value.toLowerCase().trim();
+  patternFilters.group  = document.getElementById('pf-group').value;
+
+  const visible = PATTERNS.filter(matchPattern);
+  updatePatternStats(visible);
+  renderPatterns(visible);
+}
+
+function matchPattern(p) {
+  if (patternFilters.group && p.group !== patternFilters.group) return false;
+  const q = patternFilters.search;
+  if (!q) return true;
+  const hay = [
+    p.name, p.tagline, p.core_idea, p.group,
+    ...(p.topics || []),
+    ...(p.variations || []).map(v => v.name + ' ' + (v.desc || '')),
+    ...(p.data_structures || []),
+    ...(p.algorithms || []),
+  ].join(' ').toLowerCase();
+  return hay.includes(q);
+}
+
+function updatePatternStats(visible) {
+  const total  = visible.length;
+  const groups = new Set(visible.map(p => p.group)).size;
+  const topics = new Set(visible.flatMap(p => p.topics || [])).size;
+  const probs  = visible.reduce((sum, p) => sum + patternProblemCount(p), 0);
+  const suffix = (patternFilters.search || patternFilters.group) ? ' (filtered)' : '';
+
+  document.getElementById('pst-total').textContent    = `${total} pattern${total !== 1 ? 's' : ''}${suffix}`;
+  document.getElementById('pst-groups').textContent   = `${groups} group${groups !== 1 ? 's' : ''}`;
+  document.getElementById('pst-topics').textContent   = `${topics} topic${topics !== 1 ? 's' : ''}`;
+  document.getElementById('pst-problems').textContent = `${probs} problem${probs !== 1 ? 's' : ''} mapped`;
+}
+
+function renderPatterns(visible) {
+  const content = document.getElementById('pat-content');
+  if (!visible.length) {
+    content.innerHTML = '<div class="empty-state">No patterns match the current filters.</div>';
+    return;
+  }
+
+  const groupOrder = [];
+  const byGroup = {};
+  for (const p of visible) {
+    if (!byGroup[p.group]) { byGroup[p.group] = []; groupOrder.push(p.group); }
+    byGroup[p.group].push(p);
+  }
+
+  const frag = document.createDocumentFragment();
+
+  for (const g of groupOrder) {
+    const cards = byGroup[g];
+
+    const hdr = document.createElement('div');
+    hdr.className = 'section-hdr';
+    hdr.dataset.section = g;
+    hdr.innerHTML = `
+      <span class="section-hdr-text">${escHtml(g)}</span>
+      <span class="section-hdr-count">${cards.length}</span>
+      <span class="section-hdr-line"></span>
+      <span class="section-hdr-arrow">▾</span>`;
+    hdr.addEventListener('click', () => toggleSection(hdr, 'pat-section'));
+    frag.appendChild(hdr);
+
+    const wrap = document.createElement('div');
+    wrap.dataset.patSectionBody = g;
+    const grid = document.createElement('div');
+    grid.className = 'pat-grid';
+    cards.forEach(p => grid.appendChild(buildPatternCard(p)));
+    wrap.appendChild(grid);
+    frag.appendChild(wrap);
+  }
+
+  content.innerHTML = '';
+  content.appendChild(frag);
+}
+
+function buildPatternCard(p) {
+  const card = document.createElement('div');
+  card.className = 'pat-card';
+
+  const n = patternProblemCount(p);
+  const primaryTopic = (p.topics && p.topics[0]) || '';
+  const countChip = n > 0
+    ? `<a class="pat-count" title="View these in the Problems tab"
+          onclick="goToTopic('${escAttr(primaryTopic)}')">${n} problem${n !== 1 ? 's' : ''} →</a>`
+    : '';
+
+  const signals = (p.signals || []).length
+    ? `<div>
+         <div class="pat-sec-label">Reach for it when</div>
+         <ul class="pat-signals">${p.signals.map(s => `<li>${mdInline(s)}</li>`).join('')}</ul>
+       </div>`
+    : '';
+
+  const variations = (p.variations || []).length
+    ? `<div>
+         <div class="pat-sec-label">Major variations</div>
+         ${p.variations.map(v => `
+           <div class="pat-var">
+             <div class="pat-var-name">${escHtml(v.name)}</div>
+             ${v.desc ? `<div class="pat-var-desc">${mdInline(v.desc)}</div>` : ''}
+             ${v.code ? `<pre class="pat-code">${escHtml(v.code.join('\n'))}</pre>` : ''}
+           </div>`).join('')}
+       </div>`
+    : '';
+
+  const complexity = p.complexity
+    ? `<div class="pat-meta"><strong>Complexity:</strong> ${mdInline(p.complexity)}</div>`
+    : '';
+
+  const pitfalls = (p.pitfalls || []).length
+    ? `<div class="pat-pitfalls">
+         <div class="pat-sec-label">Watch out</div>
+         <ul>${p.pitfalls.map(s => `<li>${mdInline(s)}</li>`).join('')}</ul>
+       </div>`
+    : '';
+
+  const dsPills = (p.data_structures || []).length
+    ? `<div class="pat-pill-row">
+         <div class="pat-sec-label">Data structures</div>
+         <div class="pat-pills">${p.data_structures.map(d =>
+           `<span class="badge badge-ds">${escHtml(d)}</span>`).join('')}</div>
+       </div>`
+    : '';
+
+  const algoPills = (p.algorithms || []).length
+    ? `<div class="pat-pill-row">
+         <div class="pat-sec-label">Algorithms</div>
+         <div class="pat-pills">${p.algorithms.map(a =>
+           `<span class="badge badge-algo">${escHtml(a)}</span>`).join('')}</div>
+       </div>`
+    : '';
+
+  card.innerHTML = `
+    <div class="pat-card-hdr">
+      <span class="pat-icon">${escHtml(p.icon || '◆')}</span>
+      <div class="pat-head-text">
+        <div class="pat-title">${escHtml(p.name)}</div>
+        ${p.tagline ? `<div class="pat-tagline">${escHtml(p.tagline)}</div>` : ''}
+      </div>
+      ${countChip}
+    </div>
+    <div class="pat-body">
+      <div class="pat-idea">${mdInline(p.core_idea || '')}</div>
+      ${signals}
+      ${variations}
+      ${complexity}
+      ${pitfalls}
+      <div>${dsPills}${algoPills}</div>
+    </div>`;
+
+  return card;
+}
+
+// Jump to the Problems tab filtered to a topic (from a pattern's count chip).
+function goToTopic(topic) {
+  const sel = document.getElementById('f-topic');
+  if (sel && [...sel.options].some(o => o.value === topic)) sel.value = topic;
+  applyFilters();
+  switchTab('problems');
+  window.scrollTo({ top: 0 });
+}
+
+// ══════════════════════════════════════════════════════════════
 // STATUS TOGGLE
 // ══════════════════════════════════════════════════════════════
 async function toggleStatus(p, tr, btn) {
@@ -1060,10 +1379,11 @@ async function toggleStatus(p, tr, btn) {
 // ══════════════════════════════════════════════════════════════
 function toggleSection(hdr, bodyAttr) {
   const sec = hdr.dataset.section;
-  const selector = bodyAttr === 'algo-section'
-    ? `[data-algo-section-body="${CSS.escape(sec)}"]`
-    : `[data-section-body="${CSS.escape(sec)}"]`;
-  const body = document.querySelector(selector);
+  const attr = {
+    'algo-section': 'data-algo-section-body',
+    'pat-section':  'data-pat-section-body',
+  }[bodyAttr] || 'data-section-body';
+  const body = document.querySelector(`[${attr}="${CSS.escape(sec)}"]`);
   if (!body) return;
   const collapsed = hdr.classList.toggle('collapsed');
   body.style.display = collapsed ? 'none' : '';
@@ -1339,6 +1659,16 @@ async function submitAdd() {
 function escHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(str) {
+  return escHtml(str).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+}
+// Lightweight inline markdown for trusted pattern prose: escape HTML first,
+// then render `code` spans and **bold**. (Backticks/asterisks survive escaping.)
+function mdInline(str) {
+  return escHtml(str)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 }
 function copyText(btn, text) {
   navigator.clipboard.writeText(text).then(() => {

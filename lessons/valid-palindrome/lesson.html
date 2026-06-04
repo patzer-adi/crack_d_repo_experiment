@@ -831,7 +831,7 @@
     };
 
     document.querySelectorAll('.cv-line').forEach(el => el.classList.remove('active'));
-    const lineEl = document.querySelector(`.cv-line[data-line="${step.line}"]`);
+    const lineEl = document.getElementById('cvL' + step.line);
     if (lineEl) lineEl.classList.add('active');
 
     document.getElementById('cv-left').textContent = step.vars.left;
@@ -1013,7 +1013,7 @@
   function drReset() {
     drCur = 0;
     if (drTimer) { clearInterval(drTimer); drTimer = null; }
-    document.getElementById('dr-play').textContent = '▶ Auto';
+    document.getElementById('dr-bplay').textContent = '▶ Auto';
     drRender(drSteps[0]);
   }
 

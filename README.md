@@ -61,7 +61,7 @@ The full workflow specification lives in [`.claude/commands/batch-lesson.md`](.c
 ```
 crack_d/
 ├── dashboard/
-│   └── index.html              # problem tracker — filter, status toggle, open lessons
+│   └── index.html              # 3 tabs: Problems (track/filter), Algorithms, Patterns
 ├── static/
 │   ├── lesson.css              # shared styles for all lessons (extracted once)
 │   ├── lesson.js               # shared JS functions for all lessons
@@ -75,7 +75,9 @@ crack_d/
 │       ├── lesson.html         # interactive lesson — imports static/ assets, problem-specific only
 │       └── plan.md             # lesson outline + Python verification trace
 ├── data/
-│   └── problems.json           # source of truth for all problems + metadata
+│   ├── problems.json           # source of truth for all problems + metadata
+│   ├── algorithms.json         # algorithm/data-structure catalog (Algorithms tab)
+│   └── patterns.json           # problem-solving patterns by topic (Patterns tab)
 ├── skills/
 │   ├── ds/                     # data structure reference sheets
 │   └── patterns/               # algorithm pattern reference sheets

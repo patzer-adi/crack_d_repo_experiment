@@ -1,0 +1,1040 @@
+[
+  {
+    "id": "arrays-hashing",
+    "name": "Arrays & Hashing",
+    "group": "Core Array Techniques",
+    "group_order": 1,
+    "order": 1,
+    "icon": "#",
+    "topics": ["Arrays & Hashing"],
+    "tagline": "Trade a little memory for O(1) lookups.",
+    "core_idea": "A hash map (or hash set) trades memory for speed: it turns *have I seen this?*, *how many times?*, and *where is it?* questions from an O(n) scan into an O(1) lookup. Most array problems that feel like they need a nested loop can be flattened to a single pass by remembering what you have already seen in a hash structure.",
+    "signals": [
+      "You keep asking *have I seen this value before?* or counting frequencies.",
+      "The brute force is a nested loop comparing every element with every other.",
+      "You need grouping (anagrams), de-duplication, or O(1) membership tests."
+    ],
+    "variations": [
+      {
+        "name": "Hash set for membership / dedup",
+        "desc": "Track what you have seen; `Contains Duplicate`, `Longest Consecutive Sequence`.",
+        "code": [
+          "unordered_set<int> seen;",
+          "for (int x : nums) {",
+          "    if (seen.count(x)) return true;   // duplicate found",
+          "    seen.insert(x);",
+          "}"
+        ]
+      },
+      {
+        "name": "Hash map for counting",
+        "desc": "Value to frequency; `Valid Anagram`, `Top K Frequent`, `Group Anagrams`.",
+        "code": [
+          "unordered_map<int,int> freq;",
+          "for (int x : nums) freq[x]++;        // value -> count"
+        ]
+      },
+      {
+        "name": "Complement lookup (one pass)",
+        "desc": "`Two Sum`: store value to index, then ask for `target - x`.",
+        "code": [
+          "unordered_map<int,int> idx;          // value -> position",
+          "for (int i = 0; i < n; i++) {",
+          "    int need = target - nums[i];",
+          "    if (idx.count(need)) return {idx[need], i};",
+          "    idx[nums[i]] = i;",
+          "}"
+        ]
+      },
+      {
+        "name": "Canonical key",
+        "desc": "Hash a normalised form: sorted string as the key for `Group Anagrams`, or encode/decode keys."
+      }
+    ],
+    "complexity": "Most brute-force O(n^2) scans collapse to O(n) time with O(n) extra space.",
+    "pitfalls": [
+      "Hash maps are average O(1) but worst-case O(n); rarely matters, but know it.",
+      "For Two Sum, check for the complement *before* inserting the current value."
+    ],
+    "data_structures": ["Hash Map", "Hash Set", "Array", "String"],
+    "algorithms": ["Frequency Counting", "Complement Search", "Canonical Keying"]
+  },
+  {
+    "id": "two-pointers",
+    "name": "Two Pointers",
+    "group": "Core Array Techniques",
+    "group_order": 1,
+    "order": 2,
+    "icon": "⇄",
+    "topics": ["Two Pointers"],
+    "tagline": "Two indices that collapse a pair search to one pass.",
+    "core_idea": "Use two indices that move toward (or alongside) each other so each step rules out a whole range of possibilities. On a **sorted** array this turns an O(n^2) pair search into O(n): moving the left pointer only increases the sum, moving the right pointer only decreases it, so you always know which side to move.",
+    "signals": [
+      "The array is sorted (or you can sort it) and you want a pair / triple with some sum.",
+      "You compare elements from both ends (palindrome check, container area).",
+      "You filter or partition in place (move zeroes, remove duplicates)."
+    ],
+    "variations": [
+      {
+        "name": "Opposite ends (converging)",
+        "desc": "`Two Sum II`, `Container With Most Water`, `Valid Palindrome`.",
+        "code": [
+          "int L = 0, R = n - 1;",
+          "while (L < R) {",
+          "    int sum = a[L] + a[R];",
+          "    if (sum == target) return {L, R};",
+          "    if (sum < target) L++;   // need bigger -> raise the low end",
+          "    else              R--;   // need smaller -> lower the high end",
+          "}"
+        ]
+      },
+      {
+        "name": "Fast & slow (same direction)",
+        "desc": "A write pointer trails a read pointer; in-place dedup, move zeroes.",
+        "code": [
+          "int slow = 0;                          // write position",
+          "for (int fast = 0; fast < n; fast++)",
+          "    if (a[fast] != 0) swap(a[slow++], a[fast]);"
+        ]
+      },
+      {
+        "name": "Anchor + inner two pointers",
+        "desc": "Fix one index, two-pointer the rest: `3Sum` / `4Sum` run an O(n) sweep inside an O(n) loop = O(n^2)."
+      }
+    ],
+    "complexity": "O(n) for a single sweep, O(n log n) when a sort is needed first; O(1) extra space.",
+    "pitfalls": [
+      "Skip duplicates correctly in 3Sum (advance L / R past equal values).",
+      "Mind the boundary: `L < R` vs `L <= R` changes which pairs you visit."
+    ],
+    "data_structures": ["Array", "String", "Sorted Array"],
+    "algorithms": ["Sorting (preprocessing)", "Linear Scan", "Floyd's Cycle Detection"]
+  },
+  {
+    "id": "sliding-window",
+    "name": "Sliding Window",
+    "group": "Core Array Techniques",
+    "group_order": 1,
+    "order": 3,
+    "icon": "▭",
+    "topics": ["Sliding Window"],
+    "tagline": "A moving range over contiguous data.",
+    "core_idea": "Maintain a contiguous window `[L, R]` over an array or string and slide it instead of re-scanning. Expand `R` to include new elements; when the window breaks a constraint, shrink from `L`. Each element enters and leaves the window once, so an O(n^2) *check every subarray* becomes O(n).",
+    "signals": [
+      "*Longest / shortest / max / min* contiguous subarray or substring satisfying a rule.",
+      "Constraints like *at most K distinct*, *sum >= target*, *no repeating characters*."
+    ],
+    "variations": [
+      {
+        "name": "Fixed-size window",
+        "desc": "`L` and `R` move in lockstep; max sum of k consecutive, rolling averages.",
+        "code": [
+          "int sum = 0, best = INT_MIN;",
+          "for (int R = 0; R < n; R++) {",
+          "    sum += a[R];",
+          "    if (R >= k) sum -= a[R - k];        // drop the element leaving",
+          "    if (R >= k - 1) best = max(best, sum);",
+          "}"
+        ]
+      },
+      {
+        "name": "Variable-size window",
+        "desc": "Grow `R`; shrink `L` while the constraint is violated; record the best valid window.",
+        "code": [
+          "int L = 0; unordered_map<char,int> cnt;",
+          "for (int R = 0; R < n; R++) {",
+          "    cnt[s[R]]++;",
+          "    while (cnt[s[R]] > 1) cnt[s[L++]]--;   // shrink until no repeat",
+          "    best = max(best, R - L + 1);",
+          "}"
+        ]
+      },
+      {
+        "name": "Window + frequency map",
+        "desc": "Track counts inside the window: `Minimum Window Substring`, `Permutation in String`."
+      }
+    ],
+    "complexity": "O(n) time (each index is visited by L and R at most once), O(k) or O(alphabet) space.",
+    "pitfalls": [
+      "Update the answer at the right moment: any valid state for *maximum*, after shrinking for *minimum*.",
+      "Remove the outgoing element's contribution when `L` advances."
+    ],
+    "data_structures": ["Array", "String", "Hash Map", "Deque (max/min window)"],
+    "algorithms": ["Monotonic Deque", "Frequency Counting"]
+  },
+  {
+    "id": "prefix-sum",
+    "name": "Prefix Sum",
+    "group": "Core Array Techniques",
+    "group_order": 1,
+    "order": 4,
+    "icon": "Σ",
+    "topics": ["Prefix Sum"],
+    "tagline": "Precompute totals; answer any range in O(1).",
+    "core_idea": "Precompute cumulative totals so any range query becomes one subtraction. With `prefix[i] = a[0] + ... + a[i-1]`, the sum of range `[i, j)` is `prefix[j] - prefix[i]` in O(1). Pair it with a hash map to *count* subarrays whose sum hits a target.",
+    "signals": [
+      "Many range-sum / range-aggregate queries over a static array.",
+      "*Number of subarrays summing to K*, subarray with a given sum, equal partitions.",
+      "2D version: repeated submatrix sums."
+    ],
+    "variations": [
+      {
+        "name": "1D prefix array",
+        "desc": "Instant range sums after O(n) preprocessing.",
+        "code": [
+          "vector<long> pre(n + 1, 0);",
+          "for (int i = 0; i < n; i++) pre[i+1] = pre[i] + a[i];",
+          "// sum of a[i..j] = pre[j+1] - pre[i]"
+        ]
+      },
+      {
+        "name": "Prefix + hash map (count = K)",
+        "desc": "Store how often each prefix value occurred; count subarrays summing to k.",
+        "code": [
+          "unordered_map<long,int> seen{{0, 1}};",
+          "long sum = 0; int ans = 0;",
+          "for (int x : a) {",
+          "    sum += x;",
+          "    ans += seen[sum - k];      // prefixes that close a K-sum window",
+          "    seen[sum]++;",
+          "}"
+        ]
+      },
+      {
+        "name": "2D prefix sum",
+        "desc": "Inclusion-exclusion for submatrix sums (`Range Sum Query 2D`)."
+      },
+      {
+        "name": "Difference array",
+        "desc": "The inverse trick: apply many range updates in O(1) each, then one pass to materialise."
+      }
+    ],
+    "complexity": "O(n) build, O(1) per query; the hash-map counting variant is O(n) total.",
+    "pitfalls": [
+      "Keep one convention for inclusive vs exclusive bounds to avoid off-by-one bugs.",
+      "Seed the map with `{0: 1}` so subarrays starting at index 0 are counted."
+    ],
+    "data_structures": ["Array", "Hash Map", "2D Array"],
+    "algorithms": ["Cumulative Sum", "Inclusion-Exclusion", "Difference Array"]
+  },
+  {
+    "id": "binary-search",
+    "name": "Binary Search",
+    "group": "Core Array Techniques",
+    "group_order": 1,
+    "order": 5,
+    "icon": "⌀",
+    "topics": ["Binary Search"],
+    "tagline": "Halve a monotonic search space each step.",
+    "core_idea": "Repeatedly halve a search space using a yes/no test that is **monotonic** (once it flips from no to yes it never flips back). Classic on sorted arrays, but the real power is *binary search on the answer*: guess a candidate value, check feasibility, discard half the range — turning O(n) or O(n^2) searches into O(log n) or O(n log n).",
+    "signals": [
+      "Sorted (or rotated-sorted) input and you are locating a value or a boundary.",
+      "*Minimum / maximum X such that condition(X) holds* with a monotonic condition.",
+      "The answer lives in a numeric range you can test feasibility against (min capacity, Koko eating bananas)."
+    ],
+    "variations": [
+      {
+        "name": "Classic search",
+        "desc": "Find a target's index in a sorted array.",
+        "code": [
+          "int lo = 0, hi = n - 1;",
+          "while (lo <= hi) {",
+          "    int mid = lo + (hi - lo) / 2;",
+          "    if (a[mid] == target) return mid;",
+          "    if (a[mid] < target) lo = mid + 1;",
+          "    else                 hi = mid - 1;",
+          "}"
+        ]
+      },
+      {
+        "name": "Lower / upper bound",
+        "desc": "Leftmost index >= target, rightmost, or the count of a value (boundary search)."
+      },
+      {
+        "name": "Binary search on the answer",
+        "desc": "Guess a value, test feasibility, shrink the range toward the smallest that works.",
+        "code": [
+          "int lo = minVal, hi = maxVal;",
+          "while (lo < hi) {",
+          "    int mid = lo + (hi - lo) / 2;",
+          "    if (feasible(mid)) hi = mid;        // works -> try smaller",
+          "    else               lo = mid + 1;   // too small -> go bigger",
+          "}",
+          "return lo;"
+        ]
+      },
+      {
+        "name": "Rotated / 2D",
+        "desc": "`Search in Rotated Sorted Array`, searching a row-and-column sorted matrix."
+      }
+    ],
+    "complexity": "O(log n) per search; binary-search-on-answer is O(n log(range)).",
+    "pitfalls": [
+      "Use `lo + (hi - lo) / 2` to avoid integer overflow.",
+      "Match the invariant (`lo <= hi` vs `lo < hi`) and make sure the range shrinks every step."
+    ],
+    "data_structures": ["Array", "Sorted Array", "Matrix"],
+    "algorithms": ["Divide & Conquer", "Monotonic Predicate / Parametric Search"]
+  },
+  {
+    "id": "stack-monotonic",
+    "name": "Stack & Monotonic Stack",
+    "group": "Stacks, Lists & Heaps",
+    "group_order": 2,
+    "order": 1,
+    "icon": "▤",
+    "topics": ["Stack & Monotonic Stack"],
+    "tagline": "LIFO memory for nesting and next-greater.",
+    "core_idea": "A stack (LIFO) remembers *the most recent unresolved thing*, which is exactly what nested / matching problems need. A **monotonic stack** keeps its elements sorted; when a new element breaks the order it pops the violators — and each pop is the moment you have found that element's *next greater / smaller* neighbour, in O(1) amortised.",
+    "signals": [
+      "Matching or nesting: parentheses, expression evaluation, path simplification.",
+      "*Next greater element*, *previous smaller*, daily temperatures, stock span.",
+      "Histogram / rectangle areas, trapping rain water."
+    ],
+    "variations": [
+      {
+        "name": "Plain stack (matching & parsing)",
+        "desc": "`Valid Parentheses`, evaluate reverse-Polish, simplify a path.",
+        "code": [
+          "stack<char> st;",
+          "for (char c : s) {",
+          "    if (c == '(') st.push(c);",
+          "    else { if (st.empty()) return false; st.pop(); }",
+          "}",
+          "return st.empty();"
+        ]
+      },
+      {
+        "name": "Monotonic stack (next greater)",
+        "desc": "Store indices; pop while the incoming value dominates the top.",
+        "code": [
+          "stack<int> st;                          // indices, values decreasing",
+          "vector<int> nextGreater(n, -1);",
+          "for (int i = 0; i < n; i++) {",
+          "    while (!st.empty() && a[i] > a[st.top()]) {",
+          "        nextGreater[st.top()] = i;      // a[i] answers st.top()",
+          "        st.pop();",
+          "    }",
+          "    st.push(i);",
+          "}"
+        ]
+      },
+      {
+        "name": "Monotonic stack for areas",
+        "desc": "`Largest Rectangle in Histogram`, `Trapping Rain Water` — widths come from popped indices."
+      }
+    ],
+    "complexity": "O(n) — each element is pushed and popped at most once.",
+    "pitfalls": [
+      "Decide whether to store values or indices (area problems need indices for widths).",
+      "Pick increasing vs decreasing depending on next-greater vs next-smaller."
+    ],
+    "data_structures": ["Stack", "Monotonic Stack", "Array"],
+    "algorithms": ["Next Greater Element", "Expression Parsing", "Amortized Analysis"]
+  },
+  {
+    "id": "linked-lists",
+    "name": "Linked Lists",
+    "group": "Stacks, Lists & Heaps",
+    "group_order": 2,
+    "order": 2,
+    "icon": "→",
+    "topics": ["Linked Lists"],
+    "tagline": "Pointer surgery: dummy heads and fast/slow.",
+    "core_idea": "A linked list is a chain of nodes joined by pointers; you cannot index into it, so almost every trick is careful manipulation of `next`. Two ideas unlock most problems: the **fast/slow** two-pointer (middle, cycle, nth-from-end) and a **dummy head** node (so insert/delete at the front needs no special case).",
+    "signals": [
+      "In-place reversal, merging sorted lists, reordering nodes.",
+      "*Find the middle / detect a cycle / remove nth from end* without knowing the length.",
+      "You add or remove nodes and want to avoid special-casing the head."
+    ],
+    "variations": [
+      {
+        "name": "Dummy node + rewiring",
+        "desc": "Merge two sorted lists, remove elements, partition.",
+        "code": [
+          "ListNode dummy(0); ListNode* tail = &dummy;",
+          "while (a && b) {",
+          "    if (a->val <= b->val) { tail->next = a; a = a->next; }",
+          "    else                  { tail->next = b; b = b->next; }",
+          "    tail = tail->next;",
+          "}",
+          "tail->next = a ? a : b;",
+          "return dummy.next;"
+        ]
+      },
+      {
+        "name": "Iterative reversal",
+        "desc": "Flip `next` pointers with a three-pointer dance.",
+        "code": [
+          "ListNode* prev = nullptr;",
+          "while (head) {",
+          "    ListNode* nxt = head->next;",
+          "    head->next = prev;            // reverse this link",
+          "    prev = head; head = nxt;",
+          "}",
+          "return prev;                      // new head"
+        ]
+      },
+      {
+        "name": "Fast & slow pointers",
+        "desc": "Middle node, Floyd cycle detection, nth-from-end — slow moves 1, fast moves 2."
+      }
+    ],
+    "complexity": "O(n) time, O(1) space for most pointer manipulations.",
+    "pitfalls": [
+      "Losing the rest of the list — save `next` before you overwrite it.",
+      "Forgetting to null-terminate the tail, creating an accidental cycle."
+    ],
+    "data_structures": ["Singly Linked List", "Doubly Linked List", "Dummy Node"],
+    "algorithms": ["Floyd's Cycle Detection", "In-place Reversal", "Merge"]
+  },
+  {
+    "id": "trees",
+    "name": "Trees",
+    "group": "Trees & Tries",
+    "group_order": 3,
+    "order": 1,
+    "icon": "⑂",
+    "topics": ["Trees"],
+    "tagline": "Recurse on subtrees; pick your traversal.",
+    "core_idea": "A binary tree is a recursive structure — each node owns two smaller trees — so the natural tool is **recursion / DFS**: solve the children, then combine. The traversal order (preorder / inorder / postorder) or level-order **BFS** decides *when* you visit each node, and that choice is usually the whole solution.",
+    "signals": [
+      "Anything over a tree: depth, balance, path sums, lowest common ancestor.",
+      "*Per level* questions point to BFS; *combine results from subtrees* points to postorder DFS.",
+      "Serialize / deserialize, or build a tree from its traversals."
+    ],
+    "variations": [
+      {
+        "name": "DFS recursion (divide & combine)",
+        "desc": "Height, diameter, path sum, LCA — solve children, merge upward.",
+        "code": [
+          "int height(TreeNode* r) {",
+          "    if (!r) return 0;",
+          "    return 1 + max(height(r->left), height(r->right));",
+          "}"
+        ]
+      },
+      {
+        "name": "BFS / level-order (queue)",
+        "desc": "Level averages, right-side view, minimum depth — process one full level at a time.",
+        "code": [
+          "queue<TreeNode*> q; q.push(root);",
+          "while (!q.empty()) {",
+          "    int sz = q.size();                    // one whole level",
+          "    for (int i = 0; i < sz; i++) {",
+          "        TreeNode* n = q.front(); q.pop();",
+          "        if (n->left)  q.push(n->left);",
+          "        if (n->right) q.push(n->right);",
+          "    }",
+          "}"
+        ]
+      },
+      {
+        "name": "Traversal orders",
+        "desc": "Inorder (sorted for a BST), preorder (clone / serialize), postorder (delete / aggregate)."
+      }
+    ],
+    "complexity": "O(n) to visit every node; recursion stack is O(h), the height (h can be n when skewed).",
+    "pitfalls": [
+      "Always handle the null-node base case.",
+      "Return multiple facts from one DFS (e.g. height *and* is-balanced) to stay O(n)."
+    ],
+    "data_structures": ["Binary Tree", "Queue", "Recursion Stack"],
+    "algorithms": ["DFS", "BFS", "Tree Traversals (pre/in/post-order)"]
+  },
+  {
+    "id": "bst",
+    "name": "Binary Search Tree (BST)",
+    "group": "Trees & Tries",
+    "group_order": 3,
+    "order": 2,
+    "icon": "⧉",
+    "topics": ["BST"],
+    "tagline": "An ordered tree: go left or right to search.",
+    "core_idea": "A BST keeps a global order: every node's left subtree is smaller and its right subtree is larger. That invariant turns search, insert, and delete into a guided walk — at each node you go left or right, halving the work — and an **inorder traversal** emits the values fully sorted.",
+    "signals": [
+      "Sorted-order operations on a dynamic set: insert / delete / lookup, kth smallest, range queries.",
+      "*Validate BST*, *inorder successor*, *convert sorted array to BST*."
+    ],
+    "variations": [
+      {
+        "name": "Ordered search / insert",
+        "desc": "Exploit the invariant to descend exactly one side.",
+        "code": [
+          "TreeNode* search(TreeNode* r, int key) {",
+          "    while (r && r->val != key)",
+          "        r = key < r->val ? r->left : r->right;",
+          "    return r;",
+          "}"
+        ]
+      },
+      {
+        "name": "Inorder = sorted sequence",
+        "desc": "Validate a BST, find the kth smallest, or do two-sum within a BST."
+      },
+      {
+        "name": "Range / bounds checking",
+        "desc": "Pass `(low, high)` limits down to validate the whole subtree.",
+        "code": [
+          "bool valid(TreeNode* r, long lo, long hi) {",
+          "    if (!r) return true;",
+          "    if (r->val <= lo || r->val >= hi) return false;",
+          "    return valid(r->left, lo, r->val) && valid(r->right, r->val, hi);",
+          "}"
+        ]
+      }
+    ],
+    "complexity": "O(h) per operation — O(log n) if balanced, O(n) if degenerate; self-balancing trees guarantee O(log n).",
+    "pitfalls": [
+      "An unbalanced BST degrades to a linked list — mention AVL / Red-Black variants.",
+      "Use strict bounds when validating so equal values are rejected."
+    ],
+    "data_structures": ["Binary Search Tree", "Balanced BST (AVL / Red-Black)", "TreeMap / TreeSet"],
+    "algorithms": ["Inorder Traversal", "Ordered Search", "Tree Balancing"]
+  },
+  {
+    "id": "tries",
+    "name": "Tries",
+    "group": "Trees & Tries",
+    "group_order": 3,
+    "order": 3,
+    "icon": "Ⓣ",
+    "topics": ["Tries"],
+    "tagline": "Share prefixes; query in O(word length).",
+    "core_idea": "A trie (prefix tree) stores strings by sharing common prefixes along a path of nodes, one character per edge. Lookups and prefix queries cost O(L) in the length of the word — independent of how many words are stored — which is why tries power autocomplete, spell-check, and word-search puzzles.",
+    "signals": [
+      "Many strings sharing prefixes; *starts with*, autocomplete, dictionary lookups.",
+      "Word-search / board problems where you prune branches by prefix.",
+      "Bitwise tries for maximum-XOR-pair problems."
+    ],
+    "variations": [
+      {
+        "name": "insert / search / startsWith",
+        "desc": "The core prefix tree with a child per alphabet letter.",
+        "code": [
+          "struct Node { Node* kid[26] = {}; bool end = false; };",
+          "void insert(Node* root, const string& w) {",
+          "    Node* cur = root;",
+          "    for (char c : w) {",
+          "        int i = c - 'a';",
+          "        if (!cur->kid[i]) cur->kid[i] = new Node();",
+          "        cur = cur->kid[i];",
+          "    }",
+          "    cur->end = true;",
+          "}"
+        ]
+      },
+      {
+        "name": "Trie + DFS / backtracking",
+        "desc": "`Word Search II`: walk the board and prune the moment no word has the current prefix."
+      },
+      {
+        "name": "Bitwise trie",
+        "desc": "Store integers bit-by-bit (high to low) to find the `Maximum XOR` of two numbers."
+      }
+    ],
+    "complexity": "O(L) per insert / search where L is the word length; space O(total characters x alphabet).",
+    "pitfalls": [
+      "Arrays of 26+ children waste memory; a hash map of children is leaner for sparse alphabets.",
+      "Mark word ends explicitly so prefixes are not mistaken for complete words."
+    ],
+    "data_structures": ["Trie / Prefix Tree", "Hash Map (children)", "Array (fixed alphabet)"],
+    "algorithms": ["Prefix Matching", "DFS over Trie", "Bit Manipulation (XOR trie)"]
+  },
+  {
+    "id": "heaps",
+    "name": "Heaps / Priority Queue",
+    "group": "Stacks, Lists & Heaps",
+    "group_order": 2,
+    "order": 3,
+    "icon": "▲",
+    "topics": ["Heaps / Priority Queue"],
+    "tagline": "Always pull the current best in O(log n).",
+    "core_idea": "A heap is a binary tree kept in an array that always hands you the smallest (min-heap) or largest (max-heap) element in O(1), with O(log n) insert and pop. Reach for it whenever you repeatedly need *the current best* from a changing set — top-K, merging streams, scheduling — without paying to fully sort.",
+    "signals": [
+      "*Top K*, *K largest / smallest / closest*, *Kth largest*.",
+      "Merge K sorted lists or streams; running median (two heaps).",
+      "Greedy scheduling where you always grab the current min / max (Dijkstra, task scheduler)."
+    ],
+    "variations": [
+      {
+        "name": "Top-K with a size-K heap",
+        "desc": "Keep a min-heap of size K; its top is the Kth largest.",
+        "code": [
+          "priority_queue<int, vector<int>, greater<int>> minHeap;  // smallest on top",
+          "for (int x : nums) {",
+          "    minHeap.push(x);",
+          "    if (minHeap.size() > k) minHeap.pop();   // drop the smallest",
+          "}",
+          "// minHeap now holds the K largest values"
+        ]
+      },
+      {
+        "name": "Merge K sorted lists",
+        "desc": "Push every list head, pop the minimum, push that node's successor."
+      },
+      {
+        "name": "Two heaps (running median)",
+        "desc": "A max-heap for the lower half and a min-heap for the upper half, kept balanced."
+      }
+    ],
+    "complexity": "push / pop O(log n), peek O(1); top-K is O(n log k).",
+    "pitfalls": [
+      "C++ `priority_queue` is a max-heap by default — use `greater<>` for a min-heap.",
+      "For *K largest* keep a min-heap of size K, not a max-heap of everything."
+    ],
+    "data_structures": ["Binary Heap", "Priority Queue", "Array"],
+    "algorithms": ["Heapify", "Top-K Selection", "Two-Heap Median", "Dijkstra (uses a heap)"]
+  },
+  {
+    "id": "graphs-bfs-dfs",
+    "name": "Graphs — BFS / DFS",
+    "group": "Graphs",
+    "group_order": 4,
+    "order": 1,
+    "icon": "⬡",
+    "topics": ["Graphs — BFS / DFS"],
+    "tagline": "Explore everything reachable.",
+    "core_idea": "A graph is nodes joined by edges; most basic graph questions are *explore everything reachable* via BFS or DFS. **BFS** (a queue) explores level by level and finds shortest paths in unweighted graphs; **DFS** (recursion or a stack) dives deep and is natural for connectivity, cycles, and ordering. A grid is just a graph whose neighbours are up / down / left / right.",
+    "signals": [
+      "Connectivity: *number of islands / provinces / connected components*.",
+      "Shortest path in an unweighted graph or grid points to BFS.",
+      "Reachability, flood fill, cycle detection, topological order point to DFS."
+    ],
+    "variations": [
+      {
+        "name": "DFS (recursion / stack)",
+        "desc": "Connected components, flood fill, path existence.",
+        "code": [
+          "void dfs(int u, vector<vector<int>>& g, vector<bool>& seen) {",
+          "    seen[u] = true;",
+          "    for (int v : g[u]) if (!seen[v]) dfs(v, g, seen);",
+          "}"
+        ]
+      },
+      {
+        "name": "BFS (queue)",
+        "desc": "Fewest steps / shortest path in unweighted graphs and grids.",
+        "code": [
+          "queue<int> q; q.push(src); dist[src] = 0;",
+          "while (!q.empty()) {",
+          "    int u = q.front(); q.pop();",
+          "    for (int v : g[u]) if (dist[v] == -1) {",
+          "        dist[v] = dist[u] + 1;",
+          "        q.push(v);",
+          "    }",
+          "}"
+        ]
+      },
+      {
+        "name": "Grid traversal",
+        "desc": "Treat each cell as a node with 4 (or 8) neighbours: `Number of Islands`, `Rotting Oranges`."
+      },
+      {
+        "name": "Topological sort & cycle detection",
+        "desc": "DFS post-order or Kahn's BFS on a directed acyclic graph (course schedule)."
+      }
+    ],
+    "complexity": "O(V + E) — every vertex and edge is visited once.",
+    "pitfalls": [
+      "Mark a node visited when you *enqueue* it (BFS), not when you dequeue, or you add it twice.",
+      "Deep graphs can blow the recursion stack — switch to an explicit stack if needed."
+    ],
+    "data_structures": ["Adjacency List", "Queue", "Visited Set", "Grid / Matrix"],
+    "algorithms": ["BFS", "DFS", "Flood Fill", "Topological Sort (Kahn's)"]
+  },
+  {
+    "id": "graphs-advanced",
+    "name": "Graphs — Advanced",
+    "group": "Graphs",
+    "group_order": 4,
+    "order": 2,
+    "icon": "⬢",
+    "topics": ["Graphs — Advanced"],
+    "tagline": "Weights and connectivity: the classic algorithms.",
+    "core_idea": "Once edges carry weights or you need global structure, plain BFS/DFS is not enough — you reach for specialised algorithms: weighted shortest paths (**Dijkstra** / **Bellman-Ford**), minimum spanning trees (**Kruskal** / **Prim**), and dynamic connectivity (**Union-Find**). The skill is recognising which classic algorithm a problem is secretly asking for.",
+    "signals": [
+      "Weighted shortest paths (Dijkstra for non-negative; Bellman-Ford for negative edges).",
+      "*Connect all nodes at minimum cost* points to a Minimum Spanning Tree.",
+      "Dynamic connectivity, *are these in the same group*, undirected cycle detection point to Union-Find.",
+      "All-pairs shortest paths on a small graph point to Floyd-Warshall."
+    ],
+    "variations": [
+      {
+        "name": "Dijkstra (heap)",
+        "desc": "Shortest path from a source with non-negative weights.",
+        "code": [
+          "priority_queue<pair<int,int>, vector<pair<int,int>>, greater<>> pq;",
+          "pq.push({0, src}); dist[src] = 0;",
+          "while (!pq.empty()) {",
+          "    auto [d, u] = pq.top(); pq.pop();",
+          "    if (d > dist[u]) continue;            // stale entry",
+          "    for (auto [v, w] : g[u])",
+          "        if (d + w < dist[v]) { dist[v] = d + w; pq.push({dist[v], v}); }",
+          "}"
+        ]
+      },
+      {
+        "name": "Union-Find (DSU)",
+        "desc": "Connected components, redundant connection, the backbone of Kruskal's MST.",
+        "code": [
+          "int find(int x){ return par[x] == x ? x : par[x] = find(par[x]); }",
+          "void uni(int a, int b){ par[find(a)] = find(b); }"
+        ]
+      },
+      {
+        "name": "Minimum Spanning Tree",
+        "desc": "Kruskal (sort edges + DSU) or Prim (grow from a node with a heap)."
+      },
+      {
+        "name": "Bellman-Ford / Floyd-Warshall",
+        "desc": "Negative edges (Bellman-Ford) or all-pairs shortest paths (Floyd-Warshall)."
+      }
+    ],
+    "complexity": "Dijkstra O((V+E) log V); Union-Find ~O(alpha(n)) per op; Kruskal O(E log E).",
+    "pitfalls": [
+      "Dijkstra breaks with negative edges — use Bellman-Ford there.",
+      "Always add path compression + union by rank to Union-Find or it degrades."
+    ],
+    "data_structures": ["Weighted Adjacency List", "Priority Queue", "Union-Find (DSU)"],
+    "algorithms": ["Dijkstra", "Bellman-Ford", "Floyd-Warshall", "Kruskal / Prim (MST)", "Topological Sort"]
+  },
+  {
+    "id": "backtracking",
+    "name": "Backtracking",
+    "group": "Recursion & Optimization",
+    "group_order": 5,
+    "order": 1,
+    "icon": "↩",
+    "topics": ["Backtracking"],
+    "tagline": "Try a choice, recurse, then undo it.",
+    "core_idea": "Backtracking builds candidate solutions one choice at a time and abandons (*backtracks on*) a path the moment it cannot lead to a valid answer. It is a guided DFS over the tree of all possibilities: **choose to recurse to un-choose**. Pruning invalid branches early is what makes an exponential space tractable.",
+    "signals": [
+      "*Generate all* or *count all* subsets, permutations, combinations.",
+      "Constraint puzzles: N-Queens, Sudoku, word search, palindrome partitioning.",
+      "You need every solution, not just one optimum (that is usually DP or greedy)."
+    ],
+    "variations": [
+      {
+        "name": "Subsets / combinations",
+        "desc": "At each element, branch on include vs skip.",
+        "code": [
+          "void dfs(int i, vector<int>& cur) {",
+          "    if (i == n) { res.push_back(cur); return; }",
+          "    cur.push_back(a[i]); dfs(i + 1, cur);   // choose a[i]",
+          "    cur.pop_back();      dfs(i + 1, cur);   // skip a[i]  (un-choose)",
+          "}"
+        ]
+      },
+      {
+        "name": "Permutations",
+        "desc": "Try each unused element at the current position; track a `used[]` array."
+      },
+      {
+        "name": "Constraint search with pruning",
+        "desc": "N-Queens, Sudoku — kill a branch the instant it becomes invalid."
+      }
+    ],
+    "complexity": "Exponential in the worst case (O(2^n) subsets, O(n!) permutations); pruning cuts the real cost dramatically.",
+    "pitfalls": [
+      "Always undo the choice after recursing (restore state) or branches bleed into each other.",
+      "Skip duplicates (sort first, then skip equal siblings) to avoid repeated answers."
+    ],
+    "data_structures": ["Recursion Stack", "Array / Vector (current path)", "Visited / Used set"],
+    "algorithms": ["DFS", "Pruning", "Permutation / Combination Generation"]
+  },
+  {
+    "id": "dynamic-programming",
+    "name": "Dynamic Programming",
+    "group": "Recursion & Optimization",
+    "group_order": 5,
+    "order": 2,
+    "icon": "▦",
+    "topics": ["Dynamic Programming", "DP"],
+    "tagline": "Solve overlapping subproblems once.",
+    "core_idea": "DP solves a problem by combining answers to **overlapping subproblems** and storing each answer so it is computed once. If a brute-force recursion keeps re-solving the same smaller cases, add memoization (top-down) or fill a table bottom-up. The hard part is naming the **state** and writing the **recurrence** (transition) between states.",
+    "signals": [
+      "*Number of ways*, *min / max cost or length*, *can we reach / partition* — with choices that overlap.",
+      "A recursive solution recomputes the same arguments; results depend only on a few parameters.",
+      "Optimal substructure: the best answer is built from best answers to subproblems."
+    ],
+    "variations": [
+      {
+        "name": "1D DP",
+        "desc": "`Climbing Stairs`, `House Robber`, `Decode Ways`.",
+        "code": [
+          "vector<int> dp(n + 1); dp[0] = 1; dp[1] = 1;",
+          "for (int i = 2; i <= n; i++) dp[i] = dp[i-1] + dp[i-2];"
+        ]
+      },
+      {
+        "name": "2D / grid DP",
+        "desc": "Edit distance, longest common subsequence, unique paths.",
+        "code": [
+          "for (int i = 1; i <= m; i++)",
+          "  for (int j = 1; j <= n; j++)",
+          "    dp[i][j] = (a[i-1] == b[j-1]) ? dp[i-1][j-1] + 1",
+          "                                 : max(dp[i-1][j], dp[i][j-1]);  // LCS"
+        ]
+      },
+      {
+        "name": "Knapsack family",
+        "desc": "0/1, unbounded, subset-sum, coin change — choose to take an item or not."
+      },
+      {
+        "name": "Interval / subsequence DP",
+        "desc": "Palindromes, matrix-chain, LIS (also O(n log n) via binary search)."
+      },
+      {
+        "name": "Top-down memoization",
+        "desc": "Recursion plus a cache, when the table shape is awkward to fill iteratively."
+      }
+    ],
+    "complexity": "Usually O(states x transitions) time and O(states) space — often reducible to a rolling O(1)/O(n) row.",
+    "pitfalls": [
+      "Define the state precisely and the base cases before coding.",
+      "Iterate in an order where every dependency is already computed."
+    ],
+    "data_structures": ["1D / 2D Array (DP table)", "Hash Map (memo)", "Array (rolling row)"],
+    "algorithms": ["Memoization", "Tabulation", "Knapsack", "LCS / LIS", "State Compression"]
+  },
+  {
+    "id": "greedy-intervals",
+    "name": "Greedy / Intervals",
+    "group": "Recursion & Optimization",
+    "group_order": 5,
+    "order": 3,
+    "icon": "➤",
+    "topics": ["Greedy / Intervals"],
+    "tagline": "Locally best choice; sort then sweep.",
+    "core_idea": "A greedy algorithm makes the locally best choice at each step and never reconsiders — fast and simple, but correct only when a local optimum provably leads to a global one (the *greedy-choice property*). A huge family of greedy problems is about **intervals**: sort by start or end, then sweep once, merging or counting as you go.",
+    "signals": [
+      "*Maximum number of non-overlapping ...*, *minimum number of ... to cover ...*.",
+      "Intervals: merge, insert, count overlaps, meeting rooms.",
+      "Jump games, gas station, resource assignment where sorting reveals the choice."
+    ],
+    "variations": [
+      {
+        "name": "Sort + sweep intervals",
+        "desc": "Merge overlapping ranges; sort by start, extend or push.",
+        "code": [
+          "sort(iv.begin(), iv.end());",
+          "for (auto& cur : iv) {",
+          "    if (!out.empty() && cur[0] <= out.back()[1])",
+          "        out.back()[1] = max(out.back()[1], cur[1]);   // overlap -> merge",
+          "    else out.push_back(cur);",
+          "}"
+        ]
+      },
+      {
+        "name": "Greedy choice by sorting",
+        "desc": "Activity selection: pick the earliest finishing time first to fit the most."
+      },
+      {
+        "name": "Greedy scan with an invariant",
+        "desc": "`Jump Game` (track the farthest reach), `Gas Station` (running tank balance)."
+      }
+    ],
+    "complexity": "Dominated by the sort: O(n log n); the sweep itself is O(n).",
+    "pitfalls": [
+      "Greedy is easy to get wrong — be ready to justify why the local choice is safe, or fall back to DP.",
+      "Sort by the right key: finish time vs start time changes the answer."
+    ],
+    "data_structures": ["Array", "Sorted Intervals", "Heap (some scheduling variants)"],
+    "algorithms": ["Sorting", "Sweep Line", "Activity Selection", "Greedy Choice"]
+  },
+  {
+    "id": "bit-manipulation",
+    "name": "Bit Manipulation",
+    "group": "Math, Bits & Strings",
+    "group_order": 6,
+    "order": 1,
+    "icon": "⊕",
+    "topics": ["Bit Manipulation"],
+    "tagline": "Compute with raw bits and XOR.",
+    "core_idea": "Numbers are just bit patterns, and bitwise operators (AND, OR, XOR, shifts) let you flip, test, and combine those bits in O(1). **XOR** is the star: `a ^ a = 0` and `a ^ 0 = a`, so XORing a whole array cancels every pair and leaves the lone element. A **bitmask** also lets you represent a set of up to ~32 / 64 items as a single integer.",
+    "signals": [
+      "*Single number*, *missing number*, counting set bits, power-of-two checks.",
+      "Subsets via bitmask, state compression in DP, fast set operations.",
+      "Hints like *without using +/-* or *constant extra space*."
+    ],
+    "variations": [
+      {
+        "name": "XOR tricks",
+        "desc": "Find the unique element, swap without a temp, find the missing number.",
+        "code": [
+          "int unique = 0;",
+          "for (int x : nums) unique ^= x;   // pairs cancel, lone value remains"
+        ]
+      },
+      {
+        "name": "Bit tests & toggles",
+        "desc": "Check, set, or clear bit i; isolate the lowest set bit.",
+        "code": [
+          "bool isSet = (x >> i) & 1;        // test bit i",
+          "x |= (1 << i);                    // set bit i",
+          "x &= ~(1 << i);                   // clear bit i",
+          "int low = x & -x;                 // lowest set bit"
+        ]
+      },
+      {
+        "name": "Bitmask as a set",
+        "desc": "Iterate subsets, or do bitmask DP (Travelling Salesman, assignment problems)."
+      }
+    ],
+    "complexity": "O(1) per bit operation; bitmask DP is O(2^n * n).",
+    "pitfalls": [
+      "Watch signed shifts and overflow — use unsigned types when in doubt.",
+      "Bitwise operators have low precedence — parenthesise generously."
+    ],
+    "data_structures": ["Integer (bitmask)", "Array", "Bitset"],
+    "algorithms": ["XOR Trick", "Bit Counting (Brian Kernighan)", "Bitmask DP"]
+  },
+  {
+    "id": "math",
+    "name": "Math",
+    "group": "Math, Bits & Strings",
+    "group_order": 6,
+    "order": 2,
+    "icon": "π",
+    "topics": ["Math"],
+    "tagline": "Replace loops with number-theory identities.",
+    "core_idea": "Some problems are really number theory or combinatorics in disguise; spotting the formula or property beats simulating. Common tools: GCD/LCM (Euclid), prime sieves, modular arithmetic for huge counts, fast exponentiation, and combinatorics. The win is replacing an O(n) or O(n^2) loop with an O(log n) or O(1) identity.",
+    "signals": [
+      "*Count the number of ways* (combinatorics), or *modulo 1e9+7* (avoid overflow).",
+      "Primes, divisors, GCD/LCM, digit manipulation, base conversion.",
+      "Geometry, overflow-sensitive arithmetic, *compute x^n efficiently*."
+    ],
+    "variations": [
+      {
+        "name": "GCD / Euclid",
+        "desc": "Reduce fractions, compute LCM, find cycle lengths.",
+        "code": [
+          "int gcd(int a, int b){ return b ? gcd(b, a % b) : a; }"
+        ]
+      },
+      {
+        "name": "Fast (binary) exponentiation",
+        "desc": "Compute x^n in O(log n), usually under a modulus.",
+        "code": [
+          "long power(long x, long n, long mod) {",
+          "    long r = 1; x %= mod;",
+          "    while (n) { if (n & 1) r = r * x % mod; x = x * x % mod; n >>= 1; }",
+          "    return r;",
+          "}"
+        ]
+      },
+      {
+        "name": "Sieve of Eratosthenes",
+        "desc": "All primes up to N in O(N log log N) by crossing out multiples."
+      },
+      {
+        "name": "Combinatorics / modular arithmetic",
+        "desc": "Pascal's triangle, n-choose-k, modular inverse for division under a prime."
+      }
+    ],
+    "complexity": "GCD O(log min(a,b)); fast power O(log n); sieve O(N log log N).",
+    "pitfalls": [
+      "Integer overflow — use 64-bit and take the modulus at every multiplication.",
+      "Off-by-one on inclusive / exclusive ranges and edge values (0, 1, negatives)."
+    ],
+    "data_structures": ["Integer", "Array (sieve / factorials)", "Hash Map"],
+    "algorithms": ["Euclid's GCD", "Fast Exponentiation", "Sieve of Eratosthenes", "Modular Arithmetic", "Combinatorics"]
+  },
+  {
+    "id": "string-matching",
+    "name": "String Matching",
+    "group": "Math, Bits & Strings",
+    "group_order": 6,
+    "order": 3,
+    "icon": "≈",
+    "topics": ["String Matching"],
+    "tagline": "Find a pattern without restarting on a mismatch.",
+    "core_idea": "Finding a pattern inside a text naively costs O(n*m) because every mismatch restarts the comparison. Smarter algorithms reuse the work already done: **KMP** precomputes how far to safely jump on a mismatch, **Rabin-Karp** compares rolling hashes, and **Z / Manacher** answer prefix and palindrome queries in linear time.",
+    "signals": [
+      "Substring search, *find all occurrences of a pattern*.",
+      "Repeated substrings, longest palindromic substring, anagram / substring counting.",
+      "Multiple-pattern search (Aho-Corasick) or prefix-function questions."
+    ],
+    "variations": [
+      {
+        "name": "KMP (prefix function)",
+        "desc": "O(n+m) search using a failure table that says where to resume after a mismatch.",
+        "code": [
+          "// lps[i]: longest proper prefix of p[0..i] that is also a suffix",
+          "vector<int> lps(m, 0);",
+          "for (int i = 1, len = 0; i < m; ) {",
+          "    if (p[i] == p[len]) lps[i++] = ++len;",
+          "    else if (len)       len = lps[len - 1];",
+          "    else                lps[i++] = 0;",
+          "}"
+        ]
+      },
+      {
+        "name": "Rabin-Karp (rolling hash)",
+        "desc": "Hash the pattern, roll a window hash over the text; great for multiple / 2D search."
+      },
+      {
+        "name": "Z-function / Manacher",
+        "desc": "Prefix matches (Z) or the longest palindromic substring (Manacher) in O(n)."
+      },
+      {
+        "name": "Sliding window + frequency",
+        "desc": "Anagram and permutation-substring problems with a character-count window."
+      }
+    ],
+    "complexity": "KMP & Z O(n+m); Rabin-Karp O(n+m) average; the naive scan is O(n*m).",
+    "pitfalls": [
+      "Off-by-one in the prefix table is the classic KMP bug — test it on `aaaa`.",
+      "Rabin-Karp needs a verification step (hash collisions) and a good modulus."
+    ],
+    "data_structures": ["String", "Array (prefix / Z table)", "Rolling Hash"],
+    "algorithms": ["KMP", "Rabin-Karp (Rolling Hash)", "Z-function", "Manacher's"]
+  },
+  {
+    "id": "design",
+    "name": "Design",
+    "group": "Design",
+    "group_order": 7,
+    "order": 1,
+    "icon": "⚙",
+    "topics": ["Design"],
+    "tagline": "Compose structures to hit each operation's time bound.",
+    "core_idea": "Design problems ask you to build a class or data structure that supports a set of operations within tight time bounds — the trick is **composing** the right primitive structures so every operation hits its target complexity. Usually it is a hash map paired with one more structure (a linked list, two stacks, a heap) so each method runs in O(1) or O(log n).",
+    "signals": [
+      "*Design X*: LRU cache, min-stack, hash map, trie, rate limiter, iterator.",
+      "Strict per-operation complexity requirements (*all operations O(1)*).",
+      "Implement-a-data-structure or simulate-a-system prompts."
+    ],
+    "variations": [
+      {
+        "name": "Hash map + doubly linked list",
+        "desc": "`LRU Cache`: the map gives O(1) lookup, the list gives O(1) recency updates."
+      },
+      {
+        "name": "Auxiliary stack",
+        "desc": "`Min Stack`: a second stack tracks the running minimum.",
+        "code": [
+          "stack<int> s, mins;",
+          "void push(int x){ s.push(x); mins.push(mins.empty() ? x : min(x, mins.top())); }",
+          "int  getMin(){ return mins.top(); }   // O(1)"
+        ]
+      },
+      {
+        "name": "Hash map + dynamic array",
+        "desc": "Insert / delete / getRandom in O(1) by swapping the deleted element with the last."
+      },
+      {
+        "name": "Heaps / two structures",
+        "desc": "Median finder, Twitter feed, leaderboard — keep two coordinated structures in sync."
+      }
+    ],
+    "complexity": "The goal is O(1) or O(log n) per operation; choose structures that meet the contract.",
+    "pitfalls": [
+      "Keep the auxiliary structures in sync on every mutating operation.",
+      "Handle capacity / eviction and empty-state edge cases explicitly."
+    ],
+    "data_structures": ["Hash Map", "Doubly Linked List", "Stack", "Heap", "Dynamic Array"],
+    "algorithms": ["LRU Eviction", "Amortized O(1) Design", "Composition of Structures"]
+  }
+]

@@ -106,8 +106,12 @@ class CDP {
 const CHECKER = `(() => {
   const out = { cv:{driven:0,noActive:[],threw:null}, dr:{driven:0,threw:null},
                 si:{driven:0,threw:null}, bf:{driven:0,threw:null}, overflow:{} };
+  // A code line counts as highlighted if it carries the canonical 'active'/
+  // 'active-match' class OR any lesson-specific active-* variant (active-best,
+  // active-done, ...). Matching only the canonical two false-flags lessons that
+  // use their own highlight class.
   const activeLine = () => document.querySelector(
-    '#cv-code-panel .cv-line.active, #cv-code-panel .cv-line.active-match');
+    '#cv-code-panel .cv-line[class~="active"], #cv-code-panel .cv-line[class*="active-"]');
   const drive = (key, reset, next, steps) => {
     try {
       if (typeof reset !== 'function' || typeof steps === 'undefined' || !steps) return;

@@ -187,14 +187,15 @@
     } else if (s.isInit) {
       document.getElementById('si-calc').innerHTML = `<div style="color:var(--text3)">${s.caption}</div>`;
     } else {
-      document.getElementById('si-i').textContent = s.i;
-      document.getElementById('si-num').textContent = s.num;
-      document.getElementById('si-prev-cand').textContent = s.prevCand === null ? 'none' : s.prevCand;
-      document.getElementById('si-action').textContent = s.action;
-      const badge = document.getElementById('si-decision-badge');
-      if (s.reset) { badge.textContent = '⤴ reset candidate'; badge.style.color = 'var(--text-warn)'; }
-      else if (s.num === s.prevCand) { badge.textContent = '+1 vote'; badge.style.color = 'var(--text-success)'; }
-      else { badge.textContent = '−1 vote'; badge.style.color = 'var(--text-info)'; }
+      // Rebuild si-calc fully: the init/terminal branches above replace its
+      // innerHTML, so the child spans cannot be assumed to still exist.
+      const pc = s.prevCand === null ? 'none' : s.prevCand;
+      const [bText, bColor] = s.reset ? ['⤴ reset candidate', 'var(--text-warn)']
+        : s.num === s.prevCand ? ['+1 vote', 'var(--text-success)']
+        : ['−1 vote', 'var(--text-info)'];
+      document.getElementById('si-calc').innerHTML =
+        `<div>i = <span style="color:var(--text-info);font-weight:600">${s.i}</span> · num = <span style="color:var(--text-info);font-weight:600">${s.num}</span> · prev candidate = <span style="font-weight:600">${pc}</span></div>` +
+        `<div>step: <span style="color:var(--text);font-weight:700">${s.action}</span> &nbsp;<span class="decision-badge" style="color:${bColor}">${bText}</span></div>`;
     }
     document.getElementById('si-cand-big').textContent = s.cand === null ? '—' : s.cand;
     document.getElementById('si-count-big').textContent = s.count;

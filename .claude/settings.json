@@ -8,7 +8,16 @@
       "Bash(node -e ' *)",
       "Bash(awk '/SECTION 2/,/SECTION 3/' lessons/spiral-matrix/lesson.html)",
       "Bash(google-chrome --headless=new --no-sandbox --disable-gpu --hide-scrollbars --window-size=1400,9000 --virtual-time-budget=6000 --screenshot=/tmp/cv-shots/fmp-after.png http://localhost:8000/lessons/first-missing-positive/lesson.html)",
-      "Bash(identify /tmp/cv-shots/fmp-after.png)"
+      "Bash(identify /tmp/cv-shots/fmp-after.png)",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('data/problems.json'\\)\\); p=[x for x in d if x['slug']=='coin-change'][0]; print\\(json.dumps\\(p, indent=2\\)\\)\")",
+      "Bash(python3 scripts/lint_lesson.py coin-change)",
+      "Bash(curl -sS -X PATCH http://localhost:8000/api/status -H 'Content-Type: application/json' -d '{\"slug\":\"coin-change\",\"lesson_status\":\"generated\"}' -m 4)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('data/problems.json'\\)\\); p=[x for x in d if x['slug']=='coin-change'][0]; print\\('lesson_status =', p['lesson_status']\\)\")",
+      "Bash(python3 scripts/new_lesson.py maximum-product-subarray)",
+      "Bash(python3 scripts/lint_lesson.py maximum-product-subarray)",
+      "Bash(curl -s -X PATCH http://localhost:8000/api/status -H 'Content-Type: application/json' -d '{\"slug\":\"maximum-product-subarray\",\"lesson_status\":\"generated\"}' --max-time 3)",
+      "Bash(python3 scripts/new_lesson.py best-time-to-buy-and-sell-stock-with-cooldown)"
     ]
   }
 }

@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Number of Islands — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC: grid of land/water cells (water / land / flooding / claimed) */
+  .ni-grid { display: inline-flex; flex-direction: column; gap: 4px; }
+  .ni-row  { display: flex; gap: 4px; }
+  .ni-cell {
+    width: 42px; height: 42px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 15px; font-weight: 700;
+    border-radius: 6px; border: 2px solid var(--border2);
+    background: var(--bg2); color: var(--text3);
+    transition: all .15s ease;
+  }
+  .ni-cell.water { background: var(--bg2);       border-color: var(--border2);       color: var(--text3); }
+  .ni-cell.land  { background: var(--bg-warn);   border-color: var(--border-warn);   color: var(--text-warn); }
+  .ni-cell.flood { background: var(--bg-info);   border-color: var(--border-info);   color: var(--text-info); }
+  .ni-cell.done  { background: var(--bg-success);border-color: var(--border-success);color: var(--text-success); }
+  .ni-cell.scan  { outline: 3px dashed var(--text2);     outline-offset: 2px; }
+  .ni-cell.just  { outline: 3px solid var(--text-info);  outline-offset: 1px; }
+  .ni-legend { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin: .25rem 0 .75rem; font-size: 12px; color: var(--text2); }
+  .ni-legend .leg-dot { width: 14px; height: 14px; border-radius: 4px; display: inline-block; vertical-align: middle; margin-right: 5px; }
+  .ni-cap { font-family: var(--mono); font-size: 12px; color: var(--text2); margin: .625rem 0; min-height: 2.4em; }
+  .ni-counter { display: flex; gap: 1.5rem; flex-wrap: wrap; font-family: var(--mono); font-size: 13px; margin: .625rem 0; }
+  .ni-counter b { color: var(--text-info); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Number of Islands</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/number-of-islands/" target="_blank">LC #200</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Graphs — BFS / DFS</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">What counts as "adjacent" — do diagonals connect?</div>
+      <div class="acard-a">Only the four orthogonal neighbours (up/down/left/right). A diagonal touch does <em>not</em> join two cells.</div>
+      <div class="acard-u">→ a 4-direction neighbour helper, never 8</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">May I modify the input grid?</div>
+      <div class="acard-a">Usually yes — sinking each visited land cell to <code>'0'</code> is the cleanest "visited" marker. If mutation is banned, keep a separate <code>visited</code> matrix.</div>
+      <div class="acard-u">→ sink in place, or a parallel visited grid</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Can the grid be empty, and how large?</div>
+      <div class="acard-a">It can have 0 rows (→ 0 islands); otherwise up to roughly 300×300. One linear pass is plenty.</div>
+      <div class="acard-u">→ guard <code>grid.empty()</code> before reading row 0</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Are the cells chars or ints?</div>
+      <div class="acard-a">LeetCode passes <code>'1'</code>/<code>'0'</code> as <code>char</code>s, not integers.</div>
+      <div class="acard-u">→ compare against the character <code>'1'</code></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Each island is discovered once — at the first cell you meet, then sunk so it can't be recounted</p>
+
+  <p class="body">You kept meeting the same island from different cells and recounting it. The fix is bookkeeping, not cleverness: sweep the grid in reading order, and the first time you land on a cell no earlier flood has claimed, it has to be a new island — count it once, then flood-fill its whole body to water so every later step in the sweep walks right over it.</p>
+
+  <!-- Foundational visual: scan + flood discovering islands one by one (reader-controlled) -->
+  <div style="margin:1.25rem 0">
+    <div class="ni-legend">
+      <span><span class="leg-dot" style="background:var(--bg2);border:1px solid var(--border2)"></span>water</span>
+      <span><span class="leg-dot" style="background:var(--bg-warn)"></span>land — not yet claimed</span>
+      <span><span class="leg-dot" style="background:var(--bg-info)"></span>flooding now (this island)</span>
+      <span><span class="leg-dot" style="background:var(--bg-success)"></span>claimed island (its number)</span>
+      <span><span class="leg-dot" style="background:var(--bg2);outline:2px dashed var(--text2)"></span>scan cursor</span>
+    </div>
+    <div id="si-grid" class="ni-wrap" style="margin:.5rem 0"></div>
+    <div id="si-cap" class="ni-cap"></div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="ctrl-btn"     onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn"     onclick="siNext()">Next →</button>
+      <button class="ctrl-btn"     onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <!-- The three things the scan can meet -->
+  <div style="margin:1.25rem 0;font-size:13px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:.5rem;color:var(--text)">Every cell the scan reaches is one of three things:</div>
+    <div class="skeleton">
+      <div class="wt-item">
+        <div class="wt-num">·</div>
+        <div class="wt-body">
+          <div class="wt-name">Water — skip it</div>
+          <div class="wt-desc">A <code>'0'</code> cell is not land; the scan just moves on. Water never starts or joins an island.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">+1</div>
+        <div class="wt-body">
+          <div class="wt-name">Unclaimed land — a NEW island</div>
+          <div class="wt-desc">Land that no earlier flood has touched can only be the first cell of an island the scan hasn't seen. Add one to the count, then flood-fill outward to claim every cell connected to it.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">∎</div>
+        <div class="wt-body">
+          <div class="wt-name">Already-claimed land — ignore it</div>
+          <div class="wt-desc">Because the flood sank every cell it reached, land we meet again is already part of a counted island. The "sink on visit" step is exactly what stops the double-count.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Scan every cell in row-major order. Skip water and land that is already sunk. When you hit unclaimed land, increment the island counter, then flood-fill (DFS/BFS) the whole connected blob, sinking each cell to water as you go so it is never visited again. Because a flood claims an entire island the moment its first cell is found, the counter advances exactly once per island — the answer is the number of times the scan had to start a fresh flood.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">Suppose you never thought of the sink trick. How would you even group connected land? Give every land cell its own id, then repeatedly sweep the grid letting each cell copy the smallest id among its orthogonal land neighbours — keep sweeping until a whole pass changes nothing. At the end, cells in the same island share one id, so the number of distinct ids is the island count. It works, but each sweep re-scans the entire grid, and a snake-shaped island needs as many sweeps as it is long → O((m·n)²). Watch the sweep and cell-update counters climb.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">3×3 → 2 islands</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">3×3 → 5 (diagonals)</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">4×5 → 3 islands</button>
+  </div>
+  <div id="bf-matrix-con" style="margin:.75rem 0;padding:.75rem;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2)"></div>
+  <div class="ni-counter">
+    <span>sweeps: <b id="bf-sweeps">0</b></span>
+    <span>cell-updates: <b id="bf-updates">0</b></span>
+    <span>distinct ids (islands): <b id="bf-islands">0</b></span>
+  </div>
+  <div id="bf-narr" class="ni-cap"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O((m·n)²) time, O(m·n) space</p>
+    <p class="infobox-d">Every sweep re-touches all m·n cells, and the number of sweeps grows with the longest island's diameter — up to m·n on a snake. The labels do converge, but the repeated full re-scans are the waste the flood-fill avoids by claiming each island in one shot.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="kw">int</span> <span class="fn">numIslands</span>(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">char</span>&gt;&gt;&amp; grid) {
+    <span class="kw">int</span> m = grid.<span class="fn">size</span>(), n = grid[0].<span class="fn">size</span>();
+    <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt; id(m, <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;(n, 0));
+    <span class="kw">for</span> (<span class="kw">int</span> r = 0; r &lt; m; r++) {
+        <span class="kw">for</span> (<span class="kw">int</span> c = 0; c &lt; n; c++) {
+            <span class="kw">if</span> (grid[r][c] == <span class="nu">'1'</span>) { id[r][c] = r*n + c + 1; }
+        }
+    }
+    <span class="kw">int</span> dr[] = {1,-1,0,0}, dc[] = {0,0,1,-1};
+    <span class="kw">bool</span> changed = <span class="kw">true</span>;
+    <span class="kw">while</span> (changed) {                       <span class="cm">// re-sweep until stable</span>
+        changed = <span class="kw">false</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> r = 0; r &lt; m; r++) {
+            <span class="kw">for</span> (<span class="kw">int</span> c = 0; c &lt; n; c++) {
+                <span class="kw">if</span> (id[r][c] == 0) { <span class="kw">continue</span>; }
+                <span class="kw">for</span> (<span class="kw">int</span> d = 0; d &lt; 4; d++) {
+                    <span class="kw">int</span> nr = r+dr[d], nc = c+dc[d];
+                    <span class="kw">if</span> (nr&lt;0||nr&gt;=m||nc&lt;0||nc&gt;=n||id[nr][nc]==0) { <span class="kw">continue</span>; }
+                    <span class="kw">if</span> (id[nr][nc] &lt; id[r][c]) { id[r][c] = id[nr][nc]; changed = <span class="kw">true</span>; }
+                }
+            }
+        }
+    }
+    <span class="kw">set</span>&lt;<span class="kw">int</span>&gt; labels;                        <span class="cm">// distinct ids = islands</span>
+    <span class="kw">for</span> (<span class="kw">auto</span>&amp; row : id) <span class="kw">for</span> (<span class="kw">int</span> v : row) <span class="kw">if</span> (v) labels.<span class="fn">insert</span>(v);
+    <span class="kw">return</span> labels.<span class="fn">size</span>();
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three swaps turn the repeated re-labelling sweeps into a single linear pass.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">"Which island is this cell in?" → "Is this the first cell of a new island?"</div>
+        <div class="wt-desc">Stop asking each cell for its component. Decide membership by sinking on visit: the only cell that <em>starts</em> a new count is the first one the scan meets in an unclaimed island.</div>
+        <div class="wt-gain">drops the repeated re-grouping</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Re-scanning settled land → sink each cell once</div>
+        <div class="wt-desc">Flood-fill turns every claimed land cell into water (or marks it visited). Settled regions are never walked again, so each cell is touched a constant number of times.</div>
+        <div class="wt-gain">O((m·n)²) → O(m·n)</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">"Count distinct labels" → "count flood starts"</div>
+        <div class="wt-desc">No set of ids to deduplicate at the end. Each island is discovered exactly once, so a single counter incremented at every fresh flood already <em>is</em> the answer.</div>
+        <div class="wt-gain">O(1) bookkeeping, no post-processing</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Scan</b> every cell row by row, keeping a <code>count</code> that starts at 0.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Skip</b> anything that is not land — water, and land already sunk by an earlier flood.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Discover.</b> On unclaimed land, do <code>count++</code> — this cell is the first of a new island.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Flood-fill</b> the island: push the cell on a stack, sink it, and keep sinking every orthogonal land neighbour until the stack empties. The whole connected blob becomes water.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>Return</b> <code>count</code> once the scan ends — it is the number of floods you started, i.e. the number of islands.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">int</span> <span class="fn">numIslands</span>(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">char</span>&gt;&gt;&amp; grid) {
+    <span class="kw">int</span> m = grid.<span class="fn">size</span>(), n = grid[0].<span class="fn">size</span>();
+    <span class="kw">int</span> count = 0;
+    <span class="kw">int</span> dr[] = {1,-1,0,0}, dc[] = {0,0,1,-1};
+    <span class="kw">for</span> (<span class="kw">int</span> r = 0; r &lt; m; r++) {
+        <span class="kw">for</span> (<span class="kw">int</span> c = 0; c &lt; n; c++) {
+            <span class="kw">if</span> (grid[r][c] != <span class="nu">'1'</span>) { <span class="kw">continue</span>; }
+            count++;                          <span class="cm">// new island discovered</span>
+            <span class="kw">stack</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt; st;
+            st.<span class="fn">push</span>({r, c}); grid[r][c] = <span class="nu">'0'</span>;     <span class="cm">// seed + sink</span>
+            <span class="kw">while</span> (!st.<span class="fn">empty</span>()) {
+                <span class="kw">auto</span> [cr, cc] = st.<span class="fn">top</span>(); st.<span class="fn">pop</span>();
+                <span class="kw">for</span> (<span class="kw">int</span> d = 0; d &lt; 4; d++) {
+                    <span class="kw">int</span> nr = cr+dr[d], nc = cc+dc[d];
+                    <span class="kw">if</span> (nr&lt;0||nr&gt;=m||nc&lt;0||nc&gt;=n||grid[nr][nc] != <span class="nu">'1'</span>) { <span class="kw">continue</span>; }
+                    grid[nr][nc] = <span class="nu">'0'</span>;            <span class="cm">// sink so it is not recounted</span>
+                    st.<span class="fn">push</span>({nr, nc});
+                }
+            }
+        }
+    }
+    <span class="kw">return</span> count;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Walk the iterative DFS one statement at a time. The variable cards stay dimmed until the line that sets them fires; the grid below shows water, land, the island flooding now (blue), and finished islands (green, numbered). Switch examples to see two islands, five isolated cells, and a mixed grid.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-m"><span class="cv-var-name">m</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-n"><span class="cv-var-name">n</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-count"><span class="cv-var-name">count</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-island"><span class="cv-var-name">island size</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-sunk"><span class="cv-var-name">cells sunk</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-matrix-con" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">3×3 → 2 islands</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">3×3 → 5 (diagonals)</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">4×5 → 3 islands</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick an input and step island by island. Before pressing Next, predict where the scan finds the next unclaimed land — and how many cells its flood will sink.</p>
+
+  <div id="dr-matrix-con" style="margin:.75rem 0"></div>
+  <div class="ni-legend">
+    <span><span class="leg-dot" style="background:var(--bg2);border:1px solid var(--border2)"></span>water</span>
+    <span><span class="leg-dot" style="background:var(--bg-warn)"></span>land — unclaimed</span>
+    <span><span class="leg-dot" style="background:var(--bg-info)"></span>flooding now</span>
+    <span><span class="leg-dot" style="background:var(--bg-success)"></span>claimed island</span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">islands</div>
+          <div class="fitem-val" id="dr-f-count">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">land claimed</div>
+          <div class="fitem-val" id="dr-f-claimed">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">land left</div>
+          <div class="fitem-val" id="dr-f-left">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">last island size</div>
+          <div class="fitem-val" id="dr-f-size">…</div>
+        </div>
+      </div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">3×3 → 2 islands</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">3×3 → 5 (diagonals)</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">4×5 → 3 islands</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">Empty grid or all water</div>
+    <div class="corner-body"><code>[]</code> or <code>[[0,0],[0,0]]</code>: the scan finds no land, so no flood ever starts and <code>count</code> stays 0. Guard <code>grid.empty()</code> before reading <code>grid[0].size()</code>.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">All land</div>
+    <div class="corner-body"><code>[[1,1],[1,1]]</code>: the very first cell starts one flood that sinks the whole grid, so the rest of the scan finds only water. Answer: 1.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Diagonals don't connect</div>
+    <div class="corner-body"><code>[[1,0],[0,1]]</code>: the two 1s touch only at a corner, which the 4-direction helper ignores. They are two separate islands → 2, not 1.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Single row or column</div>
+    <div class="corner-body"><code>[[1,1,0,1,1]]</code>: the flood ripples left/right along the line; out-of-row neighbours are just bounds-rejected. Two runs of land → 2 islands.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">One giant snake island</div>
+    <div class="corner-body">A single island winding through all m·n cells gives a recursion depth of m·n with recursive DFS — enough to overflow the call stack on a 300×300 grid. Prefer the iterative stack/queue flood shown here.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Guard the empty grid</b> (<code>m == 0</code>) before reading <code>grid[0].size()</code> — otherwise indexing row 0 is undefined behaviour.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Bounds-check all four neighbours</b> before indexing — an out-of-range read is undefined behaviour in C++.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Sink land the moment you visit it</b> (set it to <code>'0'</code>) so it can never be enqueued or counted twice. Use a separate <code>visited</code> matrix only if the input must stay intact.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Increment <code>count</code> exactly once per island</b> — at discovery, before the flood — never inside the flood loop.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Prefer an explicit stack/queue over recursion</b> for large grids; a single snake island can recurse m·n deep and blow the call stack.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Compare against the character <code>'1'</code></b>, not the integer <code>1</code> — the grid holds <code>char</code>s.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Iterative DFS / BFS</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Recursive DFS</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Union-Find</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(m·n)</span><span class="tag tag-space">O(m·n)</span>
+    <p class="body">The solution shown: scan, and on each fresh land cell flood the island with an explicit stack (DFS) or queue (BFS), sinking as you go. One pass, linear, and the explicit container removes any recursion-depth risk. This is the safe default for large grids.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(m·n)</span><span class="tag tag-space">O(m·n) stack</span>
+    <p class="body">The most idiomatic and shortest version: a recursive <code>dfs</code> that sinks the current cell and calls itself on the four neighbours. Identical complexity, but the call stack can reach depth m·n on one snaking island — fine for interview-size grids, risky for the largest inputs.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-dfs',this)">▶ Reveal recursive DFS</button>
+    <div id="code-dfs" class="code-block">
+      <pre class="cb"><span class="kw">void</span> <span class="fn">dfs</span>(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">char</span>&gt;&gt;&amp; g, <span class="kw">int</span> r, <span class="kw">int</span> c) {
+    <span class="kw">int</span> m = g.<span class="fn">size</span>(), n = g[0].<span class="fn">size</span>();
+    <span class="kw">if</span> (r&lt;0||r&gt;=m||c&lt;0||c&gt;=n||g[r][c] != <span class="nu">'1'</span>) { <span class="kw">return</span>; }
+    g[r][c] = <span class="nu">'0'</span>;                       <span class="cm">// sink, then recurse</span>
+    <span class="fn">dfs</span>(g, r+1, c); <span class="fn">dfs</span>(g, r-1, c);
+    <span class="fn">dfs</span>(g, r, c+1); <span class="fn">dfs</span>(g, r, c-1);
+}
+<span class="cm">// numIslands: for each '1', count++ then dfs(g, r, c);</span></pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O(m·n·α)</span><span class="tag tag-space">O(m·n)</span>
+    <p class="body">Treat each land cell as a node and union it with its right and down land neighbours; the number of islands is the number of distinct roots. The inverse-Ackermann α is effectively constant. Heavier to write, but it shines when the grid changes over time — e.g. <b>Number of Islands II</b>, where cells are added one at a time and you want the running count.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-uf',this)">▶ Reveal sketch</button>
+    <div id="code-uf" class="code-block">
+      <pre class="cb"><span class="cm">// id(r,c) = r*n + c; parent[] sized m*n, each its own root.</span>
+<span class="cm">// islands = number of land cells.</span>
+<span class="cm">// for each land cell, for its right and down land neighbour:</span>
+<span class="cm">//     if union(a, b) merged two sets: islands--;</span>
+<span class="cm">// answer = islands.</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(m·n)</div>
+      <div class="ccard-n">Each cell is scanned once and sunk at most once; its four neighbours are inspected a constant number of times.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(m·n)</div>
+      <div class="ccard-n">The stack or queue can hold up to every cell in the worst case — a grid that is one big island.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><b>LC 695 — Max Area of Island:</b> the same scan + flood, but each flood returns how many cells it sank; take the maximum instead of counting starts.</p>
+    <p><b>LC 130 — Surrounded Regions:</b> flood-fill from the border first to spare edge-connected regions, then flip everything still trapped. Flood-fill with a twist on the seeding.</p>
+    <p><b>LC 1254 — Number of Closed Islands:</b> count islands that never touch the border — flood from the edges to disqualify open ones, then count the rest.</p>
+    <p><b>LC 733 — Flood Fill:</b> the bare primitive: recolour one connected region. Number of Islands is "flood fill, but count how many times you had to start."</p>
+    <p><b>The trick to carry:</b> the count of connected components equals the number of times you START a fresh flood over cells nothing has claimed yet — discover once, sink the rest.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  /* ── shared grid painters (DOM only; never called by the pure *GenSteps) ── */
+  function niPaint(containerId, state, ids, justList, scan) {
+    const con = document.getElementById(containerId);
+    if (!con) return;
+    con.innerHTML = '';
+    const just = new Set((justList || []).map(p => p[0] + ',' + p[1]));
+    const sk = scan ? scan[0] + ',' + scan[1] : null;
+    const wrap = document.createElement('div');
+    wrap.className = 'ni-grid';
+    for (let r = 0; r < state.length; r++) {
+      const row = document.createElement('div');
+      row.className = 'ni-row';
+      for (let c = 0; c < state[r].length; c++) {
+        const s = state[r][c];
+        const cell = document.createElement('div');
+        cell.className = 'ni-cell ' + s;
+        const key = r + ',' + c;
+        if (just.has(key)) cell.classList.add('just');
+        if (sk === key) cell.classList.add('scan');
+        cell.textContent = (s === 'flood' || s === 'done') && ids[r][c] != null ? ids[r][c] : '';
+        row.appendChild(cell);
+      }
+      wrap.appendChild(row);
+    }
+    con.appendChild(wrap);
+  }
+
+  function niPaintLabels(containerId, label, justList) {
+    const con = document.getElementById(containerId);
+    if (!con) return;
+    con.innerHTML = '';
+    const just = new Set((justList || []).map(p => p[0] + ',' + p[1]));
+    const wrap = document.createElement('div');
+    wrap.className = 'ni-grid';
+    for (let r = 0; r < label.length; r++) {
+      const row = document.createElement('div');
+      row.className = 'ni-row';
+      for (let c = 0; c < label[r].length; c++) {
+        const v = label[r][c];
+        const cell = document.createElement('div');
+        cell.className = 'ni-cell ' + (v === 0 ? 'water' : 'land');
+        if (just.has(r + ',' + c)) cell.classList.add('just');
+        cell.textContent = v === 0 ? '' : v;
+        row.appendChild(cell);
+      }
+      wrap.appendChild(row);
+    }
+    con.appendChild(wrap);
+  }
+
+  /* ── answer-bearing examples (drive bf / cv / dr panels AND the verifier) ── */
+  const EX = [
+    { label: '3x3 two islands',  grid: [[1,1,0],[0,0,0],[0,1,1]], answer: 2 },
+    { label: '3x3 diagonals',    grid: [[1,0,1],[0,1,0],[1,0,1]], answer: 5 },
+    { label: '4x5 three islands', grid: [[1,1,0,0,0],[1,1,0,0,0],[0,0,1,0,0],[0,0,0,1,1]], answer: 3 },
+  ];
+
+  const CV_LINES = [
+    { n:1,  c:'int numIslands(vector<vector<char>>& grid) {' },
+    { n:2,  c:'    int m = grid.size(), n = grid[0].size();' },
+    { n:3,  c:'    int count = 0;' },
+    { n:4,  c:'    int dr[] = {1,-1,0,0}, dc[] = {0,0,1,-1};' },
+    { n:5,  c:'    for (int r = 0; r < m; r++)' },
+    { n:6,  c:'        for (int c = 0; c < n; c++) {' },
+    { n:7,  c:"            if (grid[r][c] != '1') continue;" },
+    { n:8,  c:'            count++;' },
+    { n:9,  c:'            stack<pair<int,int>> st;' },
+    { n:10, c:"            st.push({r,c}); grid[r][c] = '0';" },
+    { n:11, c:'            while (!st.empty()) {' },
+    { n:12, c:'                auto [cr,cc] = st.top(); st.pop();' },
+    { n:13, c:'                for (int d = 0; d < 4; d++) {' },
+    { n:14, c:'                    int nr = cr+dr[d], nc = cc+dc[d];' },
+    { n:15, c:"                    if (out(nr,nc) || grid[nr][nc] != '1') continue;" },
+    { n:16, c:"                    grid[nr][nc] = '0';" },
+    { n:17, c:'                    st.push({nr,nc});' },
+    { n:18, c:'                }' },
+    { n:19, c:'            }' },
+    { n:20, c:'        }' },
+    { n:21, c:'    return count;' },
+    { n:22, c:'}' },
+  ];
+
+  /* ════════════════ §1 INSIGHT — scan + flood, one step per island ════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+
+  function siGenSteps(grid) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const m = grid.length, n = grid[0].length;
+    const work = grid.map(r => r.slice());
+    const state = grid.map(r => r.map(v => v === 1 ? 'land' : 'water'));
+    const ids = grid.map(r => r.map(() => null));
+    const totalLand = grid.reduce((a, row) => a + row.reduce((b, v) => b + (v === 1 ? 1 : 0), 0), 0);
+    let count = 0, claimed = 0;
+    const steps = [];
+    const snap = (extra) => ({ state: state.map(r => r.slice()), ids: ids.map(r => r.slice()),
+      count, claimed, left: totalLand - claimed, ...extra });
+    steps.push(snap({ scan: null, just: [],
+      cap: `Sweep in reading order. ${totalLand} land cell(s) wait, grouped into 0 islands so far.` }));
+    for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) {
+      if (work[r][c] !== 1) continue;
+      count++;
+      const stack = [[r, c]]; work[r][c] = 0; state[r][c] = 'flood'; ids[r][c] = count;
+      const cells = [[r, c]];
+      while (stack.length) {
+        const [cr, cc] = stack.pop();
+        for (const [dr, dc] of DIRS) {
+          const nr = cr + dr, nc = cc + dc;
+          if (nr < 0 || nr >= m || nc < 0 || nc >= n || work[nr][nc] !== 1) continue;
+          work[nr][nc] = 0; state[nr][nc] = 'flood'; ids[nr][nc] = count; stack.push([nr, nc]); cells.push([nr, nc]);
+        }
+      }
+      claimed += cells.length;
+      steps.push(snap({ scan: [r, c], just: cells.map(p => p.slice()),
+        cap: `Fresh land at (${r},${c}) → island #${count}. Flood-fill claims its ${cells.length} connected cell(s) so they are never recounted.` }));
+      for (const [ir, ic] of cells) state[ir][ic] = 'done';
+    }
+    steps.push(snap({ scan: null, just: [],
+      cap: `Scan complete — the flood started ${count} time(s), so there are ${count} island(s).` }));
+    return steps;
+  }
+
+  function siRender(st) {
+    niPaint('si-grid', st.state, st.ids, st.just, st.scan);
+    document.getElementById('si-cap').textContent = st.cap;
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+
+  /* ════════════════ §2 BRUTE FORCE — label-min propagation ════════════════ */
+  let bfSteps = [], bfCur = 0, bfTimer = null;
+
+  function bfGenSteps(grid) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const m = grid.length, n = grid[0].length;
+    let label = grid.map((row, r) => row.map((v, c) => v === 1 ? r * n + c + 1 : 0));
+    const distinctCount = (L) => {
+      const s = new Set();
+      for (const row of L) for (const v of row) if (v > 0) s.add(v);
+      return s.size;
+    };
+    const steps = [];
+    let sweeps = 0, updates = 0;
+    steps.push({ label: label.map(r => r.slice()), just: [], sweeps, updates, distinct: distinctCount(label),
+      narr: 'Give every land cell a unique id (row·n + col + 1). Right now each cell looks like its own island.' });
+    let changed = true;
+    while (changed) {
+      changed = false; sweeps++;
+      const just = [];
+      for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) {
+        if (label[r][c] === 0) continue;
+        let best = label[r][c];
+        for (const [dr, dc] of DIRS) {
+          const nr = r + dr, nc = c + dc;
+          if (nr < 0 || nr >= m || nc < 0 || nc >= n || label[nr][nc] === 0) continue;
+          if (label[nr][nc] < best) best = label[nr][nc];
+        }
+        if (best < label[r][c]) { label[r][c] = best; updates++; changed = true; just.push([r, c]); }
+      }
+      steps.push({ label: label.map(r => r.slice()), just: just.map(p => p.slice()), sweeps, updates, distinct: distinctCount(label),
+        narr: changed
+          ? `Sweep ${sweeps}: ${just.length} cell(s) copied a smaller neighbour id. Cumulative cell-updates: ${updates}.`
+          : `Sweep ${sweeps}: nothing changed — the labels are stable.` });
+    }
+    const distinct = distinctCount(label);
+    steps.push({ label: label.map(r => r.slice()), just: [], sweeps, updates, distinct,
+      narr: `Stable after ${sweeps} sweep(s). ${distinct} distinct id(s) remain → ${distinct} island(s). Every sweep re-scanned all ${m * n} cells → O((m·n)²).`,
+      result: distinct });
+    return steps;
+  }
+
+  function bfRender(st) {
+    niPaintLabels('bf-matrix-con', st.label, st.just);
+    document.getElementById('bf-sweeps').textContent = st.sweeps;
+    document.getElementById('bf-updates').textContent = st.updates;
+    document.getElementById('bf-islands').textContent = st.distinct;
+    const nb = document.getElementById('bf-narr'); if (nb) nb.textContent = st.narr;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+  function bfLoadEx(idx) {
+    bfStopPlay(); bfCur = 0;
+    [0,1,2].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+    bfSteps = bfGenSteps(EX[idx].grid);
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ════════════════ §6 CODE VIZ — iterative DFS flood-fill ════════════════ */
+  let cvSteps = [], cvCur = 0, cvTimer = null;
+
+  function cvGenSteps(grid) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const m = grid.length, n = grid[0].length;
+    const work = grid.map(r => r.slice());
+    const state = grid.map(r => r.map(v => v === 1 ? 'land' : 'water'));
+    const ids = grid.map(r => r.map(() => null));
+    let count = 0, sunk = 0, island = 0;
+    const steps = [];
+    const snap = (line, extra) => ({ line, state: state.map(r => r.slice()), ids: ids.map(r => r.slice()),
+      m, n, count, island, sunk, ...extra });
+    steps.push(snap(1, { just: [], scan: null, changed: [], narr: 'Enter numIslands.' }));
+    steps.push(snap(2, { just: [], scan: null, changed: ['m','n'], narr: `Grid is ${m}×${n}.` }));
+    steps.push(snap(3, { just: [], scan: null, changed: ['count'], narr: 'count starts at 0 — no islands found yet.' }));
+    steps.push(snap(4, { just: [], scan: null, changed: [], narr: 'Four orthogonal direction offsets.' }));
+    for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) {
+      if (work[r][c] !== 1) continue;
+      steps.push(snap(7, { just: [], scan: [r, c], changed: [], narr: `Scan reached land at (${r},${c}) — grid[r][c]=='1'.` }));
+      count++;
+      steps.push(snap(8, { just: [], scan: [r, c], changed: ['count'], narr: `New island #${count}. Count it once, here — before sinking anything.` }));
+      const stack = [[r, c]]; work[r][c] = 0; state[r][c] = 'flood'; ids[r][c] = count; island = 1; sunk++;
+      steps.push(snap(10, { just: [[r, c]], scan: [r, c], changed: ['island','sunk'], narr: 'Push the seed and sink it so it can\'t be recounted.' }));
+      steps.push(snap(11, { just: [[r, c]], scan: [r, c], changed: [], narr: 'Stack is non-empty → start draining it.' }));
+      steps.push(snap(12, { just: [[r, c]], scan: [r, c], changed: [], narr: 'Pop a cell and look at its four neighbours.' }));
+      const cells = [[r, c]];
+      while (stack.length) {
+        const [cr, cc] = stack.pop();
+        for (const [dr, dc] of DIRS) {
+          const nr = cr + dr, nc = cc + dc;
+          if (nr < 0 || nr >= m || nc < 0 || nc >= n || work[nr][nc] !== 1) continue;
+          work[nr][nc] = 0; state[nr][nc] = 'flood'; ids[nr][nc] = count; stack.push([nr, nc]); cells.push([nr, nc]);
+        }
+      }
+      island = cells.length; sunk += cells.length - 1;
+      steps.push(snap(16, { just: cells.map(p => p.slice()), scan: [r, c], changed: ['island','sunk'],
+        narr: `The stack drains, sinking the whole island — ${island} connected cell(s).` }));
+      steps.push(snap(11, { just: [], scan: [r, c], changed: [], narr: `Stack empty — island #${count} fully claimed. Resume the scan.` }));
+      for (const [ir, ic] of cells) state[ir][ic] = 'done';
+    }
+    steps.push(snap(21, { just: [], scan: null, changed: ['count'], phase: 'done',
+      narr: `Scan finished. count = ${count} — that's the answer.`, result: count }));
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const ln = document.getElementById('cvL' + st.line);
+    if (ln) ln.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    setCard('cv-v-m', st.m, ch.includes('m'));
+    setCard('cv-v-n', st.n, ch.includes('n'));
+    setCard('cv-v-count', st.count, ch.includes('count'));
+    setCard('cv-v-island', st.island, ch.includes('island'));
+    setCard('cv-v-sunk', st.sunk, ch.includes('sunk'));
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : ' is-active');
+    niPaint('cv-matrix-con', st.state, st.ids, st.just, st.scan);
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+  function cvLoadEx(idx) {
+    cvStopPlay(); cvCur = 0;
+    [0,1,2].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(EX[idx].grid);
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ════════════════ §7 DRY RUN — the oracle ════════════════ */
+  let drSteps = [], drCur = 0, drTimer = null;
+
+  function drGenSteps(grid) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const m = grid.length, n = grid[0].length;
+    const work = grid.map(r => r.slice());
+    const state = grid.map(r => r.map(v => v === 1 ? 'land' : 'water'));
+    const ids = grid.map(r => r.map(() => null));
+    const total = grid.reduce((a, row) => a + row.reduce((b, v) => b + (v === 1 ? 1 : 0), 0), 0);
+    let count = 0, claimed = 0, size = 0;
+    const steps = [];
+    const snap = (extra) => ({ state: state.map(r => r.slice()), ids: ids.map(r => r.slice()),
+      count, claimed, left: total - claimed, size, ...extra });
+    steps.push(snap({ just: [], scan: null, phase: 'init', what: 'Begin the row-major scan',
+      why: `The grid has ${total} land cell(s). Walk left-to-right, top-to-bottom; any land no flood has claimed must start a new island.` }));
+    for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) {
+      if (work[r][c] !== 1) continue;
+      count++;
+      const stack = [[r, c]]; work[r][c] = 0; state[r][c] = 'flood'; ids[r][c] = count;
+      const cells = [[r, c]];
+      while (stack.length) {
+        const [cr, cc] = stack.pop();
+        for (const [dr, dc] of DIRS) {
+          const nr = cr + dr, nc = cc + dc;
+          if (nr < 0 || nr >= m || nc < 0 || nc >= n || work[nr][nc] !== 1) continue;
+          work[nr][nc] = 0; state[nr][nc] = 'flood'; ids[nr][nc] = count; stack.push([nr, nc]); cells.push([nr, nc]);
+        }
+      }
+      claimed += cells.length; size = cells.length;
+      steps.push(snap({ just: cells.map(p => p.slice()), scan: [r, c], phase: 'found',
+        what: `Island #${count} — flood from (${r},${c})`,
+        why: `Unclaimed land here means a new island. Flood-fill sinks all ${cells.length} orthogonally-connected cell(s) at once. ${total - claimed} land cell(s) still unclaimed.` }));
+      for (const [ir, ic] of cells) state[ir][ic] = 'done';
+    }
+    steps.push(snap({ just: [], scan: null, phase: 'done',
+      what: `Done — ${count} island(s)`,
+      why: `Every land cell was claimed by exactly one flood, and the scan launched ${count} flood(s). Return ${count}.`,
+      result: count }));
+    return steps;
+  }
+
+  function drRender(st) {
+    niPaint('dr-matrix-con', st.state, st.ids, st.just, st.scan);
+    document.getElementById('dr-f-count').textContent = st.count;
+    document.getElementById('dr-f-claimed').textContent = st.claimed;
+    document.getElementById('dr-f-left').textContent = st.left;
+    const res = document.getElementById('dr-f-size');
+    res.textContent = st.phase === 'init' ? '…' : st.size;
+    res.style.color = st.phase === 'done' ? 'var(--text-success)' : 'var(--text2)';
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.what;
+    if (whyEl) whyEl.textContent = st.why;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+  function drLoadEx(idx) {
+    drStopPlay(); drCur = 0;
+    [0,1,2].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+    drSteps = drGenSteps(EX[idx].grid);
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ── init ── */
+  const SI_GRID = [[1,1,0,1],[0,0,0,1],[1,0,1,1]];
+  siSteps = siGenSteps(SI_GRID);
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>
