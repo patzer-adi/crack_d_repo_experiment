@@ -102,7 +102,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -218,7 +218,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -236,7 +236,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -376,7 +376,7 @@
     "ramp_pos": 3,
     "twist": "window invariant is a *count budget* (zero count ≤ k)",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -428,7 +428,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -498,7 +498,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -1545,7 +1545,7 @@
       "google_focused"
     ],
     "status": "done",
-    "lesson_status": "none"
+    "lesson_status": "generated"
   },
   {
     "order": 11002,
@@ -1594,7 +1594,7 @@
     "ramp_pos": 4,
     "twist": "two reverse-BFS sources (each ocean); intersect reachable sets",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -1612,7 +1612,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -1628,8 +1628,8 @@
     "ramp_pos": 6,
     "twist": "multi-source BFS variant: every 0 is a source, write distances out",
     "tracks": [],
-    "status": "new",
-    "lesson_status": "none"
+    "status": "done",
+    "lesson_status": "generated"
   },
   {
     "order": 11007,
@@ -1694,7 +1694,7 @@
     "ramp_pos": 10,
     "twist": "DFS in a DAG accumulating the current path on backtrack",
     "tracks": [],
-    "status": "done",
+    "status": "new",
     "lesson_status": "none"
   },
   {
