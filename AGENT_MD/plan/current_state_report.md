@@ -16,6 +16,15 @@
   - Key files created/modified
 -->
 
+## Update — 2026-06-04 [PLAN-020: Mobile-Friendly Responsive Layout — Completed]
+- **Goal:** make lessons + dashboard usable on a phone, CSS-only, no framework / no JS-behaviour / no table redesign. No horizontal page scroll down to 360px on both surfaces.
+- **Lessons** (`static/lesson.css`): new `@media (max-width:480px)` phone block — trims body padding, scales the largest type down, reflows `.formula-grid` to 2 cols, wraps long inline `code`/words, hides keyboard-only `.kbd-hint`, and relaxes `.panels-fixed` from fixed 175px/110px rows to `auto` so the dry-run formula/step panels grow instead of clipping (the no-jump guarantee is a desktop-only concern). The existing `@media (max-width:680px)` block is unchanged.
+- **Two per-lesson visuals** needed real fixes (the rest were handled by the global CSS): `container-with-most-water` `#si-strip` bar chart got `overflow-x:auto`; `merge-intervals` `siRender` stopped hardcoding `containerWidth=380` and now sizes from the track's parent `clientWidth` capped at 380 (desktop byte-identical).
+- **Dashboard** (`dashboard/index.html`): the lone `@media(max-width:700px)` became two tiers (700px tablet + 480px phone). Phone tier shrinks the topbar and **hides the tab count badges** so logo+3 tabs fit one row, hides low-value columns (`col-check`/`col-xlinks` on Problems, `col-kind` on Algorithms), and gives each table wrapper (`[data-section-body]`/`[data-algo-section-body]`) `overflow-x:auto` so the wide tables scroll inside their box — every column stays reachable, the page never scrolls sideways.
+- **Gate extended:** `scripts/render_check.mjs` now asserts no horizontal overflow at **390px** as well as 1000px; it re-drives the animations at phone width so width-reactive renders are measured as a phone visitor sees them. New reason string `mobile horizontal overflow @390px`.
+- **Verification:** `render_check --all` 30/30 (was 25/30 at mobile before fixes); `audit_lessons.py` → `render: 30 pass · 0 NEW fail`, `=> OK (no new drift)`; dashboard headless check delta=0 at 360px & 390px across all three tabs. Docs updated: `lessons/design/layout.md` §Mobile, `static/CLASSES.md`, `README.md`.
+- REPORT-020 written; PLAN-020 → Completed.
+
 ## Update — 2026-06-03 [PLAN-019: Anti-Drift — Visual Gate, Corpus Re-Verification, Doc Reconciliation — Completed]
 - **New machinery.** `scripts/render_check.mjs` (headless Chromium over the DevTools Protocol via Node's built-in WebSocket — no npm dep): loads each lesson, drives every animation, asserts no JS error, every §6 step lights an active code line, and no horizontal page overflow. `scripts/doctor.py`: plan↔report bijection (Completed plans only), no phantom plan references, lesson-disk ↔ `lesson_status` reconciliation, README/CLAUDE "latest plan" freshness, baseline sanity.
 - **lint_lesson.py** gained a §6 "code-line refs resolve" check (every `cvGenSteps` `line:` must exist in `CV_LINES`) — catches the phantom-line class statically (the bug that left pacific-atlantic's code panel inert).

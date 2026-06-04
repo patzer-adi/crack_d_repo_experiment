@@ -117,6 +117,7 @@ Feed this file to the lesson generator instead of the full CSS. Every class a le
 
 - `body` is capped at 1100px (do not override; see `design/layout.md`).
 - `@media (max-width: 680px)` collapses two-column grids — do not introduce new fixed widths that break this.
+- `@media (max-width: 480px)` (phone, PLAN-020) trims padding, scales type down, wraps long `code`, hides `.kbd-hint`, and relaxes `.panels-fixed` to auto heights. Keep problem-specific wide visuals container-sized or wrap them in `overflow-x: auto`. The render gate enforces no overflow at 390px — see `design/layout.md` §Mobile.
 
 ## Notes
 

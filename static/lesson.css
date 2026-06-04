@@ -192,3 +192,17 @@ pre.cb{font-family:var(--mono);font-size:18px;background:var(--bg2);border:0.5px
   .formula-grid{grid-template-columns:repeat(3,1fr);}
   .cv-var-grid{grid-template-columns:repeat(2,1fr);}
 }
+/* PLAN-020: phone breakpoint. Reclaim horizontal space, let long tokens wrap,
+   stop fixed-height panels from clipping, hide keyboard-only hints. */
+@media(max-width:480px){
+  body{padding:1.75rem 1rem 4rem;overflow-wrap:break-word;}
+  .header h1{font-size:26px;}
+  .sec-title{font-size:21px;}
+  p.body{font-size:17px;}
+  .infobox-d,.corner-body,.chk-text,.algo-t,.wt-desc,.cv-narration{font-size:16px;}
+  code{overflow-wrap:anywhere;word-break:break-word;}
+  .formula-grid{grid-template-columns:repeat(2,1fr);}
+  .panels-fixed{grid-template-rows:auto auto;}
+  .formula-panel,.step-panel{overflow:visible;}
+  .kbd-hint{display:none;}
+}

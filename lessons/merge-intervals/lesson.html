@@ -210,8 +210,10 @@
   }
 
   function siRender(st) {
-    // Scale for the number line
-    const containerWidth = 380;  // approximate pixels
+    // Scale for the number line. Cap at 380px (desktop look unchanged) but shrink
+    // to the available width on narrow screens, leaving room for edge tick labels.
+    const parentW = document.getElementById('si-input-track').parentElement.clientWidth;
+    const containerWidth = Math.min(380, parentW - 18);
     const unit = containerWidth / (SI_AXIS_MAX - SI_AXIS_MIN);
 
     // Build axis ticks (every 2 units)
