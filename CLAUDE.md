@@ -15,4 +15,4 @@ The legacy monolith lives at [`lessons/archive/LESSON_DESIGN_v2.md`](lessons/arc
 
 ## When working on the broader project
 
-See [AGENT_MD/](AGENT_MD/) for the project's spec, plan/report lifecycle, and authoring rules. The latest implementation plan is [PLAN-019](AGENT_MD/plan/plans/PLAN-019_antidrift_visual_gate_and_doc_reconciliation.md) (anti-drift: render gate, corpus re-verification, doc reconciliation, landed 2026-06-03). Note `AGENT_MD/spec.md` is a historical 2026-05-07 snapshot — this file plus `README.md` are the current source of truth.
+See [AGENT_MD/](AGENT_MD/) for the project's spec, plan/report lifecycle, and authoring rules. The latest implementation plan is [PLAN-020](AGENT_MD/plan/plans/PLAN-020_mobile_friendly_responsive.md) (mobile-friendly responsive layout for lessons + dashboard; render gate now also checks 390px, landed 2026-06-04), building on [PLAN-019](AGENT_MD/plan/plans/PLAN-019_antidrift_visual_gate_and_doc_reconciliation.md) (anti-drift gate). Note `AGENT_MD/spec.md` is a historical 2026-05-07 snapshot — this file plus `README.md` are the current source of truth.

@@ -414,10 +414,31 @@
     }
     .pat-pitfalls code { background: rgba(0,0,0,.05); border-color: var(--border-warn); }
 
+    /* ── RESPONSIVE (PLAN-020) ── */
+    /* Tablet: drop low-value columns, tighten gutters. */
     @media (max-width: 700px) {
       .pat-grid { grid-template-columns: 1fr; }
-      .col-topic, .col-lc, .col-time { display: none; }
+      .col-topic, .col-lc, .col-time, .col-order { display: none; }
+      .content { padding: 16px 14px 60px; }
+      .stats-bar, .filter-bar { padding: 8px 14px; }
       .filter-search { width: 140px; }
+    }
+    /* Phone: shrink the topbar so logo + tabs fit one row, hide the least-useful
+       columns, and let each table scroll inside its own wrapper so the page
+       never scrolls sideways. */
+    @media (max-width: 480px) {
+      .topbar { padding: 0 12px; }
+      .topbar-logo { height: 30px; margin-right: 10px; }
+      .tab-btn { padding: 0 8px; font-size: 14px; }
+      .tab-btn span { display: none; }                     /* drop the count badges */
+      .col-check, .col-xlinks { display: none; }           /* Problems table */
+      .col-kind { display: none; }                          /* Algorithms table */
+      [data-section-body], [data-algo-section-body] { overflow-x: auto; }
+      .prob-table th, .prob-row td { padding: 5px 6px; }
+      .filter-search { width: 100%; }
+      .add-row { grid-template-columns: 1fr; }
+      .action-bar { padding: 10px 14px; gap: 8px 10px; flex-wrap: wrap; }
+      .action-bar-label { flex-basis: 100%; }
     }
   </style>
 </head>

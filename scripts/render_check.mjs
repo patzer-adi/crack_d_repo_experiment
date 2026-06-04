@@ -18,7 +18,8 @@
 //   1. no uncaught JS exception / console error during load or stepping;
 //   2. every §6 code-viz step lights an active code line (runtime check that
 //      also covers dynamic line numbers the linter cannot see);
-//   3. no horizontal page overflow (documentElement.scrollWidth ≤ clientWidth).
+//   3. no horizontal page overflow at desktop width (1000px) AND at phone
+//      width (390px) — documentElement.scrollWidth ≤ clientWidth at both.
 //
 // Exit codes: 0 pass · 1 a lesson failed · 2 usage/launch error.
 // If no browser is found it prints a loud warning and exits 0 (skip), per
@@ -33,6 +34,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const VIEWPORT = { width: 1000, height: 900 };
+const MOBILE = { width: 390, height: 844 }; // phone overflow pass (PLAN-020)
 const OVERFLOW_TOL = 2; // px slack for sub-pixel rounding
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -100,6 +102,21 @@ class CDP {
   on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
 }
 
+// Measures horizontal page overflow of the CURRENT layout and names the widest
+// offending element. Embedded in CHECKER, which is evaluated once per viewport
+// (desktop, then phone — PLAN-020), so both viewports report overflow identically.
+const OVERFLOW_JS = `(() => {
+  const de = document.documentElement;
+  const o = { scrollW: de.scrollWidth, clientW: de.clientWidth, delta: de.scrollWidth - de.clientWidth };
+  let widest = null, maxr = de.clientWidth + 0.5;
+  for (const el of document.querySelectorAll('body *')) {
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.right > maxr) { maxr = r.right; widest = { tag: el.tagName, cls: String(el.className).slice(0,60), right: Math.round(r.right) }; }
+  }
+  o.widest = widest;
+  return o;
+})()`;
+
 // In-page checker: drives every animation and measures overflow. Runs in page
 // global scope, so top-level function declarations (cvNext…) are reachable by
 // bare name; module-scoped `let` step arrays are probed with typeof guards.
@@ -127,15 +144,7 @@ const CHECKER = `(() => {
   drive('dr', typeof drReset==='function'?drReset:null, typeof drNext==='function'?drNext:null, typeof drSteps!=='undefined'?drSteps:undefined);
   drive('si', typeof siReset==='function'?siReset:null, typeof siNext==='function'?siNext:null, typeof siSteps!=='undefined'?siSteps:undefined);
   drive('bf', typeof bfReset==='function'?bfReset:null, typeof bfNext==='function'?bfNext:null, typeof bfSteps!=='undefined'?bfSteps:undefined);
-  const de = document.documentElement;
-  out.overflow.scrollW = de.scrollWidth; out.overflow.clientW = de.clientWidth;
-  out.overflow.delta = de.scrollWidth - de.clientWidth;
-  let widest = null, maxr = de.clientWidth + 0.5;
-  for (const el of document.querySelectorAll('body *')) {
-    const r = el.getBoundingClientRect();
-    if (r.width > 0 && r.right > maxr) { maxr = r.right; widest = { tag: el.tagName, cls: String(el.className).slice(0,60), right: Math.round(r.right) }; }
-  }
-  out.overflow.widest = widest;
+  out.overflow = ${OVERFLOW_JS};
   return out;
 })()`;
 
@@ -169,6 +178,29 @@ async function checkSlug(cdp, sessionId, slug, getErrors, resetErrors) {
     const w = o.overflow.widest;
     reasons.push(`horizontal overflow: page scrollWidth ${o.overflow.scrollW} > clientWidth ${o.overflow.clientW}` +
       (w ? ` (widest: <${w.tag.toLowerCase()} class="${w.cls}"> right=${w.right})` : ""));
+  }
+
+  // ── mobile pass (PLAN-020): re-layout at phone width, RE-DRIVE the animations
+  // so width-reactive renders (charts that read clientWidth) recompute the way
+  // they would for a phone visitor, then measure overflow; restore the desktop
+  // viewport for the next slug. ──
+  await cdp.send("Emulation.setDeviceMetricsOverride",
+    { width: MOBILE.width, height: MOBILE.height, deviceScaleFactor: 1, mobile: true }, s);
+  await sleep(150); // let the reflow settle
+  let mob = null;
+  try {
+    const mres = await cdp.send("Runtime.evaluate", { expression: CHECKER, returnByValue: true, awaitPromise: true }, s);
+    if (!mres.exceptionDetails) mob = mres.result.value.overflow;
+  } catch { /* measurement is best-effort; absence is not a failure */ }
+  await cdp.send("Emulation.setDeviceMetricsOverride",
+    { width: VIEWPORT.width, height: VIEWPORT.height, deviceScaleFactor: 1, mobile: false }, s);
+  if (mob) {
+    o.mobileOverflow = mob;
+    if (mob.delta > OVERFLOW_TOL) {
+      const w = mob.widest;
+      reasons.push(`mobile horizontal overflow @${MOBILE.width}px: scrollWidth ${mob.scrollW} > clientWidth ${mob.clientW}` +
+        (w ? ` (widest: <${w.tag.toLowerCase()} class="${w.cls}"> right=${w.right})` : ""));
+    }
   }
   return { slug, ok: reasons.length === 0, reasons, meta: o };
 }

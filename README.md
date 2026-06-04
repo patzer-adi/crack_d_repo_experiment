@@ -86,7 +86,7 @@ crack_d/
 │   ├── import_problems.py      # one-time HTML → JSON problem importer
 │   ├── new_lesson.py           # scaffolds lessons/<slug>/ from _template.html + problems.json
 │   ├── verify_animation.mjs    # animation-correctness gate (Node) — runs drGenSteps + optional verify.py
-│   ├── render_check.mjs        # headless render gate (Chromium/CDP) — JS errors, active code line, overflow
+│   ├── render_check.mjs        # headless render gate (Chromium/CDP) — JS errors, active code line, overflow @ desktop + phone
 │   ├── lint_lesson.py          # structural + scaffold linter; delegates to the gate for §7
 │   ├── audit_lessons.py        # corpus-wide sweep: full lint + render, baseline-aware regression gate
 │   ├── audit_baseline.json     # known pre-existing lint/render drift (grandfathered; list only shrinks)
@@ -143,6 +143,13 @@ Every generated lesson HTML follows the same 13-section layout (§0–§12), enf
 | 11 | Complexity |
 | 12 | Take home — related problems |
 
+### Responsive / mobile (PLAN-020)
+
+The lessons and the dashboard are usable on a phone — no horizontal page scroll down to 360px. It is plain CSS media queries, no framework:
+
+- **Lessons** ([`static/lesson.css`](static/lesson.css)) collapse two-column grids at `≤680px` and, at `≤480px`, trim padding, scale type down, wrap long code, and let the fixed-height dry-run panels grow. The render gate ([`scripts/render_check.mjs`](scripts/render_check.mjs)) enforces no overflow at 390px going forward.
+- **Dashboard** ([`dashboard/index.html`](dashboard/index.html)) hides low-value table columns at `≤700px`/`≤480px` and lets the wide tables scroll inside their own wrapper, so every column stays reachable while the page itself never scrolls sideways.
+
 ---
 
 ## Quality gate
@@ -163,7 +170,8 @@ python3 scripts/lint_lesson.py <slug>
 
 # 3. Render check (Node + headless Chromium). Loads the lesson, drives every
 #    animation, asserts no JS error, every §6 step lights an active code line, and
-#    no horizontal overflow. Catches layout/runtime drift the other two cannot see.
+#    no horizontal overflow at BOTH desktop (1000px) and phone (390px) widths
+#    (PLAN-020). Catches layout/runtime drift the other two cannot see.
 node scripts/render_check.mjs <slug>
 
 # Corpus-wide sweep — full lint + render over every lesson, baseline-aware (it
@@ -337,7 +345,7 @@ Implementation work is tracked under `AGENT_MD/plan/`:
 - `current_state_report.md` — living snapshot of project state.
 - `rules.md` — authoring conventions for plan and report documents.
 
-The latest plan: [PLAN-019](AGENT_MD/plan/plans/PLAN-019_antidrift_visual_gate_and_doc_reconciliation.md) — anti-drift hardening (headless render gate, corpus re-verification, independent `verify.py` references, and a `doctor.py` for planning-doc/lesson reconciliation), landed 2026-06-03. It builds on [PLAN-016](AGENT_MD/plan/plans/PLAN-016_self_healing_pipeline.md), the self-healing pipeline that first made the animation-correctness gate a hard gate.
+The latest plan: [PLAN-020](AGENT_MD/plan/plans/PLAN-020_mobile_friendly_responsive.md) — mobile-friendly responsive layout for the lessons and dashboard (CSS-only breakpoints; the render gate now also asserts no overflow at 390px), landed 2026-06-04. It builds on [PLAN-019](AGENT_MD/plan/plans/PLAN-019_antidrift_visual_gate_and_doc_reconciliation.md) — anti-drift hardening (headless render gate, corpus re-verification, independent `verify.py` references, and a `doctor.py` for planning-doc/lesson reconciliation), landed 2026-06-03.
 
 > `AGENT_MD/spec.md` is a historical 2026-05-07 snapshot (it predates the gates and most lessons). For current state, read this README + `CLAUDE.md`, or run `python3 scripts/audit_lessons.py` and `python3 scripts/doctor.py`.
 
