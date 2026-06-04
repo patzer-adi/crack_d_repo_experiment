@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>As Far from Land as Possible — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC: grid of land / sea / flooded cells */
+  .afl-grid { display: inline-flex; flex-direction: column; gap: 4px; }
+  .afl-row  { display: flex; gap: 4px; }
+  .afl-cell {
+    width: 42px; height: 42px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 15px; font-weight: 700;
+    border-radius: 6px; border: 2px solid var(--border2);
+    background: var(--bg2); color: var(--text3);
+    transition: all .15s ease;
+  }
+  .afl-cell.land     { background: var(--bg-success); border-color: var(--border-success); color: var(--text-success); }
+  .afl-cell.sea      { background: var(--bg-warn);    border-color: var(--border-warn);    color: var(--text-warn); }
+  .afl-cell.filled   { background: var(--bg-info);    border-color: var(--border-info);    color: var(--text-info); }
+  .afl-cell.just     { outline: 3px solid var(--text-info); outline-offset: 1px; }
+  .afl-cell.farthest { outline: 3px solid var(--text-success); outline-offset: 1px; box-shadow: 0 0 0 3px var(--bg-success); }
+  .afl-legend { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin: .25rem 0 .75rem; font-size: 12px; color: var(--text2); }
+  .afl-legend .leg-dot { width: 14px; height: 14px; border-radius: 4px; display: inline-block; vertical-align: middle; margin-right: 5px; }
+  .afl-cap { font-family: var(--mono); font-size: 12px; color: var(--text2); margin: .625rem 0; min-height: 2.2em; }
+  .afl-counter { display: flex; gap: 1.5rem; flex-wrap: wrap; font-family: var(--mono); font-size: 13px; margin: .625rem 0; }
+  .afl-counter b { color: var(--text-info); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>As Far from Land as Possible</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/as-far-from-land-as-possible/" target="_blank">LC #1162</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Graphs — BFS / DFS</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">How is distance measured — diagonal or orthogonal?</div>
+      <div class="acard-a">One step per orthogonal move (up/down/left/right). It is the grid (Manhattan) shortest path, not Euclidean.</div>
+      <div class="acard-u">→ a 4-direction neighbour helper, distance +1 per hop</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Do we return the water cell, or just the distance?</div>
+      <div class="acard-a">Only the distance — the single largest "distance to nearest land" over all water cells.</div>
+      <div class="acard-u">→ track one running max; no coordinates need remembering</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">What if the grid is all land, or all water?</div>
+      <div class="acard-a">Return -1. With no water there is no cell to measure; with no land there is nothing to measure to.</div>
+      <div class="acard-u">→ guard for an empty or a completely full queue first</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Search outward from each water cell, or flood from all land?</div>
+      <div class="acard-a">Flood out from every land cell at once. The first wave to reach a water cell carries its answer; the last cell reached is the most isolated.</div>
+      <div class="acard-u">→ multi-source BFS seeded with every 1</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Don't search from each water cell — flood inward from all land, and the last cell reached is the answer</p>
+
+  <p class="body">You probably stood on each water cell and searched outward for the nearest land — re-walking the grid once per cell. Flip it: drop <em>every</em> land cell into one queue and let the flood spread in synchronized rings. The most isolated water is simply whatever the flood reaches <em>last</em> — and the wave it arrives on is its distance to land.</p>
+
+  <!-- Foundational visual: the synchronized distance flood (animated, reader-controlled) -->
+  <div style="margin:1.25rem 0">
+    <div class="afl-legend">
+      <span><span class="leg-dot" style="background:var(--bg-success)"></span>land — source, distance 0</span>
+      <span><span class="leg-dot" style="background:var(--bg-warn)"></span>water, not reached yet</span>
+      <span><span class="leg-dot" style="background:var(--bg-info)"></span>flooded — distance to land</span>
+      <span><span class="leg-dot" style="background:var(--bg2);outline:2px solid var(--text-success)"></span>farthest (the answer)</span>
+    </div>
+    <div id="si-grid" class="afl-wrap" style="margin:.5rem 0"></div>
+    <div id="si-cap" class="afl-cap"></div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="ctrl-btn"     onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn"     onclick="siNext()">Next →</button>
+      <button class="ctrl-btn"     onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <!-- What the flood is doing, distance by distance -->
+  <div style="margin:1.25rem 0;font-size:13px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:.5rem;color:var(--text)">Read the animation as expanding rings:</div>
+    <div class="skeleton">
+      <div class="wt-item">
+        <div class="wt-num">0</div>
+        <div class="wt-body">
+          <div class="wt-name">Seed every source at once</div>
+          <div class="wt-desc">Distance 0 — every land cell goes into one shared queue. They are all equal starting points; none waits its turn.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">k</div>
+        <div class="wt-body">
+          <div class="wt-name">One ring per distance</div>
+          <div class="wt-desc">On wave k, the whole current frontier reaches its not-yet-flooded orthogonal neighbours. Those water cells are exactly distance k from their nearest land — stamp them and they become the next ring.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">∎</div>
+        <div class="wt-body">
+          <div class="wt-name">The last ring is the answer</div>
+          <div class="wt-desc">The flood fills closer water first. Whatever it reaches on the final wave is the most isolated — and that wave number is the largest distance-to-land. No need to inspect every cell; the deepest wave is the answer.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Seed a BFS queue with every land cell at distance 0 (multi-source). Pop cells in FIFO order; for each unvisited water neighbour, set its distance to the current cell's distance + 1 and enqueue it. Because all land starts together and BFS expands one ring at a time, the first wave to reach a water cell is its distance to the nearest land. The deepest wave — the last water cell filled — is the answer. One linear pass.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">The naive idea takes the question literally: stand on each water cell and BFS outward until you hit land, remembering the largest such distance. Correct, but each of the up-to-n² water cells re-explores a large slice of the grid — so the whole thing is O((n²)²). Watch the cell-scan counter climb as adjacent water cells repeat almost the same search their neighbour just did.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">4 corners → 2</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">1 corner → 4</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">edge land → 3</button>
+  </div>
+  <div id="bf-matrix-con" style="margin:.75rem 0;padding:.75rem;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2)"></div>
+  <div class="afl-counter">
+    <span>water resolved: <b id="bf-resolved">0</b></span>
+    <span>cell-scans: <b id="bf-scans">0</b></span>
+    <span>farthest so far: <b id="bf-ans">0</b></span>
+  </div>
+  <div id="bf-narr" class="afl-cap"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O((n²)²) time, O(n²) space</p>
+    <p class="infobox-d">Every water cell runs its own independent search, re-walking cells its neighbours already walked. The cell-scan counter is the point — adjacent water cells repeat nearly identical work instead of sharing it.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="kw">int</span> <span class="fn">maxDistance</span>(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; grid) {
+    <span class="kw">int</span> n = grid.<span class="fn">size</span>(), ans = -1;
+    <span class="kw">int</span> dr[] = {1,-1,0,0}, dc[] = {0,0,1,-1};
+    <span class="kw">for</span> (<span class="kw">int</span> sr = 0; sr &lt; n; sr++) {
+        <span class="kw">for</span> (<span class="kw">int</span> sc = 0; sc &lt; n; sc++) {
+            <span class="kw">if</span> (grid[sr][sc] == 1) { <span class="kw">continue</span>; }   <span class="cm">// only water cells</span>
+            <span class="cm">// BFS outward from this water cell until the nearest land</span>
+            <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">bool</span>&gt;&gt; seen(n, <span class="kw">vector</span>&lt;<span class="kw">bool</span>&gt;(n, <span class="kw">false</span>));
+            <span class="kw">queue</span>&lt;<span class="kw">array</span>&lt;<span class="kw">int</span>,3&gt;&gt; q;
+            q.<span class="fn">push</span>({sr, sc, 0}); seen[sr][sc] = <span class="kw">true</span>;
+            <span class="kw">while</span> (!q.<span class="fn">empty</span>()) {
+                <span class="kw">auto</span> [r, c, d] = q.<span class="fn">front</span>(); q.<span class="fn">pop</span>();
+                <span class="kw">if</span> (grid[r][c] == 1) { ans = <span class="fn">max</span>(ans, d); <span class="kw">break</span>; }
+                <span class="kw">for</span> (<span class="kw">int</span> k = 0; k &lt; 4; k++) {
+                    <span class="kw">int</span> nr = r+dr[k], nc = c+dc[k];
+                    <span class="kw">if</span> (nr&lt;0||nr&gt;=n||nc&lt;0||nc&gt;=n||seen[nr][nc]) { <span class="kw">continue</span>; }
+                    seen[nr][nc] = <span class="kw">true</span>; q.<span class="fn">push</span>({nr, nc, d+1});
+                }
+            }
+        }
+    }
+    <span class="kw">return</span> ans;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three swaps turn the per-cell re-search into a single linear flood.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Search from each water cell → flood from all land</div>
+        <div class="wt-desc">Invert the direction. Instead of "where is the nearest land to me", ask "how far has the land reached". Seed one queue with every land cell (multi-source BFS).</div>
+        <div class="wt-gain">drops the "which water cell" outer factor</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Re-walking settled cells → visit each cell once</div>
+        <div class="wt-desc">A <code>dist</code> matrix starts at -1; the moment a water cell is stamped it is never revisited. Settled regions are never re-explored.</div>
+        <div class="wt-gain">O((n²)²) → O(n²)</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">"Max over per-cell searches" → the deepest wave</div>
+        <div class="wt-desc">BFS expands one ring per step, so the last water cell reached is the most isolated. Keep one running <code>ans = max(ans, dist)</code> as you stamp — no separate pass over the grid.</div>
+        <div class="wt-gain">answer falls out of the same flood, O(1) per cell</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Initialise.</b> Make a <code>dist</code> matrix: 0 for every land cell, -1 for every water cell. -1 means "not reached".</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Seed all sources.</b> Enqueue every land cell. They are the entire distance-0 frontier.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Guard the degenerate grids.</b> If the queue is empty (no land) or holds every cell (no water), return -1 — there is no answer.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Flood, tracking the max.</b> While the queue is non-empty, pop a cell and look at its four orthogonal neighbours. For each one still at -1, set its distance to <code>dist[cur] + 1</code>, update <code>ans = max(ans, dist)</code>, and enqueue it. Skip already-stamped neighbours.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>Return.</b> When the queue drains, <code>ans</code> is the largest distance any water cell reached. Return it.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">int</span> <span class="fn">maxDistance</span>(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; grid) {
+    <span class="kw">int</span> n = grid.<span class="fn">size</span>();
+    <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt; dist(n, <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;(n, -1));
+    <span class="kw">queue</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt; q;
+    <span class="kw">for</span> (<span class="kw">int</span> r = 0; r &lt; n; r++) {
+        <span class="kw">for</span> (<span class="kw">int</span> c = 0; c &lt; n; c++) {
+            <span class="kw">if</span> (grid[r][c] == 1) { dist[r][c] = 0; q.<span class="fn">push</span>({r, c}); }
+        }
+    }
+    <span class="kw">if</span> (q.<span class="fn">empty</span>() || (<span class="kw">int</span>)q.<span class="fn">size</span>() == n*n) { <span class="kw">return</span> -1; }   <span class="cm">// all water or all land</span>
+    <span class="kw">int</span> dr[] = {1, -1, 0, 0}, dc[] = {0, 0, 1, -1}, ans = 0;
+    <span class="kw">while</span> (!q.<span class="fn">empty</span>()) {
+        <span class="kw">auto</span> [r, c] = q.<span class="fn">front</span>(); q.<span class="fn">pop</span>();
+        <span class="kw">for</span> (<span class="kw">int</span> d = 0; d &lt; 4; d++) {
+            <span class="kw">int</span> nr = r + dr[d], nc = c + dc[d];
+            <span class="kw">if</span> (nr &lt; 0 || nr &gt;= n || nc &lt; 0 || nc &gt;= n) { <span class="kw">continue</span>; }
+            <span class="kw">if</span> (dist[nr][nc] != -1) { <span class="kw">continue</span>; }    <span class="cm">// already reached by closer land</span>
+            dist[nr][nc] = dist[r][c] + 1;            <span class="cm">// first touch = nearest</span>
+            ans = <span class="fn">max</span>(ans, dist[nr][nc]);             <span class="cm">// deepest wave so far</span>
+            q.<span class="fn">push</span>({nr, nc});
+        }
+    }
+    <span class="kw">return</span> ans;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Walk the multi-source BFS one statement at a time. The variable cards stay dimmed until the line that assigns them fires; the grid below floods outward one distance ring per wave, and <code>ans</code> climbs to the deepest wave. Switch examples to see a single far source and four sources meeting.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-n"><span class="cv-var-name">n</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-q"><span class="cv-var-name">queue size</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-reached"><span class="cv-var-name">reached</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-left"><span class="cv-var-name">sea left</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-ans"><span class="cv-var-name">ans</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-matrix-con" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">4 corners → 2</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">1 corner → 4</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">edge land → 3</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick an input and step through the expanding rings. Predict which water cells get flooded next — and with what distance — before pressing Next. The answer is the number of the final wave.</p>
+
+  <div id="dr-matrix-con" style="margin:.75rem 0"></div>
+  <div class="afl-legend">
+    <span><span class="leg-dot" style="background:var(--bg-success)"></span>land (distance 0)</span>
+    <span><span class="leg-dot" style="background:var(--bg-warn)"></span>water, not reached</span>
+    <span><span class="leg-dot" style="background:var(--bg-info)"></span>flooded distance</span>
+    <span><span class="leg-dot" style="background:var(--bg2);outline:2px solid var(--text-success)"></span>farthest (answer)</span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">wave</div>
+          <div class="fitem-val" id="dr-f-wave">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">reached</div>
+          <div class="fitem-val" id="dr-f-reached">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">sea left</div>
+          <div class="fitem-val" id="dr-f-left">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">answer</div>
+          <div class="fitem-val" id="dr-f-ans">…</div>
+        </div>
+      </div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">4 corners → 2</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">1 corner → 4</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">edge land → 3</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">All water</div>
+    <div class="corner-body"><code>[[0,0],[0,0]]</code>: no land at all, so the queue is empty and no water cell can ever reach land. Return -1 — there is nothing to measure to.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">All land</div>
+    <div class="corner-body"><code>[[1,1],[1,1]]</code>: every cell is a source and the queue holds all n² of them, but there is no water cell to be far from land. Return -1.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">A single land cell in a sea of water</div>
+    <div class="corner-body">One source feeds the entire grid. Distances grow as the Manhattan distance to that cell — the farthest corner is the deepest wave and the answer. Still one linear pass.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Two land cells reaching the same water</div>
+    <div class="corner-body">A middle water cell may sit between two land cells. Whichever wave arrives first stamps it; the <code>dist != -1</code> guard makes the later wave skip it, so it keeps the smaller distance — exactly the nearest land.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">Don't seed only one land cell</div>
+    <div class="corner-body">Seeding a single land cell and re-running per source loses the "all rings advance together" guarantee and overcounts distances. Every land cell must be in the queue at distance 0 before the first pop.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Handle the all-land / all-water grids</b> up front — both return -1. An empty queue or a queue holding every cell are the two tells.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Bounds-check all four neighbours</b> before indexing — an out-of-range read is undefined behaviour in C++.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Use -1 as the visited marker</b> in <code>dist</code> itself — no separate visited matrix needed.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Seed every land cell before the first pop</b> so all sources expand at the same rate. This is what makes "first touch = nearest" true.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Track the max as you stamp.</b> The last water cell flooded carries the answer — no second sweep over the grid is needed.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Each cell is enqueued exactly once</b>, so the queue and time are both O(n²) — distances are bounded by n², so plain <code>int</code> never overflows.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Multi-source BFS</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Two-pass DP</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Per-cell BFS</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(n²)</span><span class="tag tag-space">O(n²)</span>
+    <p class="body">Seed the queue with every land cell and flood ring by ring. Each cell is enqueued once; the last water cell reached carries the answer. This is the intended solution — simple, linear, and the queue's level structure maps exactly onto distance.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(n²)</span><span class="tag tag-space">O(1) extra</span>
+    <p class="body">No queue at all: two sweeps over <code>dist</code>. First top-left → bottom-right, taking the min of the up and left neighbour + 1; then bottom-right → top-left, taking the min of the down and right neighbour + 1. The two passes together compute every water cell's distance to the nearest land; take the maximum at the end. Same time, O(1) auxiliary space.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-dp',this)">▶ Reveal sketch</button>
+    <div id="code-dp" class="code-block">
+      <pre class="cb"><span class="cm">// dist[r][c] = 0 if land else BIG</span>
+<span class="cm">// pass 1 (r,c increasing): min(self, up+1, left+1)</span>
+<span class="cm">// pass 2 (r,c decreasing): min(self, down+1, right+1)</span>
+<span class="cm">// answer = max over all cells (or -1 if all land / all water)</span></pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O((n²)²)</span><span class="tag tag-space">O(n²)</span>
+    <p class="body">The brute force from Step 1: BFS outward from each water cell until the nearest land, keeping the largest distance. Correct and literal, but adjacent water cells repeat almost identical searches, so it is quartic in n. Useful only to motivate flipping the search direction.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(n²)</div>
+      <div class="ccard-n">Each of the n² cells is enqueued at most once and its four neighbours inspected a constant number of times.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(n²)</div>
+      <div class="ccard-n">The BFS queue can hold up to every cell in the worst case (e.g. a grid that is almost all land at the start).</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><b>LC 542 — 01 Matrix:</b> the mirror image — flood from every 0 and stamp each cell with its distance. Same multi-source seeding; the answer is the whole distance matrix instead of just the deepest value.</p>
+    <p><b>LC 994 — Rotting Oranges:</b> seed every rotten orange and count the waves until none are fresh. Same "all sources in the queue at once" seeding, and the answer — like here — is the wave count.</p>
+    <p><b>LC 286 — Walls and Gates:</b> multi-source BFS from every gate, filling each room with the distance to the closest gate. Almost identical seeding and flood.</p>
+    <p><b>The trick to carry:</b> when you want the cell <em>farthest</em> from a set of targets, don't search from each cell — flood out from all the targets at once and the last cell the flood reaches is your answer.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  /* ── shared grid painter (DOM only; never called by the pure *GenSteps) ── */
+  function aflPaint(containerId, dist, justList, farList) {
+    const con = document.getElementById(containerId);
+    if (!con) return;
+    con.innerHTML = '';
+    const just = new Set((justList || []).map(p => p[0] + ',' + p[1]));
+    const far  = new Set((farList  || []).map(p => p[0] + ',' + p[1]));
+    const wrap = document.createElement('div');
+    wrap.className = 'afl-grid';
+    for (let r = 0; r < dist.length; r++) {
+      const row = document.createElement('div');
+      row.className = 'afl-row';
+      for (let c = 0; c < dist[r].length; c++) {
+        const v = dist[r][c];
+        const cell = document.createElement('div');
+        cell.className = 'afl-cell ' + (v === 0 ? 'land' : v < 0 ? 'sea' : 'filled');
+        if (just.has(r + ',' + c)) cell.classList.add('just');
+        if (far.has(r + ',' + c))  cell.classList.add('farthest');
+        cell.textContent = v === 0 ? 'L' : v < 0 ? '·' : v;
+        row.appendChild(cell);
+      }
+      wrap.appendChild(row);
+    }
+    con.appendChild(wrap);
+  }
+
+  /* ── answer-bearing examples (drive bf / cv / dr panels AND the verifier) ── */
+  const EX = [
+    { grid: [[1,0,1],[0,0,0],[1,0,1]], answer: 2 },
+    { grid: [[1,0,0],[0,0,0],[0,0,0]], answer: 4 },
+    { grid: [[0,1,0],[0,0,0],[0,0,0]], answer: 3 },
+  ];
+
+  const CV_LINES = [
+    { n:1,  c:'int maxDistance(vector<vector<int>>& grid) {' },
+    { n:2,  c:'    int n = grid.size();' },
+    { n:3,  c:'    vector<vector<int>> dist(n, vector<int>(n, -1));' },
+    { n:4,  c:'    queue<pair<int,int>> q;' },
+    { n:5,  c:'    for (int r = 0; r < n; r++)' },
+    { n:6,  c:'        for (int c = 0; c < n; c++)' },
+    { n:7,  c:'            if (grid[r][c] == 1) { dist[r][c] = 0; q.push({r, c}); }' },
+    { n:8,  c:'    if (q.empty() || (int)q.size() == n*n) return -1;' },
+    { n:9,  c:'    int dr[] = {1,-1,0,0}, dc[] = {0,0,1,-1}, ans = 0;' },
+    { n:10, c:'    while (!q.empty()) {' },
+    { n:11, c:'        auto [r, c] = q.front(); q.pop();' },
+    { n:12, c:'        for (int d = 0; d < 4; d++) {' },
+    { n:13, c:'            int nr = r + dr[d], nc = c + dc[d];' },
+    { n:14, c:'            if (oob(nr,nc) || dist[nr][nc] != -1) continue;' },
+    { n:15, c:'            dist[nr][nc] = dist[r][c] + 1;' },
+    { n:16, c:'            ans = max(ans, dist[nr][nc]);' },
+    { n:17, c:'            q.push({nr, nc});' },
+    { n:18, c:'        }' },
+    { n:19, c:'    }' },
+    { n:20, c:'    return ans;' },
+    { n:21, c:'}' },
+  ];
+
+  /* ════════════════ §1 INSIGHT — synchronized distance flood ════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+
+  function siGenSteps(grid) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const m = grid.length, n = grid[0].length;
+    let dist = grid.map(row => row.map(v => v === 1 ? 0 : -1));
+    let frontier = [];
+    for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) if (grid[r][c] === 1) frontier.push([r, c]);
+    const total = m * n, land = frontier.length, totalWater = total - land;
+    let reached = 0, k = 0;
+    const steps = [];
+    steps.push({ dist: dist.map(r => r.slice()), just: frontier.map(p => p.slice()), far: [],
+      cap: `Distance 0 — every land cell is a source. ${totalWater} water cell(s) still to flood.` });
+    let lastWave = frontier;
+    while (frontier.length) {
+      const next = [];
+      for (const [r, c] of frontier) for (const [dr, dc] of DIRS) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= m || nc < 0 || nc >= n) continue;
+        if (dist[nr][nc] !== -1) continue;
+        dist[nr][nc] = k + 1; next.push([nr, nc]);
+      }
+      if (next.length === 0) break;
+      k++; reached += next.length; lastWave = next;
+      const done = reached === totalWater;
+      steps.push({ dist: dist.map(r => r.slice()), just: next.map(p => p.slice()),
+        far: done ? next.map(p => p.slice()) : [],
+        cap: done
+          ? `Wave ${k} — the flood's final ${next.length} cell(s) light up at distance ${k}. They are the most isolated water: the answer is ${k}.`
+          : `Wave ${k} — the ring reaches ${next.length} new cell(s), each ${k} step(s) from the nearest land. ${totalWater - reached} left.` });
+      frontier = next;
+    }
+    steps.push({ dist: dist.map(r => r.slice()), just: [], far: lastWave.map(p => p.slice()),
+      cap: `Flood complete — the last water reached sits ${k} step(s) from land, so the farthest distance is ${k}.` });
+    return steps;
+  }
+
+  function siRender(st) {
+    aflPaint('si-grid', st.dist, st.just, st.far);
+    document.getElementById('si-cap').textContent = st.cap;
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+
+  /* ════════════════ §2 BRUTE FORCE — per-water-cell outward search ════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null;
+
+  function bfGenSteps(grid) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const m = grid.length, n = grid[0].length;
+    let dist = grid.map(row => row.map(v => v === 1 ? 0 : -1));
+    const steps = [];
+    let scans = 0, resolved = 0, ans = 0;
+    steps.push({ dist: dist.map(r => r.slice()), scans, resolved, ans, just: [], far: [],
+      narr: 'Brute force: each WATER cell launches its OWN search outward until it bumps into land.' });
+    for (let sr = 0; sr < m; sr++) for (let sc = 0; sc < n; sc++) {
+      if (grid[sr][sc] === 1) continue;
+      const seen = Array.from({ length: m }, () => Array(n).fill(false));
+      const q = [[sr, sc, 0]]; seen[sr][sc] = true;
+      let found = 0, qi = 0;
+      while (qi < q.length) {
+        const [r, c, d] = q[qi++]; scans++;
+        if (grid[r][c] === 1) { found = d; break; }
+        for (const [dr, dc] of DIRS) {
+          const nr = r + dr, nc = c + dc;
+          if (nr < 0 || nr >= m || nc < 0 || nc >= n || seen[nr][nc]) continue;
+          seen[nr][nc] = true; q.push([nr, nc, d + 1]);
+        }
+      }
+      dist[sr][sc] = found; resolved++; ans = Math.max(ans, found);
+      steps.push({ dist: dist.map(r => r.slice()), scans, resolved, ans, just: [[sr, sc]], far: [],
+        narr: `Water (${sr},${sc}) searched outward and reached land at distance ${found}. Farthest so far: ${ans}. Cumulative cell-scans: ${scans}.` });
+    }
+    steps.push({ dist: dist.map(r => r.slice()), scans, resolved, ans, just: [], far: [],
+      narr: `All water resolved — the farthest is ${ans}, but the searches cost ${scans} cell-scans → O((n²)²).`,
+      result: ans });
+    return steps;
+  }
+
+  function bfRender(st) {
+    aflPaint('bf-matrix-con', st.dist, st.just, st.far);
+    document.getElementById('bf-resolved').textContent = st.resolved;
+    document.getElementById('bf-scans').textContent = st.scans;
+    document.getElementById('bf-ans').textContent = st.ans;
+    const nb = document.getElementById('bf-narr'); if (nb) nb.textContent = st.narr;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+  function bfLoadEx(idx) {
+    bfStopPlay(); bfCur = 0;
+    [0,1,2].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+    bfSteps = bfGenSteps(EX[idx].grid);
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ════════════════ §6 CODE VIZ — multi-source BFS ════════════════ */
+  let cvCur = 0, cvSteps = [], cvTimer = null;
+
+  function cvGenSteps(grid) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const m = grid.length, n = grid[0].length;
+    let dist = grid.map(row => row.map(() => -1));
+    let frontier = [], reached = 0, ans = 0;
+    let land = 0;
+    for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) if (grid[r][c] === 1) land++;
+    const total = m * n, totalWater = total - land;
+    const base = () => ({ dist: dist.map(r => r.slice()), n, qsize: frontier.length, reached, left: totalWater - reached, ans });
+    const steps = [];
+    steps.push(Object.assign(base(), { line:1, changed:[], just:[], far:[], narr:'Enter maxDistance.' }));
+    steps.push(Object.assign(base(), { line:2, changed:['n'], just:[], far:[], narr:`Grid dimension n=${n}.` }));
+    steps.push(Object.assign(base(), { line:3, changed:[], just:[], far:[], narr:'dist starts all -1 — nothing reached yet.' }));
+    steps.push(Object.assign(base(), { line:4, changed:['qsize'], just:[], far:[], narr:'Empty queue ready for the sources.' }));
+    for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) {
+      if (grid[r][c] === 1) { dist[r][c] = 0; frontier.push([r, c]); }
+    }
+    steps.push(Object.assign(base(), { line:7, changed:['qsize'], just: frontier.map(p => p.slice()), far:[],
+      narr:`Scan done: ${frontier.length} land cell(s) seeded at distance 0.` }));
+    steps.push(Object.assign(base(), { line:8, changed:[], just:[], far:[],
+      narr:`q holds ${frontier.length} of ${total} cells — both land and water present, so flood on.` }));
+    steps.push(Object.assign(base(), { line:9, changed:['ans'], just:[], far:[], narr:'Direction offsets ready; ans starts at 0.' }));
+    let k = 0, lastWave = frontier;
+    while (frontier.length) {
+      steps.push(Object.assign(base(), { line:10, changed:[], just:[], far:[],
+        narr:`Queue holds ${frontier.length} cell(s) at distance ${k} → keep flooding.` }));
+      if (k === 0) {
+        steps.push(Object.assign(base(), { line:11, changed:['qsize'], just:[], far:[],
+          narr:`Pop the distance-0 land frontier and look at each one's neighbours.` }));
+      }
+      const next = [];
+      for (const [r, c] of frontier) for (const [dr, dc] of DIRS) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= m || nc < 0 || nc >= n) continue;
+        if (dist[nr][nc] !== -1) continue;
+        dist[nr][nc] = k + 1; next.push([nr, nc]);
+      }
+      if (next.length === 0) break;
+      k++; reached += next.length; ans = k; lastWave = next;
+      frontier = next;
+      const done = reached === totalWater;
+      steps.push(Object.assign(base(), { line:16, changed:['reached','left','ans','qsize'],
+        just: next.map(p => p.slice()), far: done ? next.map(p => p.slice()) : [],
+        narr:`First touch: ${next.length} water cell(s) stamped at distance ${k}; ans = ${ans}.` }));
+    }
+    steps.push(Object.assign(base(), { line:10, changed:[], just:[], far: lastWave.map(p => p.slice()),
+      narr:'Queue drained — every water cell has a distance.' }));
+    steps.push(Object.assign(base(), { line:20, changed:['ans'], just:[], far: lastWave.map(p => p.slice()), phase:'done',
+      narr:`Return ans = ${ans} — the most isolated water cell is ${ans} step(s) from land.`, result: ans }));
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const ln = document.getElementById('cvL' + st.line);
+    if (ln) ln.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    setCard('cv-v-n', st.n, ch.includes('n'));
+    setCard('cv-v-q', st.qsize, ch.includes('qsize'));
+    setCard('cv-v-reached', st.reached, ch.includes('reached'));
+    setCard('cv-v-left', st.left, ch.includes('left'));
+    setCard('cv-v-ans', st.ans, ch.includes('ans'));
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : ' is-active');
+    aflPaint('cv-matrix-con', st.dist, st.just, st.far);
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+  function cvLoadEx(idx) {
+    cvStopPlay(); cvCur = 0;
+    [0,1,2].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(EX[idx].grid);
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ════════════════ §7 DRY RUN — the oracle ════════════════ */
+  let drCur = 0, drSteps = [], drTimer = null;
+
+  function drGenSteps(grid) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const m = grid.length, n = grid[0].length;
+    let dist = grid.map(row => row.map(v => v === 1 ? 0 : -1));
+    let frontier = [], land = 0;
+    for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) if (grid[r][c] === 1) { frontier.push([r, c]); land++; }
+    const total = m * n, totalWater = total - land;
+    const degenerate = land === 0 || land === total;
+    let reached = 0, k = 0;
+    const steps = [];
+    steps.push({ dist: dist.map(r => r.slice()), wave:0, reached:0, left: totalWater, maxd:0,
+      just: frontier.map(p => p.slice()), far: [], phase:'init', what:'Wave 0 — seed every land cell',
+      why:`All ${land} land cell(s) start at distance 0 and enter the queue together. ${totalWater} water cell(s) to flood.` });
+    let lastWave = frontier;
+    while (frontier.length) {
+      const next = [];
+      for (const [r, c] of frontier) for (const [dr, dc] of DIRS) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= m || nc < 0 || nc >= n) continue;
+        if (dist[nr][nc] !== -1) continue;
+        dist[nr][nc] = k + 1; next.push([nr, nc]);
+      }
+      if (next.length === 0) break;
+      k++; reached += next.length; lastWave = next;
+      const done = reached === totalWater;
+      steps.push({ dist: dist.map(r => r.slice()), wave:k, reached, left: totalWater - reached, maxd:k,
+        just: next.map(p => p.slice()), far: done ? next.map(p => p.slice()) : [],
+        phase: done ? 'done' : 'spread',
+        what:`Wave ${k} — flood reaches distance ${k}`,
+        why: done
+          ? `The last ${next.length} water cell(s) are stamped at distance ${k} — these are the most isolated. The answer is ${k}.`
+          : `${next.length} water cell(s) reached for the first time → ${k} step(s) from the nearest land. ${totalWater - reached} still unflooded.` });
+      frontier = next;
+    }
+    const ans = degenerate ? -1 : k;
+    steps.push({ dist: dist.map(r => r.slice()), wave:k, reached, left: totalWater - reached, maxd: ans,
+      just: [], far: lastWave.map(p => p.slice()), phase:'done',
+      what: degenerate ? 'No land or no water → −1' : `Done — farthest water is ${k} from land`,
+      why: degenerate
+        ? 'With no land to measure from (or no water to measure), there is no answer → return −1.'
+        : `Every water cell now has a distance; the deepest wave was ${k}. Return ans = ${k}.`,
+      result: ans });
+    return steps;
+  }
+
+  function drRender(st) {
+    aflPaint('dr-matrix-con', st.dist, st.just, st.far);
+    document.getElementById('dr-f-wave').textContent = st.wave;
+    document.getElementById('dr-f-reached').textContent = st.reached;
+    document.getElementById('dr-f-left').textContent = st.left;
+    const res = document.getElementById('dr-f-ans');
+    res.textContent = st.maxd;
+    res.style.color = st.phase === 'done' ? 'var(--text-success)' : 'var(--text2)';
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.what;
+    if (whyEl) whyEl.textContent = st.why;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+  function drLoadEx(idx) {
+    drStopPlay(); drCur = 0;
+    [0,1,2].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+    drSteps = drGenSteps(EX[idx].grid);
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ── init ── */
+  const SI_GRID = [[1,0,0],[0,0,0],[0,0,1]];
+  siSteps = siGenSteps(SI_GRID);
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>
