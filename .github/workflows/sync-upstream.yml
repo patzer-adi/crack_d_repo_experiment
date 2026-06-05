@@ -1,0 +1,32 @@
+name: Sync from upstream
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout demo repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add upstream
+        run: |
+          git remote add upstream https://github.com/abdullah0096/crack_d.git
+          git fetch upstream master
+
+      - name: Sync main with upstream master
+        run: |
+          git config user.name "Aditya Gowari"
+          git config user.email "nkadityagowari@gmail.com"
+          git checkout main
+          git merge upstream/master --no-edit
+          git push origin main
