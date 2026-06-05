@@ -3341,7 +3341,7 @@
     "twist": "bounded brute: only need to repeat a up to ⌈len(b)/len(a)⌉ + 1 times",
     "tracks": [],
     "status": "new",
-    "lesson_status": "none"
+    "lesson_status": "generated"
   },
   {
     "order": 20001,
