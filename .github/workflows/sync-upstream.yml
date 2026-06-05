@@ -2,7 +2,7 @@ name: Sync from upstream
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
     steps:
       - name: Checkout demo repo
         uses: actions/checkout@v4
@@ -22,7 +21,7 @@ jobs:
 
       - name: Fetch upstream
         run: |
-          git fetch https://patzer-adi:${{ secrets.UPSTREAM_PAT }}@github.com/abdullah0096/crack_d.git master:refs/remotes/upstream/master
+          git fetch https://github.com/abdullah0096/crack_d.git master:refs/remotes/upstream/master
 
       - name: Sync main with upstream master
         run: |
