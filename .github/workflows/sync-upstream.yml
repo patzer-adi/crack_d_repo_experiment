@@ -21,7 +21,7 @@ jobs:
 
       - name: Fetch upstream
         run: |
-          git fetch https://github.com/abdullah0096/crack_d.git master:refs/remotes/upstream/master
+          git fetch https://${{ secrets.UPSTREAM_PAT }}@github.com/abdullah0096/crack_d.git master:refs/remotes/upstream/master
 
       - name: Sync main with upstream master
         run: |
