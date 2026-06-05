@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subsets — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC: subset chips, element strip, mask readout */
+  .ps-wrap { display:flex; flex-wrap:wrap; gap:6px; align-items:flex-start; }
+  .ps-chip {
+    font-family:var(--mono); font-size:13px; font-weight:600;
+    padding:5px 10px; border-radius:6px; white-space:nowrap;
+    border:2px solid var(--border2); background:var(--bg2); color:var(--text2);
+    transition:all .15s ease;
+  }
+  .ps-chip.empty { color:var(--text3); font-style:italic; }
+  .ps-chip.new   { background:var(--bg-info);    border-color:var(--border-info);    color:var(--text-info); }
+  .ps-chip.final { background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); }
+  .ps-nums { display:flex; gap:6px; flex-wrap:wrap; margin:.4rem 0; }
+  .ps-numcell {
+    width:38px; height:38px; display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); font-size:15px; font-weight:700;
+    border-radius:6px; border:2px solid var(--border2); background:var(--bg2); color:var(--text2);
+    transition:all .15s ease;
+  }
+  .ps-numcell.active { background:var(--bg-warn);    border-color:var(--border-warn);    color:var(--text-warn); }
+  .ps-numcell.done   { background:var(--bg2);        border-color:var(--border-success); color:var(--text-success); }
+  .ps-numcell.in     { background:var(--bg-success); border-color:var(--border-success); color:var(--text-success); }
+  .ps-legend { display:flex; gap:1rem; flex-wrap:wrap; align-items:center; margin:.25rem 0 .75rem; font-size:12px; color:var(--text2); }
+  .ps-legend .leg-dot { width:14px; height:14px; border-radius:4px; display:inline-block; vertical-align:middle; margin-right:5px; }
+  .ps-cap { font-family:var(--mono); font-size:12px; color:var(--text2); margin:.625rem 0; min-height:2.2em; }
+  .ps-counter { display:flex; gap:1.5rem; flex-wrap:wrap; font-family:var(--mono); font-size:13px; margin:.625rem 0; }
+  .ps-counter b { color:var(--text-info); }
+  .ps-mask { font-family:var(--mono); font-size:20px; font-weight:700; letter-spacing:4px; color:var(--text-info); margin:.5rem 0; min-height:1.4em; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Subsets</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/subsets/" target="_blank">LC #78</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">Backtracking</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Are the elements distinct?</div>
+      <div class="acard-a">Yes — LC 78 guarantees unique integers. No subset is produced twice, so there is no de-dup work.</div>
+      <div class="acard-u">→ the include/skip tree has no repeated leaves; duplicates are a separate problem (Subsets II)</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Does the empty set count? The full set?</div>
+      <div class="acard-a">Both are valid subsets. The empty set is the "skip everything" path; the full set is "include everything".</div>
+      <div class="acard-u">→ record a subset at <em>every</em> leaf, including the all-skip one</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Does the output order matter?</div>
+      <div class="acard-a">No — the 2ⁿ subsets may come back in any order. We pick the order the recursion naturally emits.</div>
+      <div class="acard-u">→ skip-branch first, so ∅ comes out first and the full set last</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">How large can n get?</div>
+      <div class="acard-a">Up to ~20 — the output is 2ⁿ. Any method is Θ(n·2ⁿ) because the output itself is that big.</div>
+      <div class="acard-u">→ no sub-exponential trick to chase; aim for clarity, not asymptotics</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Every element is one yes/no choice — so there are exactly 2ⁿ subsets, one per branch of a decision tree</p>
+
+  <p class="body">You likely tried to enumerate subsets by size, or with nested loops, and kept missing some or repeating others. Step back: a subset is nothing more than one yes/no answer per element — keep it, or leave it out. Make those choices one element at a time and every subset appears exactly once.</p>
+
+  <!-- Foundational visual: the doubling frontier (animated, reader-controlled) -->
+  <div style="margin:1.25rem 0">
+    <div class="ps-legend">
+      <span><span class="leg-dot" style="background:var(--bg-warn)"></span>element being decided</span>
+      <span><span class="leg-dot" style="background:var(--bg-success);outline:0"></span>elements already decided</span>
+      <span><span class="leg-dot" style="background:var(--bg-info)"></span>subsets that just took the new element</span>
+      <span><span class="leg-dot" style="background:var(--bg-success)"></span>the final 2ⁿ subsets</span>
+    </div>
+    <div id="si-nums" style="margin:.5rem 0"></div>
+    <div id="si-list" style="margin:.5rem 0;min-height:2.4em"></div>
+    <div id="si-cap" class="ps-cap"></div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="ctrl-btn"     onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn"     onclick="siNext()">Next →</button>
+      <button class="ctrl-btn"     onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <!-- Read the animation as a binary decision tree -->
+  <div style="margin:1.25rem 0;font-size:13px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:.5rem;color:var(--text)">Read the animation as a binary decision tree:</div>
+    <div class="skeleton">
+      <div class="wt-item">
+        <div class="wt-num">0</div>
+        <div class="wt-body">
+          <div class="wt-name">Start with one empty path</div>
+          <div class="wt-desc">Before any decision there is a single possibility — the empty subset ∅. Nothing has been kept or skipped yet.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">i</div>
+        <div class="wt-body">
+          <div class="wt-name">Each element forks every path in two</div>
+          <div class="wt-desc">Decide element <code>i</code>: every partial subset spawns two children — one that <em>skips</em> it (unchanged) and one that <em>includes</em> it (gains the element). The count doubles: 1 → 2 → 4 → 8.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">2ⁿ</div>
+        <div class="wt-body">
+          <div class="wt-name">Each leaf is one subset</div>
+          <div class="wt-desc">After all n elements are decided there are 2ⁿ root-to-leaf paths, and each spells out exactly one subset — no misses, no repeats. The recursion in §6 walks these paths depth-first instead of level by level, but reaches the same 2ⁿ leaves.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Treat each element as an independent yes/no choice and lay the choices out one at a time: at depth <code>i</code> branch on element <code>i</code> — skip it or include it. The n choices form a binary tree with 2ⁿ root-to-leaf paths, and every path is one distinct subset. Walk the tree depth-first with a single shared <code>path</code>: push the element before the include branch and pop it after, so one array is reused across all 2ⁿ paths and a finished subset is recorded at every leaf.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">The most mechanical idea: every subset is one membership pattern, so just number the patterns. Count an n-bit integer <code>mask</code> from 0 to 2ⁿ−1; bit (n−1−i) tells you whether element <code>i</code> is in. Decode each pattern into a subset. It is correct, and watch the bit-test counter — n tests per pattern, so n·2ⁿ in all.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">[1,2,3] → 8</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">[0] → 2</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">[7,8] → 4</button>
+  </div>
+  <div id="bf-nums" style="margin:.75rem 0"></div>
+  <div id="bf-mask" class="ps-mask"></div>
+  <div id="bf-list" style="margin:.5rem 0;min-height:2.4em;padding:.75rem;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2)"></div>
+  <div class="ps-counter">
+    <span>patterns tried: <b id="bf-masks">0</b></span>
+    <span>bit-tests: <b id="bf-tests">0</b></span>
+    <span>subsets: <b id="bf-count">0</b></span>
+  </div>
+  <div id="bf-narr" class="ps-cap"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">The catch: Θ(n·2ⁿ) time — but so is everything</p>
+    <p class="infobox-d">The output has 2ⁿ subsets, so no method beats Θ(n·2ⁿ). The bitmask is not slower — it is just <em>rigid</em>: it hard-codes the 2ⁿ loop bound and leans on bit tricks, and it does not extend to the variants where you must skip duplicates or stop a branch early. The recursive include/skip view expresses the same choices more naturally and generalizes.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt; <span class="fn">subsets</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+    <span class="kw">int</span> n = nums.<span class="fn">size</span>();
+    <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt; res;
+    <span class="kw">for</span> (<span class="kw">int</span> mask = 0; mask &lt; (1 &lt;&lt; n); mask++) {   <span class="cm">// every membership pattern</span>
+        <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; sub;
+        <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; n; i++) {
+            <span class="kw">if</span> (mask &amp; (1 &lt;&lt; (n - 1 - i))) {        <span class="cm">// bit set → element i is in</span>
+                sub.<span class="fn">push_back</span>(nums[i]);
+            }
+        }
+        res.<span class="fn">push_back</span>(sub);
+    }
+    <span class="kw">return</span> res;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three swaps turn the rigid bitmask loop into clean recursive backtracking — the same 2ⁿ work, expressed as a decision tree that generalizes.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Membership bitmask → recursive include/skip</div>
+        <div class="wt-desc">Instead of decoding integers, branch on each element directly: one call skips it, one includes it. The recursion <em>is</em> the decision tree, and it extends to pruning and to the duplicate / constrained variants where a flat loop cannot.</div>
+        <div class="wt-gain">same 2ⁿ, but expressive and general</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Rebuild each subset from scratch → one shared <code>path</code> with undo</div>
+        <div class="wt-desc">Keep a single array. Before the include branch <code>push_back(nums[i])</code>; after it returns, <code>pop_back()</code>. The array is mutated in place and copied only at a leaf. This push / recurse / pop trio <em>is</em> backtracking.</div>
+        <div class="wt-gain">O(n) working memory instead of copying at every node</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">"When do I stop?" → record at every leaf</div>
+        <div class="wt-desc">When <code>i == n</code> all elements are decided, so the current <code>path</code> is exactly one finished subset. Copy it into the result once and return.</div>
+        <div class="wt-gain">one subset per leaf, no misses or repeats</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Hold a result list and one reusable <code>path</code>.</b> <code>res</code> collects finished subsets; <code>path</code> is the current set of decisions.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>At a leaf, record.</b> In <code>dfs(i)</code>, if <code>i == n</code> every element is decided — <b>push a copy</b> of <code>path</code> into <code>res</code> and return.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Skip branch first.</b> Recurse with <code>dfs(i + 1)</code> leaving <code>path</code> unchanged — this explores every subset that omits element <code>i</code>.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Include branch, then undo.</b> <code>path.push_back(nums[i])</code>, recurse with <code>dfs(i + 1)</code>, then <code>path.pop_back()</code> to backtrack so the caller's path is clean.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>Kick off and return.</b> Call <code>dfs(0)</code>; when it returns, <code>res</code> holds all 2ⁿ subsets.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">class</span> Solution {
+    <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt; res;
+
+    <span class="kw">void</span> <span class="fn">dfs</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums, <span class="kw">int</span> i, <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; path) {
+        <span class="kw">if</span> (i == (<span class="kw">int</span>)nums.<span class="fn">size</span>()) {   <span class="cm">// all elements decided → one subset</span>
+            res.<span class="fn">push_back</span>(path);
+            <span class="kw">return</span>;
+        }
+        <span class="fn">dfs</span>(nums, i + 1, path);        <span class="cm">// branch 1: skip nums[i]</span>
+        path.<span class="fn">push_back</span>(nums[i]);       <span class="cm">// branch 2: include nums[i]</span>
+        <span class="fn">dfs</span>(nums, i + 1, path);
+        path.<span class="fn">pop_back</span>();               <span class="cm">// undo, keep the caller's path clean</span>
+    }
+
+<span class="kw">public</span>:
+    <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt; <span class="fn">subsets</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; nums) {
+        <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; path;
+        <span class="fn">dfs</span>(nums, 0, path);
+        <span class="kw">return</span> res;
+    }
+};</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Walk the recursion one statement at a time. Watch <code>i</code> descend, the skip branch fire before the include branch, the <code>path</code> grow on a push and shrink on the <code>pop_back</code> backtrack, and a subset land in the result list each time <code>i == n</code>. Switch examples to see the tree shrink to two leaves and one leaf.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-n"><span class="cv-var-name">n</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-i"><span class="cv-var-name">i</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-path"><span class="cv-var-name">path</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-branch"><span class="cv-var-name">branch</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-count"><span class="cv-var-name">subsets</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-list-con" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0;min-height:2.4em"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">[1,2,3] → 8</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">[0] → 2</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">[7,8] → 4</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick an input and step through the leaves in the order the recursion reaches them. Each leaf is one complete set of skip/include decisions — predict the subset before pressing Next. The highlighted elements are the ones the current leaf included.</p>
+
+  <div id="dr-nums" style="margin:.75rem 0"></div>
+  <div id="dr-list" style="margin:.5rem 0;min-height:2.4em"></div>
+  <div class="ps-legend">
+    <span><span class="leg-dot" style="background:var(--bg-success)"></span>element included in this leaf</span>
+    <span><span class="leg-dot" style="background:var(--bg-info)"></span>subset just recorded</span>
+    <span><span class="leg-dot" style="background:var(--bg-success)"></span>all subsets, done</span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns:1fr 1fr 1.4fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">subsets</div>
+          <div class="fitem-val" id="dr-f-count">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">of 2ⁿ</div>
+          <div class="fitem-val" id="dr-f-target">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">this leaf</div>
+          <div class="fitem-val" id="dr-f-path">∅</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">status</div>
+          <div class="fitem-val" id="dr-f-status">…</div>
+        </div>
+      </div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">[1,2,3] → 8</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">[0] → 2</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">[7,8] → 4</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">Empty input</div>
+    <div class="corner-body"><code>nums = []</code>: n = 0, so <code>dfs(0)</code> immediately hits <code>i == n</code> and records the empty subset. The answer is <code>[[]]</code> — one subset, not zero. The empty set is always a subset.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">Single element</div>
+    <div class="corner-body"><code>nums = [0]</code>: two leaves — skip 0 → <code>[]</code>, include 0 → <code>[0]</code>. Answer <code>[[],[0]]</code>. The smallest case that still shows both branches.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Copy the path, don't store a reference</div>
+    <div class="corner-body">At a leaf you must push a <em>copy</em> of <code>path</code> (<code>res.push_back(path)</code> copies in C++). Storing a pointer/reference would leave every recorded subset pointing at the same array, which the later <code>pop_back</code>s mutate — you would end up with 2ⁿ copies of <code>[]</code>.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Forgetting to backtrack</div>
+    <div class="corner-body">Drop the <code>pop_back()</code> and the include of element <code>i</code> leaks into its sibling skip branch — you get wrong, oversized subsets. Every <code>push_back</code> in the include branch needs its matching <code>pop_back</code>.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">Duplicates change the problem</div>
+    <div class="corner-body"><code>nums = [1,2,2]</code> would make this code emit <code>[2]</code> and <code>[1,2]</code> twice. LC 78 forbids duplicates; the duplicate case (Subsets II) needs sorting plus a "skip equal siblings" guard. Don't bolt it on here unless asked.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Empty input returns <code>[[]]</code></b>, not <code>[]</code> — the base case fires once even with no elements.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Push a copy at each leaf</b> so later <code>pop_back</code>s never mutate an already-recorded subset.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Pair every push with a pop.</b> The include branch's <code>push_back</code> must be undone by <code>pop_back</code> before returning.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Recursion depth is exactly n</b> — well within limits for n ≤ 20; no stack-overflow risk. An explicit stack or the bitmask loop is available if recursion is unwelcome.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Reserve the output if n is known.</b> <code>res.reserve(1 &lt;&lt; n)</code> avoids 2ⁿ reallocations on the growing result vector.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Decide the output contract.</b> LC accepts any order; if a caller needs a stable order, sort or fix the branch order — don't assume.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Backtracking</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Iterative cascading</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Bitmask</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(n·2ⁿ)</span><span class="tag tag-space">O(n)</span>
+    <p class="body">Recurse on the include/skip decision tree with one shared <code>path</code> and push/pop backtracking. This is the intended solution — it expresses the choices directly and is the template you extend for Subsets II, Combinations, Permutations, and Combination Sum (just change what each level decides and add pruning).</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(n·2ⁿ)</span><span class="tag tag-space">O(1) extra</span>
+    <p class="body">No recursion: start with <code>{{}}</code> and, for each element, append a copy of every existing subset with the element added. The result doubles per element. Elegant and iterative, but it materializes the whole list as it goes and does not offer a place to prune — harder to adapt to constrained variants.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-casc',this)">▶ Reveal sketch</button>
+    <div id="code-casc" class="code-block">
+      <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt; res = {{}};
+<span class="kw">for</span> (<span class="kw">int</span> x : nums) {
+    <span class="kw">int</span> sz = res.<span class="fn">size</span>();
+    <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; sz; i++) {
+        <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; cur = res[i];
+        cur.<span class="fn">push_back</span>(x);
+        res.<span class="fn">push_back</span>(cur);
+    }
+}
+<span class="kw">return</span> res;</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O(n·2ⁿ)</span><span class="tag tag-space">O(1) extra</span>
+    <p class="body">The brute force from Step 1: number every subset 0..2ⁿ−1 and read the bits. Compact and branch-free, great when n is a known small constant, but it hard-codes the 2ⁿ bound, needs bit manipulation, and cannot prune — so it does not generalize to the harder backtracking problems.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(n·2ⁿ)</div>
+      <div class="ccard-n">There are 2ⁿ subsets and copying each finished <code>path</code> into the result costs up to O(n). The output size alone forces this bound.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(n)</div>
+      <div class="ccard-n">Auxiliary: recursion depth n plus the single shared <code>path</code>. The output itself is O(n·2ⁿ) but is required, not extra.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><b>LC 90 — Subsets II:</b> same include/skip tree, but with duplicate elements. Sort first, then within a level skip an element equal to its previous sibling so identical subsets are not produced twice.</p>
+    <p><b>LC 46 — Permutations:</b> the decision at each level is "which unused element goes next" instead of "in or out". Same shared-path + backtrack skeleton, a <code>used[]</code> marker replaces the index.</p>
+    <p><b>LC 77 — Combinations / LC 39 — Combination Sum:</b> the same tree with a target size or running sum, and a pruning condition that cuts branches that can no longer succeed.</p>
+    <p><b>The trick to carry:</b> whenever the answer is "all ways to choose", model each item as a branch in a decision tree and recurse with one shared path — push before you descend, pop when you come back up.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  /* ── shared painters (DOM only; never called by the pure *GenSteps) ── */
+  function psPaint(containerId, subsets, newIdxList, finalAll) {
+    const con = document.getElementById(containerId);
+    if (!con) return;
+    con.innerHTML = '';
+    const news = new Set(newIdxList || []);
+    const wrap = document.createElement('div');
+    wrap.className = 'ps-wrap';
+    subsets.forEach((sub, i) => {
+      const chip = document.createElement('div');
+      let cls = 'ps-chip';
+      if (sub.length === 0) cls += ' empty';
+      if (finalAll) cls += ' final';
+      else if (news.has(i)) cls += ' new';
+      chip.className = cls;
+      chip.textContent = sub.length ? '{' + sub.join(', ') + '}' : '∅';
+      wrap.appendChild(chip);
+    });
+    con.appendChild(wrap);
+  }
+
+  function psNums(containerId, nums, classer) {
+    const con = document.getElementById(containerId);
+    if (!con) return;
+    con.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'ps-nums';
+    nums.forEach((v, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'ps-numcell ' + (classer(i, v) || '');
+      cell.textContent = v;
+      wrap.appendChild(cell);
+    });
+    con.appendChild(wrap);
+  }
+
+  const fmtSub = s => s.length ? '{' + s.join(', ') + '}' : '∅';
+
+  /* ── answer-bearing examples (drive bf / cv / dr panels AND the verifier) ── */
+  const EX = [
+    { nums: [1, 2, 3], answer: [[], [3], [2], [2, 3], [1], [1, 3], [1, 2], [1, 2, 3]] },
+    { nums: [0],       answer: [[], [0]] },
+    { nums: [7, 8],    answer: [[], [8], [7], [7, 8]] },
+  ];
+
+  const CV_LINES = [
+    { n:1,  c:'vector<vector<int>> res;' },
+    { n:2,  c:'void dfs(vector<int>& nums, int i, vector<int>& path) {' },
+    { n:3,  c:'    if (i == nums.size()) { res.push_back(path); return; }' },
+    { n:4,  c:'    dfs(nums, i + 1, path);        // branch 1: skip nums[i]' },
+    { n:5,  c:'    path.push_back(nums[i]);       // branch 2: include nums[i]' },
+    { n:6,  c:'    dfs(nums, i + 1, path);' },
+    { n:7,  c:'    path.pop_back();               // undo (backtrack)' },
+    { n:8,  c:'}' },
+    { n:9,  c:'vector<vector<int>> subsets(vector<int>& nums) {' },
+    { n:10, c:'    vector<int> path;' },
+    { n:11, c:'    dfs(nums, 0, path);' },
+    { n:12, c:'    return res;' },
+    { n:13, c:'}' },
+  ];
+
+  /* ════════════════ §1 INSIGHT — the doubling frontier ════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+  const SI_NUMS = [1, 2, 3];
+
+  function siGenSteps(nums) {
+    const steps = [];
+    let frontier = [[]];
+    steps.push({ subs: frontier.map(s => s.slice()), news: [], active: -1, doneUpto: 0, finalAll: false,
+      cap: 'No decisions yet — one empty path, the subset ∅.' });
+    for (let i = 0; i < nums.length; i++) {
+      const x = nums[i];
+      steps.push({ subs: frontier.map(s => s.slice()), news: [], active: i, doneUpto: i, finalAll: false,
+        cap: `Element ${x}: every partial subset now forks — one branch skips ${x}, one includes ${x}.` });
+      const next = [], news = [];
+      for (const p of frontier) {
+        next.push(p.slice());            // skip branch
+        next.push([...p, x]);            // include branch
+        news.push(next.length - 1);      // index of the include-copy
+      }
+      steps.push({ subs: next.map(s => s.slice()), news, active: i, doneUpto: i + 1, finalAll: false,
+        cap: `Count doubled: ${frontier.length} → ${next.length}. The highlighted subsets are the ones that took ${x}.` });
+      frontier = next;
+    }
+    steps.push({ subs: frontier.map(s => s.slice()), news: [], active: -1, doneUpto: nums.length, finalAll: true,
+      cap: `All ${frontier.length} = 2^${nums.length} subsets — one per skip/include pattern across the ${nums.length} elements.` });
+    return steps;
+  }
+
+  function siRender(st) {
+    psNums('si-nums', SI_NUMS, i => i === st.active ? 'active' : i < st.doneUpto ? 'done' : '');
+    psPaint('si-list', st.subs, st.finalAll ? [] : st.news, st.finalAll);
+    document.getElementById('si-cap').textContent = st.cap;
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+
+  /* ════════════════ §2 BRUTE FORCE — bitmask enumeration ════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null;
+
+  function bfGenSteps(nums) {
+    const n = nums.length, total = 1 << n;
+    const res = [], steps = [];
+    let scans = 0;
+    const bin = m => m.toString(2).padStart(Math.max(n, 1), '0');
+    steps.push({ subs: [], scans: 0, masks: 0, count: 0, mask: '', incl: [], justIdx: null,
+      narr: `Brute force: every subset is a yes/no choice per element, so number them 0..${total - 1} in binary and decode each ${n}-bit pattern.` });
+    for (let m = 0; m < total; m++) {
+      const sub = [], incl = [];
+      for (let i = 0; i < n; i++) {
+        scans++;
+        if (m & (1 << (n - 1 - i))) { sub.push(nums[i]); incl.push(nums[i]); }
+      }
+      res.push(sub);
+      steps.push({ subs: res.map(s => s.slice()), scans, masks: m + 1, count: res.length,
+        mask: bin(m), incl, justIdx: res.length - 1,
+        narr: `Pattern ${bin(m)} → ${fmtSub(sub)}.  ${n} bit-test(s); ${scans} so far.` });
+    }
+    steps.push({ subs: res.map(s => s.slice()), scans, masks: total, count: res.length, mask: '', incl: [], justIdx: null,
+      narr: `All ${total} patterns done with ${scans} = n·2^n bit-tests. Correct — but it hard-codes 2^n and leans on bit tricks.`,
+      result: res.map(s => s.slice()) });
+    return steps;
+  }
+
+  function bfRender(st) {
+    const inclSet = new Set(st.incl || []);
+    psNums('bf-nums', bfNums, (i, v) => inclSet.has(v) ? 'in' : '');
+    document.getElementById('bf-mask').textContent = st.mask || '';
+    psPaint('bf-list', st.subs, st.justIdx != null ? [st.justIdx] : [], false);
+    document.getElementById('bf-masks').textContent = st.masks;
+    document.getElementById('bf-tests').textContent = st.scans;
+    document.getElementById('bf-count').textContent = st.count;
+    const nb = document.getElementById('bf-narr'); if (nb) nb.textContent = st.narr;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+  let bfNums = EX[0].nums;
+  function bfLoadEx(idx) {
+    bfStopPlay(); bfCur = 0;
+    [0, 1, 2].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+    bfNums = EX[idx].nums;
+    bfSteps = bfGenSteps(bfNums);
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ════════════════ §6 CODE VIZ — recursive backtracking ════════════════ */
+  let cvCur = 0, cvSteps = [], cvTimer = null;
+
+  function cvGenSteps(nums) {
+    const n = nums.length, res = [], steps = [];
+    const fmtPath = p => p.length ? '{' + p.join(',') + '}' : '∅';
+    const push = (line, f) => steps.push(Object.assign({
+      line, vN: n, vI: '—', vPath: '∅', vBranch: '—', vCount: res.length,
+      resList: res.map(s => s.slice()), justIdx: null, changed: [], narr: '', done: false }, f));
+    push(1, { changed: ['count'], narr: 'res starts empty — we collect one subset each time the recursion bottoms out.' });
+    push(11, { vI: 0, vPath: '∅', changed: ['i'], narr: 'Kick off: dfs starting at index 0 with an empty path.' });
+    const path = [];
+    (function dfs(i) {
+      if (i === n) {
+        res.push(path.slice());
+        push(3, { vI: i, vPath: fmtPath(path), vCount: res.length, changed: ['i', 'count'],
+          resList: res.map(s => s.slice()), justIdx: res.length - 1,
+          narr: `i = ${i} = n → leaf. Record ${fmtPath(path)} as subset #${res.length}.` });
+        return;
+      }
+      push(3, { vI: i, vPath: fmtPath(path), changed: ['i'],
+        narr: `i = ${i} (< n): decide element ${nums[i]} — two branches follow.` });
+      push(4, { vI: i, vPath: fmtPath(path), vBranch: 'skip', changed: ['branch'],
+        narr: `Branch 1 — SKIP ${nums[i]}: recurse to ${i + 1}, path unchanged.` });
+      dfs(i + 1);
+      path.push(nums[i]);
+      push(5, { vI: i, vPath: fmtPath(path), vBranch: 'include', changed: ['branch', 'path'],
+        narr: `Branch 2 — INCLUDE ${nums[i]}: push it, path is now ${fmtPath(path)}, recurse to ${i + 1}.` });
+      dfs(i + 1);
+      path.pop();
+      push(7, { vI: i, vPath: fmtPath(path), changed: ['path'],
+        narr: `Backtrack — pop ${nums[i]} so the caller's path is clean.` });
+    })(0);
+    push(12, { done: true, changed: ['count'], resList: res.map(s => s.slice()),
+      narr: `Recursion done — ${res.length} subsets collected. Return res.`, result: res.map(s => s.slice()) });
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const ln = document.getElementById('cvL' + st.line);
+    if (ln) ln.classList.add(st.done ? 'active-match' : 'active');
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    setCard('cv-v-n', st.vN, ch.includes('n'));
+    setCard('cv-v-i', st.vI, ch.includes('i'));
+    setCard('cv-v-path', st.vPath, ch.includes('path'));
+    setCard('cv-v-branch', st.vBranch, ch.includes('branch'));
+    setCard('cv-v-count', st.vCount, ch.includes('count'));
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.done ? ' is-match' : ' is-active');
+    psPaint('cv-list-con', st.resList, st.justIdx != null ? [st.justIdx] : [], st.done);
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+  function cvLoadEx(idx) {
+    cvStopPlay(); cvCur = 0;
+    [0, 1, 2].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(EX[idx].nums);
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ════════════════ §7 DRY RUN — the oracle ════════════════ */
+  let drCur = 0, drSteps = [], drTimer = null;
+  let drNums = EX[0].nums;
+
+  function drGenSteps(nums) {
+    const n = nums.length, res = [], steps = [];
+    const total = 1 << n;
+    steps.push({ resList: [], pathStr: '∅', incl: [], count: 0, target: total, phase: 'init', justIdx: null,
+      what: 'Start: empty result, empty path',
+      why: `There are 2^${n} = ${total} subsets to find — one for every skip/include choice across the ${n} element(s).` });
+    const path = [];
+    (function dfs(i) {
+      if (i === n) {
+        res.push(path.slice());
+        steps.push({ resList: res.map(s => s.slice()), pathStr: fmtSub(path), incl: path.slice(),
+          count: res.length, target: total, phase: 'leaf', justIdx: res.length - 1,
+          what: `Leaf: record ${fmtSub(path)}`,
+          why: `All ${n} element(s) decided. This complete choice is subset #${res.length} of ${total}.` });
+        return;
+      }
+      dfs(i + 1);            // skip nums[i]
+      path.push(nums[i]);
+      dfs(i + 1);            // include nums[i]
+      path.pop();
+    })(0);
+    const ans = res.map(s => s.slice());
+    steps.push({ resList: ans, pathStr: '∅', incl: [], count: res.length, target: total, phase: 'done', justIdx: null,
+      what: `Done — all ${res.length} subsets collected`,
+      why: `Every root-to-leaf path of the decision tree produced one subset; ${res.length} = 2^${n}.`,
+      result: ans });
+    return steps;
+  }
+
+  function drRender(st) {
+    const inclSet = new Set(st.incl || []);
+    psNums('dr-nums', drNums, (i, v) => inclSet.has(v) ? 'in' : '');
+    psPaint('dr-list', st.resList, st.justIdx != null ? [st.justIdx] : [], st.phase === 'done');
+    document.getElementById('dr-f-count').textContent = st.count;
+    document.getElementById('dr-f-target').textContent = st.target;
+    document.getElementById('dr-f-path').textContent = st.pathStr;
+    const status = document.getElementById('dr-f-status');
+    status.textContent = st.phase === 'done' ? 'done ✓' : 'building';
+    status.style.color = st.phase === 'done' ? 'var(--text-success)' : 'var(--text2)';
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.what;
+    if (whyEl) whyEl.textContent = st.why;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+  function drLoadEx(idx) {
+    drStopPlay(); drCur = 0;
+    [0, 1, 2].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+    drNums = EX[idx].nums;
+    drSteps = drGenSteps(drNums);
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ── init ── */
+  siSteps = siGenSteps(SI_NUMS);
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>

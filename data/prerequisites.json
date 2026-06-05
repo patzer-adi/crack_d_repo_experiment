@@ -1,0 +1,583 @@
+[
+  {
+    "id": "array",
+    "name": "Array",
+    "level": "data-structure",
+    "group": "Data Structures",
+    "group_order": 1,
+    "order": 1,
+    "icon": "[ ]",
+    "tagline": "A contiguous, zero-indexed row of values with O(1) random access.",
+    "analogy": "A row of numbered lockers. Because every locker is the same size and they sit side by side, the building manager can jump straight to locker #137 without walking past the first 136 — that is what makes indexing O(1).",
+    "explanation": "A contiguous, zero-indexed sequence stored in a single row. It is the data structure most interview problems are phrased on, and the foundation the two-pointer, sliding-window, and prefix-sum **patterns** are drawn on. Reading or writing `a[i]` is O(1); inserting or deleting in the middle is O(n) because everything after the gap must shift. Sorting the array first is itself a prerequisite for many techniques — it turns an O(n^2) scan into an O(n) sweep.",
+    "key_ops": [
+      "Access / update by index: O(1)",
+      "Scan / search unsorted: O(n)",
+      "Insert / erase in the middle: O(n) (shifting)",
+      "Append at the end (dynamic array): amortised O(1)"
+    ],
+    "snippets": [
+      { "label": "Index, iterate, two-pointer",
+        "code": [
+          "vector<int> a = {5, 2, 9, 1};",
+          "int x = a[2];                 // O(1) random access -> 9",
+          "for (int v : a) use(v);       // O(n) linear scan",
+          "int l = 0, r = a.size() - 1;  // the two-pointer setup",
+          "while (l < r) { /* shrink from both ends */ l++; r--; }"
+        ] }
+    ],
+    "complexity": "Access O(1), search O(n), middle insert/erase O(n), space O(n).",
+    "topics": ["Arrays & Hashing", "Two Pointers", "Prefix Sum", "Sliding Window"],
+    "animation": null
+  },
+  {
+    "id": "hash-map",
+    "name": "Hash Map / Hash Set",
+    "level": "data-structure",
+    "group": "Data Structures",
+    "group_order": 1,
+    "order": 2,
+    "icon": "#",
+    "tagline": "Trade a little memory for average O(1) lookup, insert, and membership.",
+    "analogy": "A coat-check counter. You hand over your coat (the value) and get a numbered ticket (the key); later you show the ticket and the attendant returns your coat instantly — no scanning every hook on the rack.",
+    "explanation": "A hash map turns *have I seen this?*, *how many times?*, and *where is it?* from an O(n) scan into an O(1) average lookup by hashing the key to a bucket. Most array problems that feel like they need a nested loop collapse to a single pass once you remember what you have already seen. A hash **set** is the same structure storing keys only — perfect for membership and de-duplication. This is the workhorse behind `Two Sum`, anagram grouping, and the bookkeeping inside many `Design` problems (an LRU cache is a hash map pointing into a linked list).",
+    "key_ops": [
+      "insert / erase / lookup by key: O(1) average, O(n) worst case",
+      "membership test (set): O(1) average",
+      "iteration order is unspecified — sort separately if you need order"
+    ],
+    "snippets": [
+      { "label": "Membership / de-dup with a set",
+        "code": [
+          "unordered_set<int> seen;",
+          "for (int x : nums) {",
+          "    if (seen.count(x)) return true;   // duplicate found",
+          "    seen.insert(x);",
+          "}"
+        ] },
+      { "label": "Complement lookup (Two Sum, one pass)",
+        "code": [
+          "unordered_map<int,int> idx;           // value -> position",
+          "for (int i = 0; i < n; i++) {",
+          "    int need = target - nums[i];",
+          "    if (idx.count(need)) return {idx[need], i};",
+          "    idx[nums[i]] = i;                 // insert AFTER the check",
+          "}"
+        ] }
+    ],
+    "pitfalls": [
+      "Average O(1) but worst-case O(n) under adversarial hashing — rarely matters, but know it.",
+      "For complement-style problems, check for the key *before* inserting the current value, or an element matches itself."
+    ],
+    "complexity": "Lookup/insert/erase O(1) average, O(n) worst; O(n) extra space.",
+    "topics": ["Arrays & Hashing", "Design"],
+    "animation": "anim-hash-map"
+  },
+  {
+    "id": "linked-list",
+    "name": "Linked List",
+    "level": "data-structure",
+    "group": "Data Structures",
+    "group_order": 1,
+    "order": 3,
+    "icon": "->",
+    "tagline": "Nodes chained by pointers: O(1) splice, but no random access.",
+    "analogy": "A scavenger hunt. Each clue (node) holds a prize (value) and tells you only where the *next* clue is. You can never skip ahead to clue #5 — you must follow the chain from the start, one `next` at a time.",
+    "explanation": "A sequence of nodes where each node stores a value and a pointer to the next. Unlike an array, nodes are not contiguous: traversal and random access are both O(n), but inserting or deleting a node you already hold is O(1) because you just relink pointers. The key mental model: at any moment you hold a pointer to exactly one node; you can read its value and follow its `next`, nothing else. This is the home of pointer-manipulation problems — reversal, cycle detection (slow/fast pointers), merging — and a building block of `Design` problems like the LRU cache.",
+    "key_ops": [
+      "Access / search by position: O(n)",
+      "Insert / delete a known node: O(1) (relink)",
+      "Prepend at head: O(1)",
+      "Reverse in place: O(n) time, O(1) space"
+    ],
+    "snippets": [
+      { "label": "Iterate and reverse in place",
+        "code": [
+          "ListNode* prev = nullptr;",
+          "ListNode* cur  = head;",
+          "while (cur) {",
+          "    ListNode* nxt = cur->next;   // save before we overwrite",
+          "    cur->next = prev;            // flip the link",
+          "    prev = cur; cur = nxt;       // advance both pointers",
+          "}",
+          "return prev;                     // new head"
+        ] }
+    ],
+    "pitfalls": [
+      "Overwriting `cur->next` before saving it loses the rest of the list — save `nxt` first.",
+      "Always handle the `nullptr` terminator; many bugs are missing tail checks."
+    ],
+    "complexity": "Access/search O(n), known-node insert/delete O(1), space O(n).",
+    "topics": ["Linked Lists", "Design"],
+    "animation": null
+  },
+  {
+    "id": "stack-queue",
+    "name": "Stack & Queue",
+    "level": "data-structure",
+    "group": "Data Structures",
+    "group_order": 1,
+    "order": 4,
+    "icon": "[|",
+    "tagline": "Two disciplined lists: LIFO (stack) and FIFO (queue).",
+    "analogy": "A stack is a pile of plates — you add and take from the top (last in, first out). A queue is a line at the bank — the first person in is the first served (first in, first out).",
+    "explanation": "A **stack** only lets you push and pop the most recent element (last-in-first-out). It is the natural tool for matching brackets, undo, and *monotonic-stack* problems where you keep a running list of candidates and pop the ones a new element invalidates (e.g. *next greater element*). A **queue** serves the oldest element first (first-in-first-out) and is the engine of breadth-first search. Both are O(1) per operation; both are usually a thin wrapper over an array or deque.",
+    "key_ops": [
+      "Stack: push / pop / top — all O(1) (LIFO)",
+      "Queue: push_back / pop_front — all O(1) (FIFO)",
+      "Monotonic stack: keep elements in sorted order, pop violators on push"
+    ],
+    "snippets": [
+      { "label": "Monotonic stack — next greater element",
+        "code": [
+          "stack<int> st;                       // holds indices, values decreasing",
+          "for (int i = 0; i < n; i++) {",
+          "    while (!st.empty() && a[st.top()] < a[i]) {",
+          "        ans[st.top()] = a[i];        // a[i] is the next greater",
+          "        st.pop();",
+          "    }",
+          "    st.push(i);",
+          "}"
+        ] }
+    ],
+    "pitfalls": [
+      "Check `empty()` before every `top()`/`pop()`.",
+      "Decide up front whether the stack holds values or indices — mixing them is a classic bug."
+    ],
+    "complexity": "All core operations O(1); space O(n).",
+    "topics": ["Stack & Monotonic Stack"],
+    "animation": null
+  },
+  {
+    "id": "binary-tree",
+    "name": "Binary Tree & BST",
+    "level": "data-structure",
+    "group": "Data Structures",
+    "group_order": 1,
+    "order": 5,
+    "icon": "Y",
+    "tagline": "Each node has up to two children; recursion is the default tool.",
+    "analogy": "A family tree turned upside down: one ancestor at the top, branching into at most two children per person. To answer a question about the whole family you ask each child the same question about their branch and combine the answers.",
+    "explanation": "A hierarchical structure where each node has at most two children (left, right). The key mental model: a tree problem is almost always solved recursively — define what a single node must return to its parent, then trust the recursion to handle each subtree. A **binary search tree (BST)** adds an ordering invariant (left subtree < node < right subtree), so search/insert/delete run in O(h) where `h` is the height, and an in-order traversal yields the values in sorted order. Height is O(log n) when balanced, O(n) when skewed.",
+    "key_ops": [
+      "Traversals: inorder / preorder / postorder (DFS), level-order (BFS)",
+      "BST search / insert / delete: O(h) — O(log n) balanced, O(n) skewed",
+      "In-order traversal of a BST = sorted order"
+    ],
+    "snippets": [
+      { "label": "Recursive DFS — return value bubbles up",
+        "code": [
+          "int height(TreeNode* node) {",
+          "    if (!node) return 0;                 // base case: empty subtree",
+          "    int l = height(node->left);",
+          "    int r = height(node->right);",
+          "    return 1 + max(l, r);                // combine children's answers",
+          "}"
+        ] }
+    ],
+    "pitfalls": [
+      "Forgetting the `nullptr` base case — it is the recursion's stop condition.",
+      "Assuming balance: a skewed tree degrades every O(log n) bound to O(n)."
+    ],
+    "complexity": "Balanced ops O(log n); worst case O(n); space O(h) for the call stack.",
+    "topics": ["Trees", "BST"],
+    "animation": null
+  },
+  {
+    "id": "heap",
+    "name": "Heap / Priority Queue",
+    "level": "data-structure",
+    "group": "Data Structures",
+    "group_order": 1,
+    "order": 6,
+    "icon": "/\\",
+    "tagline": "Always hand back the smallest (or largest) element in O(log n).",
+    "analogy": "A hospital triage desk. Patients arrive in any order, but the desk always calls the most urgent case next — it never has to sort the entire waiting room, it just keeps the worst case bubbled to the front.",
+    "explanation": "A heap is a binary tree kept in an array where every parent is smaller than its children (min-heap) or larger (max-heap). You cannot search it, but you can peek the extreme element in O(1) and push/pop in O(log n). That makes it the right tool whenever you repeatedly need *the current best/worst*: the `k`-th largest element, merging `k` sorted lists, or Dijkstra's shortest path. The `top-k` trick — keep a heap of size `k` and evict the worst — is the single most common heap pattern.",
+    "key_ops": [
+      "peek min/max: O(1)",
+      "push / pop: O(log n)",
+      "build from n items: O(n)",
+      "top-k: keep a size-k heap, evict the worst -> O(n log k)"
+    ],
+    "snippets": [
+      { "label": "k largest with a size-k min-heap",
+        "code": [
+          "priority_queue<int, vector<int>, greater<int>> pq;  // min-heap",
+          "for (int x : nums) {",
+          "    pq.push(x);",
+          "    if (pq.size() > k) pq.pop();    // drop the smallest so far",
+          "}",
+          "return pq.top();                    // the k-th largest"
+        ] }
+    ],
+    "pitfalls": [
+      "A heap is not searchable — do not expect to find an arbitrary element quickly.",
+      "C++ `priority_queue` is a max-heap by default; pass `greater<>` for a min-heap."
+    ],
+    "complexity": "Peek O(1), push/pop O(log n), build O(n), space O(n).",
+    "topics": ["Heaps / Priority Queue"],
+    "animation": null
+  },
+  {
+    "id": "graph",
+    "name": "Graph (adjacency list / matrix)",
+    "level": "data-structure",
+    "group": "Data Structures",
+    "group_order": 1,
+    "order": 7,
+    "icon": "o-o",
+    "tagline": "Nodes and edges — the most general structure; pick the right representation.",
+    "analogy": "A subway map. Stations are nodes and the track segments are edges. The map can be stored as a list of *which stations each station connects to* (adjacency list) — far more compact than a giant grid marking every possible pair (adjacency matrix).",
+    "explanation": "A graph is a set of nodes connected by edges; trees and grids are just special cases. The first decision is representation: an **adjacency list** (`vector<int> adj[n]`) is O(V+E) space and best for sparse graphs; an **adjacency matrix** is O(V^2) but gives O(1) edge tests. A 2-D grid is an implicit graph where each cell's neighbours are up/down/left/right. Once it is a graph, traversal (BFS/DFS), shortest paths, cycle detection, and topological sort all become available — which is why recognising the graph hiding inside a problem is the real skill.",
+    "key_ops": [
+      "Adjacency list: O(V+E) space, iterate a node's neighbours in O(deg)",
+      "Adjacency matrix: O(V^2) space, O(1) edge lookup",
+      "Grid as graph: neighbours are the 4 (or 8) adjacent cells"
+    ],
+    "snippets": [
+      { "label": "Build an adjacency list from an edge list",
+        "code": [
+          "vector<vector<int>> adj(n);",
+          "for (auto& e : edges) {",
+          "    adj[e[0]].push_back(e[1]);",
+          "    adj[e[1]].push_back(e[0]);   // omit this line for a directed graph",
+          "}"
+        ] }
+    ],
+    "pitfalls": [
+      "Directed vs undirected changes everything — add one edge or two accordingly.",
+      "On a grid, always bounds-check the neighbour before stepping into it."
+    ],
+    "complexity": "List O(V+E) space; matrix O(V^2) space; traversal O(V+E).",
+    "topics": ["Graphs — BFS / DFS", "Graphs — Advanced"],
+    "animation": null
+  },
+  {
+    "id": "trie",
+    "name": "Trie (Prefix Tree)",
+    "level": "data-structure",
+    "group": "Data Structures",
+    "group_order": 1,
+    "order": 8,
+    "icon": "T",
+    "tagline": "A tree keyed by characters — lookup in O(length), not O(#words).",
+    "analogy": "A library's card catalogue organised letter by letter. To find 'CAT' you open the C drawer, then the CA divider, then CAT — the time depends on the length of the word, not how many books the library owns.",
+    "explanation": "A trie stores a set of strings as a tree where each edge is a character and each root-to-node path spells a prefix. Looking up or inserting a word costs O(length of the word) regardless of how many words are stored, and — crucially — it answers *prefix* questions (`startsWith`) that a hash set cannot. That makes it the structure behind autocomplete, word-search boards, and dictionary problems. Each node holds child pointers (often an array of 26) plus a flag marking the end of a complete word.",
+    "key_ops": [
+      "insert / search a word: O(L) where L is the word length",
+      "prefix query (startsWith): O(L)",
+      "space: O(total characters across all words)"
+    ],
+    "snippets": [
+      { "label": "Trie node and insert",
+        "code": [
+          "struct Node { Node* next[26] = {}; bool end = false; };",
+          "void insert(Node* root, const string& w) {",
+          "    Node* cur = root;",
+          "    for (char c : w) {",
+          "        int k = c - 'a';",
+          "        if (!cur->next[k]) cur->next[k] = new Node();",
+          "        cur = cur->next[k];",
+          "    }",
+          "    cur->end = true;",
+          "}"
+        ] }
+    ],
+    "pitfalls": [
+      "Forgetting the `end` flag — without it you cannot tell a stored word from a mere prefix.",
+      "A trie costs memory; if you never ask prefix questions, a hash set is simpler."
+    ],
+    "complexity": "Insert/search/prefix O(L); space O(total chars).",
+    "topics": ["Tries"],
+    "animation": null
+  },
+  {
+    "id": "binary-search",
+    "name": "Binary Search",
+    "level": "algorithm",
+    "group": "Core Algorithms",
+    "group_order": 2,
+    "order": 1,
+    "icon": "><",
+    "tagline": "Halve a sorted search space every step — O(log n).",
+    "analogy": "Guessing a number between 1 and 100 when each guess is told 'higher' or 'lower'. Always guess the middle: one question eliminates half the range, so you home in within about seven guesses, not a hundred.",
+    "explanation": "Binary search repeatedly halves a **monotonic** (usually sorted) range until one candidate remains, giving O(log n). The mechanics are unforgiving: pick a loop invariant (`[lo, hi]` inclusive vs `[lo, hi)` half-open) and keep it true on every iteration. The deeper skill is *binary search on the answer*: when the question is 'smallest X that works', and 'works' flips from false to true exactly once as X grows, you can binary-search X even when there is no array to sort — this powers problems like `Koko Eating Bananas` and `Median of Two Sorted Arrays`.",
+    "key_ops": [
+      "Requires a monotonic predicate (sorted array, or a true/false that flips once)",
+      "Each step halves the range: O(log n) comparisons",
+      "Compute mid as lo + (hi - lo) / 2 to avoid overflow"
+    ],
+    "snippets": [
+      { "label": "Classic lower_bound on a sorted array",
+        "code": [
+          "int lo = 0, hi = n;             // half-open [lo, hi)",
+          "while (lo < hi) {",
+          "    int mid = lo + (hi - lo) / 2;",
+          "    if (a[mid] < target) lo = mid + 1;",
+          "    else hi = mid;             // a[mid] >= target, keep it in range",
+          "}",
+          "return lo;                     // first index with a[lo] >= target"
+        ] }
+    ],
+    "pitfalls": [
+      "Mixing inclusive and half-open conventions mid-loop causes off-by-one and infinite loops.",
+      "`(lo + hi) / 2` can overflow; use `lo + (hi - lo) / 2`."
+    ],
+    "complexity": "O(log n) time, O(1) space.",
+    "topics": ["Binary Search"],
+    "animation": "anim-binary-search"
+  },
+  {
+    "id": "bfs-dfs",
+    "name": "BFS & DFS Traversal",
+    "level": "algorithm",
+    "group": "Core Algorithms",
+    "group_order": 2,
+    "order": 2,
+    "icon": "::",
+    "tagline": "Visit every reachable node once — a queue for BFS, recursion/stack for DFS.",
+    "analogy": "Exploring a cave system. Depth-first means you follow one tunnel to its very end, then back up and try the next — like unrolling a ball of string. Breadth-first means you check every tunnel one step out, then every tunnel two steps out — a ripple spreading from the entrance.",
+    "explanation": "Both traversals visit every reachable node exactly once in O(V+E), differing only in order. **DFS** dives as deep as possible before backtracking (recursion or an explicit stack) — natural for connectivity, cycle detection, and topological sort. **BFS** explores in rings of increasing distance using a queue, which is why it finds the *shortest path in an unweighted graph*. The shared discipline is a `visited` set so you never process a node twice; on a grid, the four neighbours of a cell are the implicit edges.",
+    "key_ops": [
+      "DFS: recursion or stack; mark visited on entry",
+      "BFS: queue; mark visited when enqueued, not when dequeued",
+      "BFS on an unweighted graph yields shortest path / fewest steps"
+    ],
+    "snippets": [
+      { "label": "BFS over a grid, counting layers",
+        "code": [
+          "queue<pair<int,int>> q; q.push({sr, sc}); seen[sr][sc] = true;",
+          "int steps = 0;",
+          "while (!q.empty()) {",
+          "    for (int sz = q.size(); sz > 0; sz--) {   // one ring per step",
+          "        auto [r, c] = q.front(); q.pop();",
+          "        for (auto [nr, nc] : neighbours(r, c))",
+          "            if (inBounds(nr, nc) && !seen[nr][nc]) {",
+          "                seen[nr][nc] = true; q.push({nr, nc});",
+          "            }",
+          "    }",
+          "    steps++;",
+          "}"
+        ] }
+    ],
+    "pitfalls": [
+      "Mark a node visited when you *enqueue* it in BFS, or it gets added many times.",
+      "Deep DFS recursion can blow the call stack — switch to an explicit stack for huge graphs."
+    ],
+    "complexity": "O(V+E) time; O(V) space for the queue/stack and visited set.",
+    "topics": ["Graphs — BFS / DFS", "Graphs — Advanced", "Trees"],
+    "animation": null
+  },
+  {
+    "id": "recursion",
+    "name": "Recursion & the Call Stack",
+    "level": "algorithm",
+    "group": "Core Algorithms",
+    "group_order": 2,
+    "order": 3,
+    "icon": "()",
+    "tagline": "Solve a problem by solving smaller copies of itself.",
+    "analogy": "A set of Russian nesting dolls. To open the outermost you open the one inside, and the one inside that, until you reach the tiny solid doll (the base case). Then you close them back up in reverse — that closing-up is the call stack unwinding.",
+    "explanation": "Recursion expresses a problem in terms of smaller instances of itself, with a **base case** that stops the descent. Each call gets its own frame on the call stack holding its local variables; when a call returns, its frame pops and control resumes in the caller. Getting two things right makes recursion trustworthy: a base case that is actually reached, and a recursive step that makes *strictly smaller* progress. This is the substrate beneath tree/graph DFS, divide-and-conquer, and **backtracking**, where you make a choice, recurse, then undo the choice to explore the next branch.",
+    "key_ops": [
+      "Base case: the smallest input you answer directly",
+      "Recursive step: shrink the problem and combine sub-answers",
+      "Backtracking: choose -> recurse -> un-choose (restore state)"
+    ],
+    "snippets": [
+      { "label": "Backtracking skeleton (subsets / permutations)",
+        "code": [
+          "void backtrack(vector<int>& path, int start) {",
+          "    record(path);                       // every node is a valid state",
+          "    for (int i = start; i < n; i++) {",
+          "        path.push_back(nums[i]);        // choose",
+          "        backtrack(path, i + 1);         // explore",
+          "        path.pop_back();                // un-choose (backtrack)",
+          "    }",
+          "}"
+        ] }
+    ],
+    "pitfalls": [
+      "A missing or unreachable base case causes infinite recursion / stack overflow.",
+      "In backtracking, forgetting to undo the choice corrupts sibling branches."
+    ],
+    "complexity": "Time depends on the branching; space is O(depth) for the call stack.",
+    "topics": ["Backtracking", "Trees", "Graphs — BFS / DFS"],
+    "animation": "anim-recursion"
+  },
+  {
+    "id": "sorting",
+    "name": "Sorting (and when to sort)",
+    "level": "algorithm",
+    "group": "Core Algorithms",
+    "group_order": 2,
+    "order": 4,
+    "icon": "^v",
+    "tagline": "An O(n log n) pre-step that unlocks two-pointer and greedy solutions.",
+    "analogy": "Tidying a hand of playing cards before you play. Sorting once costs a little effort up front, but then every later decision — is this a run? what is the highest card? — becomes a glance instead of a search.",
+    "explanation": "Comparison sorting costs O(n log n), and library sorts (`std::sort`, introsort) are what you should reach for — you rarely implement one. The real skill is recognising sorting as an *enabling pre-step*: once data is ordered, two-pointer sweeps, greedy interval scheduling, and duplicate grouping all become linear. Many `Greedy / Intervals` problems are 'sort by start (or end) time, then sweep once'. Sorting also gives you the median and the k-th order statistic for free. Know that a sort destroys the original order — if indices matter, sort pairs of `(value, index)`.",
+    "key_ops": [
+      "General comparison sort: O(n log n)",
+      "Sort then two-pointer / greedy sweep: O(n log n) total",
+      "Custom comparator to sort by a derived key (e.g. interval start)"
+    ],
+    "snippets": [
+      { "label": "Sort intervals by start, then merge",
+        "code": [
+          "sort(iv.begin(), iv.end());        // by start ascending",
+          "vector<vector<int>> out;",
+          "for (auto& cur : iv) {",
+          "    if (!out.empty() && cur[0] <= out.back()[1])",
+          "        out.back()[1] = max(out.back()[1], cur[1]);   // overlap -> extend",
+          "    else out.push_back(cur);                          // disjoint -> append",
+          "}"
+        ] }
+    ],
+    "pitfalls": [
+      "Sorting throws away original positions — carry the index if the answer needs it.",
+      "Do not hand-roll a sort under time pressure; reach for the library and a comparator."
+    ],
+    "complexity": "O(n log n) time; O(1)-O(n) space depending on the sort.",
+    "topics": ["Greedy / Intervals", "Two Pointers"],
+    "animation": null
+  },
+  {
+    "id": "dynamic-programming",
+    "name": "Dynamic Programming",
+    "level": "algorithm",
+    "group": "Core Algorithms",
+    "group_order": 2,
+    "order": 5,
+    "icon": "DP",
+    "tagline": "Cache the answers to overlapping subproblems and reuse them.",
+    "analogy": "Climbing stairs while writing each step's count on a sticky note. When a later step needs an earlier one, you read the note instead of re-climbing — you never solve the same sub-staircase twice.",
+    "explanation": "Dynamic programming applies when a problem has **optimal substructure** (the answer is built from answers to subproblems) and **overlapping subproblems** (the same subproblem recurs). You define a state, write a recurrence, and then either memoise (top-down recursion that caches each state) or tabulate (bottom-up filling of a table). The whole art is choosing the state so it captures exactly what the recurrence needs — once the state and transition are right, the code is short. This underlies the largest single topic in the set: knapsack, edit distance, longest-subsequence, and grid-path families.",
+    "key_ops": [
+      "Define the state: what minimal info distinguishes one subproblem",
+      "Write the transition: how a state is built from smaller states",
+      "Memoise (top-down) or tabulate (bottom-up); often O(states x transition)"
+    ],
+    "snippets": [
+      { "label": "1-D DP — house robber recurrence",
+        "code": [
+          "int prev2 = 0, prev1 = 0;",
+          "for (int x : nums) {",
+          "    int take = prev2 + x;           // rob this house",
+          "    int skip = prev1;               // skip it",
+          "    int cur  = max(take, skip);",
+          "    prev2 = prev1; prev1 = cur;     // roll the window",
+          "}",
+          "return prev1;"
+        ] }
+    ],
+    "pitfalls": [
+      "A state that misses a needed dimension gives wrong answers that look almost right.",
+      "Initialise base cases explicitly; an off-by-one in the table seed corrupts everything above it."
+    ],
+    "complexity": "Typically O(#states x transition cost) time and O(#states) space.",
+    "topics": ["Dynamic Programming", "DP"],
+    "animation": null
+  },
+  {
+    "id": "big-o",
+    "name": "Big-O & Complexity Analysis",
+    "level": "concept",
+    "group": "Foundational Concepts",
+    "group_order": 3,
+    "order": 1,
+    "icon": "O",
+    "tagline": "Estimate how runtime grows so you can pick an approach before coding.",
+    "analogy": "Judging recipes by how they scale for a banquet, not a dinner for two. A dish that doubles in effort for each extra guest (exponential) is fine for four people and a disaster for forty — Big-O tells you which recipes survive scale.",
+    "explanation": "Big-O describes how an algorithm's time or space grows with input size `n`, ignoring constants and lower-order terms. It is the first thing to reason about: knowing the input bound (say `n <= 1e5`) tells you roughly what complexity is allowed (O(n log n) yes, O(n^2) probably not), which prunes the space of approaches before you write a line. Internalise the common ladder — O(1) < O(log n) < O(n) < O(n log n) < O(n^2) < O(2^n) — and learn to count nested loops and recursion depth. Space complexity matters just as much when inputs are large.",
+    "key_ops": [
+      "Drop constants and lower-order terms: O(2n + 5) = O(n)",
+      "Nested loops multiply; sequential phases add",
+      "Map the input bound to a target complexity before designing"
+    ],
+    "snippets": [
+      { "label": "Reading complexity off the code",
+        "code": [
+          "for (int i = 0; i < n; i++)        // O(n)",
+          "    for (int j = i+1; j < n; j++)  //   x O(n)  ->  O(n^2) overall",
+          "        if (a[i] + a[j] == t) ...; ",
+          "// a hash map collapses the inner loop to O(1)  ->  O(n) total"
+        ] }
+    ],
+    "pitfalls": [
+      "Hidden costs count: building a string in a loop, or `substr`, can add a factor of n.",
+      "Average vs worst case differ — hash maps are O(1) average but O(n) worst."
+    ],
+    "complexity": "A lens, not a structure — apply it to every solution you sketch.",
+    "topics": ["Arrays & Hashing", "Dynamic Programming", "Binary Search"],
+    "animation": null
+  },
+  {
+    "id": "bit-manipulation",
+    "name": "Bit Manipulation",
+    "level": "concept",
+    "group": "Foundational Concepts",
+    "group_order": 3,
+    "order": 2,
+    "icon": "01",
+    "tagline": "Treat an integer as a row of switches you can flip in O(1).",
+    "analogy": "A bank of light switches. Each bit is one switch; AND, OR, and XOR are ways of combining two banks switch by switch — for instance XOR flips a switch only when the two banks disagree.",
+    "explanation": "Every integer is a fixed row of bits, and bitwise operators act on all of them at once in O(1). The handful worth memorising: `x & 1` tests the lowest bit, `x >> k` and `x << k` divide/multiply by powers of two, `x & (x-1)` clears the lowest set bit (count set bits by repeating it), and **XOR** is the star — `a ^ a == 0` and `a ^ 0 == a`, so XOR-ing a whole array cancels every value that appears twice and leaves the unique one. Bitmasks also let you encode a subset of up to ~20 items in a single int, which is the bridge to bitmask DP.",
+    "key_ops": [
+      "Test / set / clear bit k: x & (1<<k) | (1<<k) & ~(1<<k)",
+      "x & (x-1) clears the lowest set bit",
+      "XOR cancels pairs: a ^ a = 0, a ^ 0 = a",
+      "A bitmask encodes a subset of <= ~20 elements in one int"
+    ],
+    "snippets": [
+      { "label": "Find the single unique value with XOR",
+        "code": [
+          "int unique = 0;",
+          "for (int x : nums) unique ^= x;   // pairs cancel to 0",
+          "return unique;                    // the one un-paired value"
+        ] }
+    ],
+    "pitfalls": [
+      "Watch signed-integer shifts and overflow; use unsigned or wider types when shifting high bits.",
+      "Operator precedence: `&` is lower than `==`, so parenthesise `(x & 1) == 0`."
+    ],
+    "complexity": "Each bitwise op O(1); subset enumeration over a mask O(2^bits).",
+    "topics": ["Bit Manipulation"],
+    "animation": null
+  },
+  {
+    "id": "math-essentials",
+    "name": "Math & Number Theory Essentials",
+    "level": "concept",
+    "group": "Foundational Concepts",
+    "group_order": 3,
+    "order": 3,
+    "icon": "x2",
+    "tagline": "The arithmetic toolkit: modulo, gcd, primes, overflow.",
+    "analogy": "A clock face is modular arithmetic made visible: 10 o'clock plus 5 hours is 3, not 15, because the clock wraps at 12. Many counting problems wrap their answers the same way to keep numbers small.",
+    "explanation": "A small kit of number facts recurs across problems. **Modular arithmetic** (`%`) wraps values and is how problems keep huge counts within range — and it distributes over `+` and `*`, so you can reduce as you go. The **gcd** (via Euclid's algorithm) underlies fraction reduction and cycle lengths. Knowing how to test **primality** in O(sqrt n) and sieve primes up to `n` covers the number-theory questions, while integer **overflow** awareness (promote to 64-bit before multiplying) prevents silent wrong answers. None of it is deep, but missing one piece sinks an otherwise-correct solution.",
+    "key_ops": [
+      "Modulo wraps and distributes: (a*b) % m = ((a%m)*(b%m)) % m",
+      "gcd by Euclid: gcd(a,b) = gcd(b, a%b)",
+      "Primality test in O(sqrt n); sieve in O(n log log n)",
+      "Promote to 64-bit before multiplying near INT_MAX"
+    ],
+    "snippets": [
+      { "label": "Euclid's gcd and safe modular multiply",
+        "code": [
+          "long long gcd(long long a, long long b) {",
+          "    return b ? gcd(b, a % b) : a;",
+          "}",
+          "const long long MOD = 1e9 + 7;",
+          "long long prod = (a % MOD) * (b % MOD) % MOD;   // no overflow"
+        ] }
+    ],
+    "pitfalls": [
+      "C++ `%` can be negative for negative operands — add `m` then `% m` to normalise.",
+      "Multiplying two ints near 2^31 overflows before the modulo; cast first."
+    ],
+    "complexity": "gcd O(log min(a,b)); primality O(sqrt n); sieve O(n log log n).",
+    "topics": ["Math"],
+    "animation": null
+  }
+]
