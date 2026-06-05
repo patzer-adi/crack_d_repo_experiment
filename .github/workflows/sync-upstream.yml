@@ -2,7 +2,7 @@ name: Sync from upstream
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -22,7 +22,7 @@ jobs:
 
       - name: Add upstream
         run: |
-          git remote add upstream https://github.com/abdullah0096/crack_d.git || true
+          git remote add upstream https://x-access-token:${{ secrets.UPSTREAM_PAT }}@github.com/abdullah0096/crack_d.git || true
           git fetch upstream master
 
       - name: Sync main with upstream master
