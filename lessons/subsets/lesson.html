@@ -738,6 +738,7 @@
   function drGenSteps(nums) {
     const n = nums.length, res = [], steps = [];
     const total = 1 << n;
+    const fmtSub = s => s.length ? '{' + s.join(', ') + '}' : '∅';   // local: the verifier runs this generator in isolation
     steps.push({ resList: [], pathStr: '∅', incl: [], count: 0, target: total, phase: 'init', justIdx: null,
       what: 'Start: empty result, empty path',
       why: `There are 2^${n} = ${total} subsets to find — one for every skip/include choice across the ${n} element(s).` });
