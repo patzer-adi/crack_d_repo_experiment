@@ -20,10 +20,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Add upstream
+      - name: Fetch upstream
         run: |
-          git remote add upstream https://patzer-adi:${{ secrets.UPSTREAM_PAT }}@github.com/abdullah0096/crack_d.git || true
-          git fetch upstream master
+          git fetch https://patzer-adi:${{ secrets.UPSTREAM_PAT }}@github.com/abdullah0096/crack_d.git master:refs/remotes/upstream/master
 
       - name: Sync main with upstream master
         run: |
