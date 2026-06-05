@@ -414,6 +414,70 @@
     }
     .pat-pitfalls code { background: rgba(0,0,0,.05); border-color: var(--border-warn); }
 
+    /* ── PREREQUISITES TAB (PLAN-021) — reuses .pat-* card chrome ── */
+    .pre-level {
+      font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 20px;
+      vertical-align: middle; margin-left: 6px; white-space: nowrap;
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .pre-level-data-structure { background: var(--bg-purple); color: var(--text-purple); border: 0.5px solid var(--border-purple); }
+    .pre-level-algorithm      { background: var(--bg-info);   color: var(--text-info);   border: 0.5px solid var(--border-info); }
+    .pre-level-concept        { background: var(--bg3);       color: var(--text2);       border: 0.5px solid var(--border); }
+    .pre-analogy {
+      font-size: 15px; color: var(--text2); line-height: 1.5;
+      background: var(--bg3); border-left: 3px solid var(--border-info);
+      border-radius: 6px; padding: 10px 13px;
+    }
+    .pre-analogy-tag {
+      display: inline-block; font-size: 11px; font-weight: 700; color: var(--text-info);
+      text-transform: uppercase; letter-spacing: .06em; margin-right: 8px;
+    }
+    .pre-topic-pill { cursor: pointer; text-decoration: none; }
+    .pre-topic-pill:hover { filter: brightness(0.94); }
+
+    /* ── Prerequisite hero animations (.pa-*) ── */
+    .pre-anim {
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg3); padding: 12px;
+    }
+    .pa-title { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 9px; }
+    .pa-stage { overflow-x: auto; padding-bottom: 4px; min-height: 92px; display: flex; align-items: center; }
+    .pa-caption { font-size: 14px; color: var(--text); line-height: 1.5; margin-top: 9px; min-height: 42px; }
+    .pa-caption code { font-family: var(--mono); font-size: .88em; background: var(--bg2); border: 0.5px solid var(--border); padding: 0 4px; border-radius: 4px; }
+    .pa-controls { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+    .pa-btn {
+      font-size: 13px; padding: 4px 12px; border-radius: 6px; cursor: pointer;
+      border: 0.5px solid var(--border2); background: var(--bg2); color: var(--text);
+    }
+    .pa-btn:hover:not(:disabled) { background: var(--bg-info); color: var(--text-info); }
+    .pa-btn:disabled { opacity: 0.4; cursor: default; }
+    .pa-counter { font-size: 13px; color: var(--text3); font-family: var(--mono); }
+    /* hash map */
+    .pa-buckets { display: inline-flex; gap: 8px; }
+    .pa-bucket { border: 1px solid var(--border2); border-radius: 6px; min-width: 52px; background: var(--bg2); transition: all .15s; }
+    .pa-bucket.hl { border-color: var(--text-info); box-shadow: 0 0 0 2px var(--bg-info); }
+    .pa-bidx { font-family: var(--mono); font-size: 11px; color: var(--text3); text-align: center; border-bottom: 0.5px solid var(--border); padding: 2px 0; }
+    .pa-chain { display: flex; align-items: center; gap: 3px; padding: 7px 6px; justify-content: center; min-height: 34px; }
+    .pa-slot { font-family: var(--mono); font-size: 13px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: var(--bg3); border: 0.5px solid var(--border); }
+    .pa-slot.hl { background: var(--bg-info); color: var(--text-info); border-color: var(--border-info); }
+    .pa-link { color: var(--text3); font-size: 11px; }
+    .pa-empty { color: var(--border2); }
+    /* binary search */
+    .pa-cells { display: inline-flex; gap: 6px; }
+    .pa-cell { border: 1px solid var(--border2); border-radius: 6px; min-width: 40px; background: var(--bg2); transition: all .15s; }
+    .pa-cell.dim { opacity: 0.3; }
+    .pa-cell.mid { border-color: var(--text-info); box-shadow: 0 0 0 2px var(--bg-info); }
+    .pa-cell.found { border-color: var(--text-success); background: var(--bg-success); }
+    .pa-cidx { font-family: var(--mono); font-size: 10px; color: var(--text3); text-align: center; padding: 1px 0; }
+    .pa-cval { font-family: var(--mono); font-size: 15px; font-weight: 600; text-align: center; padding: 4px 0 5px; }
+    /* recursion call stack */
+    .pa-stack { display: inline-flex; flex-direction: column; gap: 4px; }
+    .pa-frame { font-family: var(--mono); font-size: 13px; border: 1px solid var(--border2); border-radius: 5px; padding: 5px 10px; background: var(--bg-info); color: var(--text-info); display: flex; gap: 10px; align-items: baseline; min-width: 220px; }
+    .pa-frame.base { background: var(--bg-warn); color: var(--text-warn); border-color: var(--border-warn); }
+    .pa-frame.ret  { background: var(--bg-success); color: var(--text-success); border-color: var(--border-success); }
+    .pa-fnote { font-size: 11px; opacity: 0.8; margin-left: auto; }
+    .pa-empty-stack { font-size: 13px; color: var(--text3); font-style: italic; }
+
     /* ── RESPONSIVE (PLAN-020) ── */
     /* Tablet: drop low-value columns, tighten gutters. */
     @media (max-width: 700px) {
@@ -427,7 +491,10 @@
        columns, and let each table scroll inside its own wrapper so the page
        never scrolls sideways. */
     @media (max-width: 480px) {
-      .topbar { padding: 0 12px; }
+      /* Collapse the spacer and let the tab strip scroll inside the topbar, so a
+         4th tab (Prerequisites, PLAN-021) never widens the page. */
+      .topbar { padding: 0 12px; overflow-x: auto; }
+      .topbar-spacer { display: none; }
       .topbar-logo { height: 30px; margin-right: 10px; }
       .tab-btn { padding: 0 8px; font-size: 14px; }
       .tab-btn span { display: none; }                     /* drop the count badges */
@@ -456,6 +523,9 @@
   </button>
   <button class="tab-btn" id="tab-btn-patterns" onclick="switchTab('patterns')">
     Patterns <span id="tab-count-patterns" style="color:var(--text3);font-weight:400"></span>
+  </button>
+  <button class="tab-btn" id="tab-btn-prerequisites" onclick="switchTab('prerequisites')">
+    Prerequisites <span id="tab-count-prerequisites" style="color:var(--text3);font-weight:400"></span>
   </button>
 </div>
 
@@ -595,6 +665,37 @@
 
 </div><!-- /tab-panel-patterns -->
 
+<!-- ══════════════════════════════════════════════════════════════
+     PREREQUISITES TAB (PLAN-021)
+     ══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-panel-prerequisites">
+
+  <!-- ── PREREQ STATS BAR ── -->
+  <div class="stats-bar" id="pre-stats-bar">
+    <span class="stat-chip" id="pre-total">— prerequisites</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip new"    id="pre-groups">— groups</span>
+    <span class="stat-chip purple" id="pre-topics">— topics</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip gen"    id="pre-problems">— problems mapped</span>
+  </div>
+
+  <!-- ── PREREQ FILTER BAR ── -->
+  <div class="filter-bar">
+    <input class="filter-search" id="pre-search" type="search" placeholder="Search prerequisites…" oninput="applyPrereqFilters()">
+    <div class="filter-sep"></div>
+    <select class="filter-select" id="pre-group" onchange="applyPrereqFilters()">
+      <option value="">All Groups</option>
+    </select>
+  </div>
+
+  <!-- ── PREREQ CONTENT ── -->
+  <div class="content" id="pre-content">
+    <div class="loading">Loading prerequisites…</div>
+  </div>
+
+</div><!-- /tab-panel-prerequisites -->
+
 <div id="toast"></div>
 
 <!-- ── ACTION BAR (problems only) ── -->
@@ -661,6 +762,8 @@
   </div>
 </div>
 
+<!-- Prerequisites tab hero animations (PLAN-021) — defines mountPrereqAnim() -->
+<script src="prereq-anims.js"></script>
 <script>
 document.getElementById('site-logo').src = `img/logo_${Math.floor(Math.random() * 3) + 1}.png`;
 
@@ -670,6 +773,7 @@ document.getElementById('site-logo').src = `img/logo_${Math.floor(Math.random() 
 let ALL      = [];   // LC problems
 let ALGOS    = [];   // algorithm entries
 let PATTERNS = [];   // problem-solving patterns / topics
+let PREREQS  = [];   // foundational knowledge units (PLAN-021)
 
 // Cross-link indices (built after both datasets load)
 let slugToAlgos  = {};  // slug → algo[]
@@ -678,6 +782,7 @@ let algoIdToLCPS = {};  // algoId → problem[]
 let filters        = { search: '', topic: '', diff: '', status: '', lesson: '' };
 let algoFilters    = { search: '', cat: '', kind: '', rel: [] };
 let patternFilters = { search: '', group: '' };
+let prereqFilters  = { search: '', group: '' };
 const SELECTED  = new Set();
 
 // Default relevance filter: show high + medium, not low
@@ -728,7 +833,7 @@ const TOPIC_SKILL_MAP = {
 // ══════════════════════════════════════════════════════════════
 // TAB ROUTING
 // ══════════════════════════════════════════════════════════════
-const TABS = ['problems', 'algorithms', 'patterns'];
+const TABS = ['problems', 'algorithms', 'patterns', 'prerequisites'];
 
 function switchTab(tab) {
   if (!TABS.includes(tab)) tab = 'problems';
@@ -753,7 +858,7 @@ window.addEventListener('hashchange', () => {
 // DATA LOAD
 // ══════════════════════════════════════════════════════════════
 async function init() {
-  const [probsOk, algosOk] = await Promise.all([loadProblems(), loadAlgorithms(), loadPatterns()]);
+  const [probsOk, algosOk] = await Promise.all([loadProblems(), loadAlgorithms(), loadPatterns(), loadPrerequisites()]);
   if (probsOk && algosOk) buildCrossLinkIndices();
   initTabFromHash();
 }
@@ -810,6 +915,24 @@ async function loadPatterns() {
   }
 }
 
+async function loadPrerequisites() {
+  try {
+    const r = await fetch('../data/prerequisites.json');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    PREREQS = await r.json();
+    PREREQS.sort((a, b) =>
+      (a.group_order - b.group_order) || (a.order - b.order));
+    document.getElementById('tab-count-prerequisites').textContent = `(${PREREQS.length})`;
+    populatePrereqGroups();
+    applyPrereqFilters();
+    return true;
+  } catch (e) {
+    document.getElementById('pre-content').innerHTML =
+      `<div class="empty-state">Could not load prerequisites.json.</div>`;
+    return false;
+  }
+}
+
 function buildCrossLinkIndices() {
   // slug → list of algos that reference this slug
   const probBySlug = {};
@@ -833,6 +956,7 @@ function buildCrossLinkIndices() {
   applyFilters();
   applyAlgoFilters();
   if (PATTERNS.length) applyPatternFilters();
+  if (PREREQS.length)  applyPrereqFilters();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1374,6 +1498,191 @@ function goToTopic(topic) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// PREREQUISITES — FILTERING & RENDERING (PLAN-021)
+// ══════════════════════════════════════════════════════════════
+function populatePrereqGroups() {
+  const sel = document.getElementById('pre-group');
+  const groups = [];
+  PREREQS.forEach(p => { if (!groups.includes(p.group)) groups.push(p.group); });
+  groups.forEach(g => {
+    const o = document.createElement('option');
+    o.value = g; o.textContent = g;
+    sel.appendChild(o);
+  });
+}
+
+// Count of problems whose topic this prerequisite unlocks (cascade, by topic).
+function prereqProblemCount(p) {
+  if (!ALL.length) return 0;
+  const topics = new Set(p.topics || []);
+  return ALL.filter(pr => topics.has(pr.topic)).length;
+}
+
+function applyPrereqFilters() {
+  prereqFilters.search = document.getElementById('pre-search').value.toLowerCase().trim();
+  prereqFilters.group  = document.getElementById('pre-group').value;
+
+  const visible = PREREQS.filter(matchPrereq);
+  updatePrereqStats(visible);
+  renderPrereqs(visible);
+}
+
+function matchPrereq(p) {
+  if (prereqFilters.group && p.group !== prereqFilters.group) return false;
+  const q = prereqFilters.search;
+  if (!q) return true;
+  const hay = [
+    p.name, p.tagline, p.analogy, p.explanation, p.group, p.level,
+    ...(p.topics || []),
+    ...(p.key_ops || []),
+    ...(p.snippets || []).map(s => s.label),
+  ].join(' ').toLowerCase();
+  return hay.includes(q);
+}
+
+function updatePrereqStats(visible) {
+  const total  = visible.length;
+  const groups = new Set(visible.map(p => p.group)).size;
+  const topics = new Set(visible.flatMap(p => p.topics || [])).size;
+  const probs  = ALL.length
+    ? ALL.filter(pr => visible.some(p => (p.topics || []).includes(pr.topic))).length
+    : 0;
+  const suffix = (prereqFilters.search || prereqFilters.group) ? ' (filtered)' : '';
+
+  document.getElementById('pre-total').textContent    = `${total} prerequisite${total !== 1 ? 's' : ''}${suffix}`;
+  document.getElementById('pre-groups').textContent   = `${groups} group${groups !== 1 ? 's' : ''}`;
+  document.getElementById('pre-topics').textContent   = `${topics} topic${topics !== 1 ? 's' : ''}`;
+  document.getElementById('pre-problems').textContent = `${probs} problem${probs !== 1 ? 's' : ''} reachable`;
+}
+
+function renderPrereqs(visible) {
+  const content = document.getElementById('pre-content');
+  if (!visible.length) {
+    content.innerHTML = '<div class="empty-state">No prerequisites match the current filters.</div>';
+    return;
+  }
+
+  const groupOrder = [];
+  const byGroup = {};
+  for (const p of visible) {
+    if (!byGroup[p.group]) { byGroup[p.group] = []; groupOrder.push(p.group); }
+    byGroup[p.group].push(p);
+  }
+
+  const frag = document.createDocumentFragment();
+  for (const g of groupOrder) {
+    const cards = byGroup[g];
+
+    const hdr = document.createElement('div');
+    hdr.className = 'section-hdr';
+    hdr.dataset.section = g;
+    hdr.innerHTML = `
+      <span class="section-hdr-text">${escHtml(g)}</span>
+      <span class="section-hdr-count">${cards.length}</span>
+      <span class="section-hdr-line"></span>
+      <span class="section-hdr-arrow">▾</span>`;
+    hdr.addEventListener('click', () => toggleSection(hdr, 'pre-section'));
+    frag.appendChild(hdr);
+
+    const wrap = document.createElement('div');
+    wrap.dataset.preSectionBody = g;
+    const grid = document.createElement('div');
+    grid.className = 'pat-grid';
+    cards.forEach(p => grid.appendChild(buildPrereqCard(p)));
+    wrap.appendChild(grid);
+    frag.appendChild(wrap);
+  }
+
+  content.innerHTML = '';
+  content.appendChild(frag);
+}
+
+const PRE_LEVEL_LABEL = {
+  'data-structure': 'Data structure',
+  'algorithm':      'Algorithm',
+  'concept':        'Concept',
+};
+
+function buildPrereqCard(p) {
+  const card = document.createElement('div');
+  card.className = 'pat-card';
+
+  const n = prereqProblemCount(p);
+  const primaryTopic = (p.topics && p.topics[0]) || '';
+  const countChip = n > 0
+    ? `<a class="pat-count" title="View these in the Problems tab"
+          onclick="goToTopic('${escAttr(primaryTopic)}')">${n} problem${n !== 1 ? 's' : ''} →</a>`
+    : '';
+
+  const keyOps = (p.key_ops || []).length
+    ? `<div>
+         <div class="pat-sec-label">Key operations</div>
+         <ul class="pat-signals">${p.key_ops.map(s => `<li>${mdInline(s)}</li>`).join('')}</ul>
+       </div>`
+    : '';
+
+  const snippets = (p.snippets || []).length
+    ? `<div>
+         <div class="pat-sec-label">In code</div>
+         ${p.snippets.map(s => `
+           <div class="pat-var">
+             <div class="pat-var-name">${escHtml(s.label)}</div>
+             <pre class="pat-code">${escHtml(s.code.join('\n'))}</pre>
+           </div>`).join('')}
+       </div>`
+    : '';
+
+  const pitfalls = (p.pitfalls || []).length
+    ? `<div class="pat-pitfalls">
+         <div class="pat-sec-label">Watch out</div>
+         <ul>${p.pitfalls.map(s => `<li>${mdInline(s)}</li>`).join('')}</ul>
+       </div>`
+    : '';
+
+  const complexity = p.complexity
+    ? `<div class="pat-meta"><strong>Complexity:</strong> ${mdInline(p.complexity)}</div>`
+    : '';
+
+  const topicPills = (p.topics || []).length
+    ? `<div class="pat-pill-row">
+         <div class="pat-sec-label">Unlocks problems in</div>
+         <div class="pat-pills">${p.topics.map(t =>
+           `<a class="badge badge-ds pre-topic-pill" onclick="goToTopic('${escAttr(t)}')">${escHtml(t)}</a>`).join('')}</div>
+       </div>`
+    : '';
+
+  const animMount = p.animation ? `<div class="pre-anim" data-anim="${escAttr(p.animation)}"></div>` : '';
+
+  card.innerHTML = `
+    <div class="pat-card-hdr">
+      <span class="pat-icon">${escHtml(p.icon || '◆')}</span>
+      <div class="pat-head-text">
+        <div class="pat-title">${escHtml(p.name)}
+          <span class="pre-level pre-level-${escAttr(p.level)}">${escHtml(PRE_LEVEL_LABEL[p.level] || p.level)}</span>
+        </div>
+        ${p.tagline ? `<div class="pat-tagline">${escHtml(p.tagline)}</div>` : ''}
+      </div>
+      ${countChip}
+    </div>
+    <div class="pat-body">
+      ${p.analogy ? `<div class="pre-analogy"><span class="pre-analogy-tag">Analogy</span>${mdInline(p.analogy)}</div>` : ''}
+      <div class="pat-idea">${mdInline(p.explanation || '')}</div>
+      ${animMount}
+      ${keyOps}
+      ${snippets}
+      ${pitfalls}
+      ${complexity}
+      <div>${topicPills}</div>
+    </div>`;
+
+  if (p.animation) {
+    const host = card.querySelector('.pre-anim');
+    if (host && typeof mountPrereqAnim === 'function') mountPrereqAnim(p.animation, host);
+  }
+  return card;
+}
+
+// ══════════════════════════════════════════════════════════════
 // STATUS TOGGLE
 // ══════════════════════════════════════════════════════════════
 async function toggleStatus(p, tr, btn) {
@@ -1403,6 +1712,7 @@ function toggleSection(hdr, bodyAttr) {
   const attr = {
     'algo-section': 'data-algo-section-body',
     'pat-section':  'data-pat-section-body',
+    'pre-section':  'data-pre-section-body',
   }[bodyAttr] || 'data-section-body';
   const body = document.querySelector(`[${attr}="${CSS.escape(sec)}"]`);
   if (!body) return;

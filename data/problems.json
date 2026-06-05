@@ -1635,7 +1635,7 @@
     "order": 11007,
     "lc_num": 286,
     "name": "Walls and Gates",
-    "url": "https://neetcode.io/problems/walls-and-gates",
+    "url": "https://www.lintcode.com/problem/663/",
     "slug": "",
     "topic": "Graphs — BFS / DFS",
     "difficulty": "Medium",
@@ -1661,7 +1661,7 @@
     "twist": "multi-source BFS for the *max-min* (farthest water cell)",
     "tracks": [],
     "status": "new",
-    "lesson_status": "none"
+    "lesson_status": "generated"
   },
   {
     "order": 11009,
@@ -3341,7 +3341,7 @@
     "twist": "bounded brute: only need to repeat a up to ⌈len(b)/len(a)⌉ + 1 times",
     "tracks": [],
     "status": "new",
-    "lesson_status": "none"
+    "lesson_status": "generated"
   },
   {
     "order": 20001,

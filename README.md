@@ -61,7 +61,8 @@ The full workflow specification lives in [`.claude/commands/batch-lesson.md`](.c
 ```
 crack_d/
 ├── dashboard/
-│   └── index.html              # 3 tabs: Problems (track/filter), Algorithms, Patterns
+│   ├── index.html              # 4 tabs: Problems (track/filter), Algorithms, Patterns, Prerequisites
+│   └── prereq-anims.js         # hero step-animations for the Prerequisites tab (PLAN-021)
 ├── static/
 │   ├── lesson.css              # shared styles for all lessons (extracted once)
 │   ├── lesson.js               # shared JS functions for all lessons
@@ -77,7 +78,9 @@ crack_d/
 ├── data/
 │   ├── problems.json           # source of truth for all problems + metadata
 │   ├── algorithms.json         # algorithm/data-structure catalog (Algorithms tab)
-│   └── patterns.json           # problem-solving patterns by topic (Patterns tab)
+│   ├── patterns.json           # problem-solving patterns by topic (Patterns tab)
+│   ├── prerequisites.json      # foundational knowledge units (Prerequisites tab, PLAN-021)
+│   └── prerequisites.schema.json # contract for prerequisites.json
 ├── skills/
 │   ├── ds/                     # data structure reference sheets
 │   └── patterns/               # algorithm pattern reference sheets
@@ -88,6 +91,7 @@ crack_d/
 │   ├── verify_animation.mjs    # animation-correctness gate (Node) — runs drGenSteps + optional verify.py
 │   ├── render_check.mjs        # headless render gate (Chromium/CDP) — JS errors, active code line, overflow @ desktop + phone
 │   ├── lint_lesson.py          # structural + scaffold linter; delegates to the gate for §7
+│   ├── check_prerequisites.py  # data gate for prerequisites.json (ids, fields, topic cascade, coverage)
 │   ├── audit_lessons.py        # corpus-wide sweep: full lint + render, baseline-aware regression gate
 │   ├── audit_baseline.json     # known pre-existing lint/render drift (grandfathered; list only shrinks)
 │   └── doctor.py               # planning-doc / lesson-status reconciliation invariants
@@ -148,7 +152,13 @@ Every generated lesson HTML follows the same 13-section layout (§0–§12), enf
 The lessons and the dashboard are usable on a phone — no horizontal page scroll down to 360px. It is plain CSS media queries, no framework:
 
 - **Lessons** ([`static/lesson.css`](static/lesson.css)) collapse two-column grids at `≤680px` and, at `≤480px`, trim padding, scale type down, wrap long code, and let the fixed-height dry-run panels grow. The render gate ([`scripts/render_check.mjs`](scripts/render_check.mjs)) enforces no overflow at 390px going forward.
-- **Dashboard** ([`dashboard/index.html`](dashboard/index.html)) hides low-value table columns at `≤700px`/`≤480px` and lets the wide tables scroll inside their own wrapper, so every column stays reachable while the page itself never scrolls sideways.
+- **Dashboard** ([`dashboard/index.html`](dashboard/index.html)) hides low-value table columns at `≤700px`/`≤480px` and lets the wide tables scroll inside their own wrapper, so every column stays reachable while the page itself never scrolls sideways. At `≤480px` the topbar tab strip scrolls horizontally inside the bar so the four tabs never widen the page.
+
+### Prerequisites tab (PLAN-021)
+
+The dashboard's fourth tab answers "what should I understand *before* attempting these problems?". [`data/prerequisites.json`](data/prerequisites.json) holds foundational knowledge units at three levels — **data structures**, **core algorithms**, and **foundational concepts** — each rendered as a card with a plain-language analogy, a lucid explanation, short code snippets, common pitfalls, and a complexity line. Three cards (Hash Map, Binary Search, Recursion) carry a lightweight inline step-animation from [`dashboard/prereq-anims.js`](dashboard/prereq-anims.js).
+
+The "→ N problems" cascade is **derived from each problem's `topic`**, never stored per-problem: a prerequisite lists the topics it unlocks, and the count + clickable topic pills are computed live from `problems.json`. The seed set maps to 20 of the 21 topics, covering 208/211 problems. [`scripts/check_prerequisites.py`](scripts/check_prerequisites.py) is the data gate — it fails if any `topics[]` value is not a real problem topic (so the cascade can never silently resolve to zero), if a referenced animation is unregistered, or if coverage drops below 90 %.
 
 ---
 
@@ -345,7 +355,9 @@ Implementation work is tracked under `AGENT_MD/plan/`:
 - `current_state_report.md` — living snapshot of project state.
 - `rules.md` — authoring conventions for plan and report documents.
 
-The latest plan: [PLAN-020](AGENT_MD/plan/plans/PLAN-020_mobile_friendly_responsive.md) — mobile-friendly responsive layout for the lessons and dashboard (CSS-only breakpoints; the render gate now also asserts no overflow at 390px), landed 2026-06-04. It builds on [PLAN-019](AGENT_MD/plan/plans/PLAN-019_antidrift_visual_gate_and_doc_reconciliation.md) — anti-drift hardening (headless render gate, corpus re-verification, independent `verify.py` references, and a `doctor.py` for planning-doc/lesson reconciliation), landed 2026-06-03.
+The latest plan: [PLAN-021](AGENT_MD/plan/plans/PLAN-021_prerequisites_section.md) — a new **Prerequisites** dashboard tab (foundational data-structure / algorithm / concept knowledge, topic-derived problem cascade, a few hero animations), landed 2026-06-05 ([REPORT-021](AGENT_MD/plan/reports/REPORT-021_prerequisites_section.md)).
+
+It builds on [PLAN-020](AGENT_MD/plan/plans/PLAN-020_mobile_friendly_responsive.md) — mobile-friendly responsive layout for the lessons and dashboard (CSS-only breakpoints; the render gate now also asserts no overflow at 390px), landed 2026-06-04. It builds on [PLAN-019](AGENT_MD/plan/plans/PLAN-019_antidrift_visual_gate_and_doc_reconciliation.md) — anti-drift hardening (headless render gate, corpus re-verification, independent `verify.py` references, and a `doctor.py` for planning-doc/lesson reconciliation), landed 2026-06-03.
 
 > `AGENT_MD/spec.md` is a historical 2026-05-07 snapshot (it predates the gates and most lessons). For current state, read this README + `CLAUDE.md`, or run `python3 scripts/audit_lessons.py` and `python3 scripts/doctor.py`.
 

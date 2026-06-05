@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://crack_d.local/schemas/prerequisites.json",
+  "title": "Prerequisites Inventory",
+  "description": "PLAN-021 — foundational knowledge units (data structures, core algorithms, base concepts) a learner should hold before attempting the LC problems in data/problems.json. Rendered by the dashboard's Prerequisites tab. The problem cascade is derived from `topics`, never stored per-problem.",
+  "type": "array",
+  "items": { "$ref": "#/definitions/entry" },
+  "definitions": {
+    "entry": {
+      "type": "object",
+      "required": [
+        "id", "name", "level", "group", "group_order", "order",
+        "icon", "tagline", "analogy", "explanation", "snippets", "topics"
+      ],
+      "properties": {
+        "id":          { "type": "string", "pattern": "^[a-z0-9-]+$",
+                         "description": "Stable kebab-case primary key, e.g. 'hash-map'." },
+        "name":        { "type": "string", "minLength": 1 },
+        "level":       { "type": "string", "enum": ["data-structure", "algorithm", "concept"],
+                         "description": "The granularity of the prerequisite (PLAN-021 §4.1)." },
+        "group":       { "type": "string", "enum": [
+          "Data Structures", "Core Algorithms", "Foundational Concepts"
+        ], "description": "Collapsible-section bucket on the tab." },
+        "group_order": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "order":       { "type": "integer", "minimum": 1, "description": "Sort key within the group." },
+        "icon":        { "type": "string", "minLength": 1, "maxLength": 3 },
+        "tagline":     { "type": "string", "minLength": 1, "maxLength": 120 },
+        "analogy":     { "type": "string", "minLength": 1,
+                         "description": "A plain-language analogy that builds intuition before the formal explanation." },
+        "explanation": { "type": "string", "minLength": 1,
+                         "description": "Lucid markdown prose (inline `code` and **bold** supported)." },
+        "key_ops": {
+          "type": "array", "items": { "type": "string" },
+          "description": "Optional bullet list of the core operations / facts to remember."
+        },
+        "snippets": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["label", "code"],
+            "properties": {
+              "label": { "type": "string", "minLength": 1 },
+              "code":  { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+            },
+            "additionalProperties": false
+          },
+          "description": "One or more short labelled code snippets (each `code` is an array of lines)."
+        },
+        "pitfalls":   { "type": "array", "items": { "type": "string" }, "default": [] },
+        "complexity": { "type": "string",
+                        "description": "One-line time/space summary for the structure or operation." },
+        "topics": {
+          "type": "array", "minItems": 1, "items": { "type": "string" },
+          "description": "data/problems.json `topic` values this prerequisite unlocks. Drives the '→ N problems' cascade. Every value MUST exist in problems.json (validator rule)."
+        },
+        "animation": { "type": ["string", "null"], "pattern": "^[a-z0-9-]+$",
+                       "description": "Optional id of a hero animation registered in dashboard/prereq-anims.js." }
+      },
+      "additionalProperties": false
+    }
+  }
+}
