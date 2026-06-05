@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Repeated String Match — Interactive Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<style>
+  /* PROBLEM-SPECIFIC: character cells for the tiling of a + the target b */
+  .rs-strip { display:flex; flex-wrap:wrap; gap:4px; align-items:center; margin:.45rem 0; }
+  .rs-cell {
+    min-width:28px; height:34px; padding:0 5px; box-sizing:border-box;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); font-size:14px; font-weight:700;
+    border-radius:5px; border:2px solid var(--border2); background:var(--bg2); color:var(--text2);
+    transition:all .15s ease;
+  }
+  .rs-cell.copy1 { background:var(--bg); }
+  .rs-cell.tgt   { border-color:var(--border-info);    color:var(--text-info);    background:var(--bg-info); }
+  .rs-cell.win   { border-color:var(--border-warn);    color:var(--text-warn);    background:var(--bg-warn); }
+  .rs-cell.ok    { border-color:var(--border-success); color:var(--text-success); background:var(--bg-success); }
+  .rs-cell.gap   { border-style:dashed; opacity:.45; color:var(--text3); }
+  .rs-row-lbl { font-family:var(--mono); font-size:11px; color:var(--text3); margin:.55rem 0 .1rem; }
+  .rs-legend { display:flex; gap:1rem; flex-wrap:wrap; align-items:center; margin:.4rem 0 .7rem; font-size:12px; color:var(--text2); }
+  .rs-legend .leg-dot { width:14px; height:14px; border-radius:4px; display:inline-block; vertical-align:middle; margin-right:5px; }
+  .rs-cap { font-family:var(--mono); font-size:12px; color:var(--text2); margin:.625rem 0; min-height:2.6em; }
+  .rs-counter { display:flex; gap:1.5rem; flex-wrap:wrap; font-family:var(--mono); font-size:13px; margin:.625rem 0; }
+  .rs-counter b { color:var(--text-info); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Interactive Lesson</p>
+  <h1>Repeated String Match</h1>
+  <div class="header-meta">
+    <a href="https://leetcode.com/problems/repeated-string-match/" target="_blank">LC #686</a>
+    <span class="badge badge-med">Medium</span>
+    <span class="badge badge-arr">String Matching</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer constrains what the solution needs to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">A boolean, or a count?</div>
+      <div class="acard-a">Return the <em>minimum number of copies</em> of <code>a</code> whose concatenation contains <code>b</code>, or <code>-1</code> if no number works.</div>
+      <div class="acard-u">→ the answer is a plain integer; the oracle compares with <code>===</code>, no ordering subtleties</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Can the answer be 1?</div>
+      <div class="acard-a">Yes — when <code>b</code> already sits inside a single <code>a</code>. It is never 0 (zero copies is the empty string).</div>
+      <div class="acard-u">→ the floor is ⌈n/m⌉ ≥ 1, where m = |a|, n = |b|</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">When is it impossible?</div>
+      <div class="acard-a">When <code>b</code> contains a character not in <code>a</code>, or a run the periodic tiling of <code>a</code> never produces.</div>
+      <div class="acard-u">→ after the bounded check fails, return <code>-1</code> — do <em>not</em> loop forever</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">How large can the strings be?</div>
+      <div class="acard-a">Up to ~10⁴ each. Building <code>b</code> plus two extra copies of <code>a</code> and one search is O(m + n).</div>
+      <div class="acard-u">→ the naive unbounded loop is the trap, not the search itself</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">b can only sit inside the tiling of a at some offset — and that pins the copy count to just two candidates</p>
+
+  <p class="body">You probably wrote a loop that keeps gluing another copy of <code>a</code> onto a growing string and checking whether <code>b</code> is inside — and on an impossible <code>b</code> it never stops. Step back: <code>b</code> can only appear in the periodic tiling <code>a a a …</code> if it lines up at some starting offset, and that single fact pins the number of copies you ever need to exactly two candidates.</p>
+
+  <!-- Foundational visual: grow the tiling, watch b fit (animated, reader-controlled) -->
+  <div style="margin:1.25rem 0">
+    <div class="rs-legend">
+      <span><span class="leg-dot" style="background:var(--bg-info)"></span>target b</span>
+      <span><span class="leg-dot" style="background:var(--bg-warn)"></span>where b would align (testing)</span>
+      <span><span class="leg-dot" style="background:var(--bg-success)"></span>b matches here</span>
+      <span><span class="leg-dot" style="border:2px dashed var(--text3);background:transparent"></span>past the end (spill)</span>
+    </div>
+    <div class="rs-row-lbl">target&nbsp; b</div>
+    <div id="si-target"></div>
+    <div class="rs-row-lbl">tiling&nbsp; a a a …</div>
+    <div id="si-strip"></div>
+    <div id="si-cap" class="rs-cap"></div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="ctrl-btn"     onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn"     onclick="siNext()">Next →</button>
+      <button class="ctrl-btn"     onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <!-- Read the animation as two bounds -->
+  <div style="margin:1.25rem 0;font-size:13px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:.5rem;color:var(--text)">Two bounds squeeze the answer:</div>
+    <div class="skeleton">
+      <div class="wt-item">
+        <div class="wt-num">⌈n/m⌉</div>
+        <div class="wt-body">
+          <div class="wt-name">Length floor — you need at least this many copies</div>
+          <div class="wt-desc">To even <em>fit</em> an <code>n</code>-char <code>b</code>, the tiling must be at least length <code>n</code>. That is <code>⌈n/m⌉</code> copies — fewer cannot possibly hold <code>b</code>.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">+1</div>
+        <div class="wt-body">
+          <div class="wt-name">Offset ceiling — one extra copy for the worst alignment</div>
+          <div class="wt-desc"><code>b</code> need not start at a copy boundary; it can begin as far as offset <code>m−1</code> into the first copy, pushing its tail into one more copy. So <code>⌈n/m⌉ + 1</code> copies cover <em>every</em> possible starting offset.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">−1</div>
+        <div class="wt-body">
+          <div class="wt-name">Beyond that, nothing new — so stop</div>
+          <div class="wt-desc">The tiling is periodic with period <code>m</code>. Any length-<code>n</code> window not seen within <code>⌈n/m⌉+1</code> copies has already repeated, so longer tilings add nothing. If <code>b</code> is absent by then, it is absent forever → <code>-1</code>.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Let <code>m = |a|</code>, <code>n = |b|</code>. Build <code>a</code> repeated <code>k = ⌈n/m⌉</code> times and test whether <code>b</code> is a substring; if not, append one more <code>a</code> and test again. The answer is <code>k</code>, or <code>k+1</code>, or — if neither tiling contains <code>b</code> — <code>-1</code>. Two substring searches decide everything, because periodicity means no longer repetition can produce a window the first <code>k+1</code> copies didn't.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">The most mechanical idea: start with one copy of <code>a</code>, search for <code>b</code>, and if it is missing append another copy and search again — repeat. It finds the answer for any <code>b</code> that <em>is</em> reachable, but watch the trap: it has no stopping rule, so for an impossible <code>b</code> it appends copies forever.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">cdabcdab → 3</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">abcdabcd → 2</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">abac → −1</button>
+    <button class="ex-btn"        id="bf-ex3" onclick="bfLoadEx(3)">aa → 2</button>
+  </div>
+  <div class="rs-row-lbl">target&nbsp; b</div>
+  <div id="bf-target"></div>
+  <div class="rs-row-lbl">tiling&nbsp; a repeated k×</div>
+  <div id="bf-strip"></div>
+  <div class="rs-counter">
+    <span>copies (k): <b id="bf-copies">0</b></span>
+    <span>searches: <b id="bf-searches">0</b></span>
+  </div>
+  <div id="bf-narr" class="rs-cap"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox" style="margin-top:.875rem">
+    <p class="infobox-t">The catch: no termination on impossible input</p>
+    <p class="infobox-d">For a <code>b</code> that is reachable, the loop is correct and even efficient. The problem is the <code>-1</code> case: with no upper bound the loop appends <code>a</code> forever and times out. The insight from §1 supplies the missing rule — stop after <code>⌈n/m⌉+1</code> copies — turning this into a two-check algorithm.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="kw">int</span> <span class="fn">repeatedStringMatch</span>(<span class="kw">string</span> a, <span class="kw">string</span> b) {
+    <span class="kw">string</span> s = a;
+    <span class="kw">for</span> (<span class="kw">int</span> k = 1; ; k++) {            <span class="cm">// no upper bound!</span>
+        <span class="kw">if</span> (s.<span class="fn">find</span>(b) != <span class="kw">string</span>::npos) <span class="kw">return</span> k;
+        s += a;                          <span class="cm">// keep appending — forever if b never fits</span>
+    }
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three swaps turn the unbounded naive loop into a correct constant-check algorithm.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Unbounded loop → bounded by ⌈n/m⌉ and +1</div>
+        <div class="wt-desc">Only <code>k = ⌈n/m⌉</code> and <code>k + 1</code> can ever be the answer, so check exactly those two values and stop. This is what kills the infinite loop on impossible inputs.</div>
+        <div class="wt-gain">guaranteed termination; at most two searches</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Re-search the whole growing string → build once, search twice</div>
+        <div class="wt-desc">Build <code>s = a</code> repeated <code>⌈n/m⌉</code> times and <code>find(b)</code>; if absent, append one more <code>a</code> and <code>find(b)</code> again. No repeated rebuilding from scratch.</div>
+        <div class="wt-gain">O(m + n) total instead of re-scanning every growth step</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">"Is b reachable at all?" → periodicity says −1</div>
+        <div class="wt-desc">If <code>b</code> is absent from <code>⌈n/m⌉+1</code> copies it is absent from every repetition, because the tiling just repeats period <code>m</code>. Return <code>-1</code> with confidence.</div>
+        <div class="wt-gain">a proof of impossibility, not a guess</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Measure.</b> Let <code>m = |a|</code> and <code>n = |b|</code>. Compute <code>k = ⌈n/m⌉ = (n + m − 1) / m</code> with integer division — the copies needed just to reach length <code>n</code>.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Build k copies and search.</b> Form <code>s = a</code> repeated <code>k</code> times. If <code>b</code> is a substring of <code>s</code>, return <code>k</code>.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Try one more copy.</b> Otherwise append a single <code>a</code> (now <code>k+1</code> copies). If <code>b</code> is now a substring, return <code>k + 1</code> — this is the offset case.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Otherwise, impossible.</b> If neither tiling contains <code>b</code>, return <code>-1</code>. No larger repetition can help.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">int</span> <span class="fn">repeatedStringMatch</span>(<span class="kw">string</span> a, <span class="kw">string</span> b) {
+    <span class="kw">int</span> m = a.<span class="fn">size</span>(), n = b.<span class="fn">size</span>();
+    <span class="kw">int</span> k = (n + m - 1) / m;            <span class="cm">// ceil(n / m): copies to reach length n</span>
+    <span class="kw">string</span> s = "";
+    <span class="kw">for</span> (<span class="kw">int</span> t = 0; t &lt; k; t++) s += a; <span class="cm">// build k copies</span>
+    <span class="kw">if</span> (s.<span class="fn">find</span>(b) != <span class="kw">string</span>::npos) <span class="kw">return</span> k;
+    s += a;                             <span class="cm">// one extra copy covers any offset</span>
+    <span class="kw">if</span> (s.<span class="fn">find</span>(b) != <span class="kw">string</span>::npos) <span class="kw">return</span> k + 1;
+    <span class="kw">return</span> -1;                          <span class="cm">// b never fits → impossible</span>
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Walk the solution one statement at a time. Watch <code>k = ⌈n/m⌉</code> get computed, the string <code>s</code> grow to <code>k</code> copies, the first <code>find</code> decide whether that is enough, and — only when needed — one extra copy and a second <code>find</code>. Switch examples to see the exact case, the +1 case, and the impossible <code>-1</code> case.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-m"><span class="cv-var-name">m = |a|</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-n"><span class="cv-var-name">n = |b|</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-k"><span class="cv-var-name">k</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-len"><span class="cv-var-name">|s|</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-found"><span class="cv-var-name">b found?</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div class="rs-row-lbl">current tiling s (matched window in green)</div>
+  <div id="cv-list-con" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.4rem 0 .875rem;min-height:2.6em"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">cdabcdab → 3</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">abcdabcd → 2</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">abac → −1</button>
+    <button class="ex-btn"        id="cv-ex3" onclick="cvLoadEx(3)">aa → 2</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick an input and step through the two checks. Predict before pressing Next: does <code>b</code> fit in <code>⌈n/m⌉</code> copies, or does it need the extra one, or never fit at all? When <code>b</code> is found, its window lights up green inside the tiling.</p>
+
+  <div class="rs-row-lbl">target&nbsp; b</div>
+  <div id="dr-target"></div>
+  <div class="rs-row-lbl">tiling&nbsp; a repeated k×</div>
+  <div id="dr-strip"></div>
+  <div class="rs-legend">
+    <span><span class="leg-dot" style="background:var(--bg-info)"></span>target b</span>
+    <span><span class="leg-dot" style="background:var(--bg-success)"></span>b matches in the tiling</span>
+    <span><span class="leg-dot" style="background:var(--bg)"></span>copy boundary (shading alternates)</span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">copies k</div>
+          <div class="fitem-val" id="dr-f-k">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">|s| = k·m</div>
+          <div class="fitem-val" id="dr-f-len">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">b found?</div>
+          <div class="fitem-val" id="dr-f-found">—</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">answer</div>
+          <div class="fitem-val" id="dr-f-ans">…</div>
+        </div>
+      </div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">cdabcdab → 3</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">abcdabcd → 2</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">abac → −1</button>
+    <button class="ex-btn"        id="dr-ex3" onclick="drLoadEx(3)">aa → 2</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">b already fits in one a</div>
+    <div class="corner-body"><code>a="abc", b="bc"</code>: <code>⌈2/3⌉ = 1</code>, and <code>"abc"</code> contains <code>"bc"</code> → answer <code>1</code>. The floor formula already returns 1 here; no special-casing needed.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">The +1 offset case</div>
+    <div class="corner-body"><code>a="abcd", b="cdabcdab"</code>: <code>⌈8/4⌉ = 2</code> copies (<code>"abcdabcd"</code>) do <em>not</em> contain <code>b</code> because it starts at offset 2 and spills; 3 copies do → answer <code>3</code>. Skipping the +1 check would wrongly report <code>-1</code>.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Impossible — character not in a</div>
+    <div class="corner-body"><code>a="abc", b="abax"</code>: <code>x</code> never appears in any tiling of <code>"abc"</code>, so both checks fail → <code>-1</code>. The bound guarantees we detect this in two searches, not an infinite loop.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Impossible — wrong order, right characters</div>
+    <div class="corner-body"><code>a="abc", b="abac"</code>: every character of <code>b</code> is in <code>a</code>, yet <code>"abac"</code> never appears in <code>"abcabcabc…"</code> — the period-3 pattern forbids <code>a</code> immediately after <code>ab</code>. Still <code>-1</code>. Presence of characters is not enough.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">Integer ceiling, not float</div>
+    <div class="corner-body">Compute <code>k = (n + m − 1) / m</code>, not <code>ceil((double)n/m)</code>. Floating-point rounding can give the wrong copy count for large <code>n</code>; integer arithmetic is exact.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>The bound is the whole point.</b> Always cap at <code>⌈n/m⌉+1</code> copies — never an open-ended loop, or impossible inputs hang.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Integer ceiling.</b> <code>(n + m − 1) / m</code> avoids floating-point error on large lengths.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Check both k and k+1.</b> Returning after only the first search misses every offset case (false <code>-1</code>).</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Use a linear substring search.</b> <code>find</code> can be O(m·n) worst-case in some libraries; KMP or Rabin–Karp guarantees O(m + n).</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Reserve the buffer.</b> <code>s.reserve((k + 1) * m)</code> avoids repeated reallocation while appending copies.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Mind the constraints.</b> Both strings are non-empty per LC 686; if your context allows empty <code>a</code> or <code>b</code>, guard those before dividing by <code>m</code>.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Bounded brute force</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">KMP search</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Rolling hash</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(m + n)</span><span class="tag tag-space">O(m + n)</span>
+    <p class="body">Build <code>a</code> repeated <code>⌈n/m⌉</code> times, search for <code>b</code>, append one more copy and search again, else <code>-1</code>. This is the intended solution: short, and with a linear substring search it is optimal. The only subtlety is the <code>+1</code> bound — everything else is a direct read of the problem.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(m + n)</span><span class="tag tag-space">O(m + n)</span>
+    <p class="body">Identical bounded build, but run the search with the Knuth–Morris–Pratt automaton so the worst case is guaranteed linear (no quadratic blow-up from a pathological <code>find</code>). Build <code>b</code>'s failure function once, then scan the tiled string in a single pass.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-kmp',this)">▶ Reveal sketch</button>
+    <div id="code-kmp" class="code-block">
+      <pre class="cb"><span class="cm">// build s = a repeated (ceil(n/m) + 1) times, then:</span>
+<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; fail = <span class="fn">buildFailure</span>(b);   <span class="cm">// KMP prefix function of b</span>
+<span class="kw">int</span> j = 0;
+<span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; (<span class="kw">int</span>)s.<span class="fn">size</span>(); i++) {
+    <span class="kw">while</span> (j &amp;&amp; s[i] != b[j]) j = fail[j - 1];
+    <span class="kw">if</span> (s[i] == b[j] &amp;&amp; ++j == n) <span class="kw">return</span> <span class="fn">copiesUpTo</span>(i);  <span class="cm">// match ends at i</span>
+}</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O(m + n)</span><span class="tag tag-space">O(1) extra</span>
+    <p class="body">Rabin–Karp: hash <code>b</code> once, then roll a hash of every length-<code>n</code> window across the bounded tiling, comparing in O(1) per step and confirming on a hash hit. Expected linear, with the usual small collision risk; useful when you want to avoid materializing or re-scanning, but the KMP route is simpler to make worst-case safe.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(m + n)</div>
+      <div class="ccard-n">Building <code>⌈n/m⌉+1</code> copies is O(n + m) characters, and one linear substring search (KMP) is O(m + n). A naive <code>find</code> is O(m·n) worst case — prefer a linear matcher for guarantees.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(m + n)</div>
+      <div class="ccard-n">The repeated string <code>s</code> has length at most <code>n + 2m</code>, plus <code>b</code> and (for KMP) its failure array of size <code>n</code>.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">Related problems that use this pattern</p>
+  <div class="takehome">
+    <p><b>LC 28 — Find the Index of the First Occurrence (strStr):</b> the substring search at the heart of this problem. Implementing it with KMP is the linear-time guarantee referenced in the approaches.</p>
+    <p><b>LC 459 — Repeated Substring Pattern:</b> the mirror trick — a string is built from a repeated block iff it appears inside <code>(s+s)</code> with the first and last character removed. Same "search a string inside a doubled string" idea.</p>
+    <p><b>LC 796 — Rotate String:</b> <code>b</code> is a rotation of <code>a</code> iff <code>b</code> is a substring of <code>a + a</code>. Another "concatenate, then search" reduction.</p>
+    <p><b>The trick to carry:</b> when a problem asks about an infinite or repeated structure, find the period and prove a small bound on how much of it you must materialize — then it collapses to a couple of ordinary substring searches.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script>
+  /* ── shared painters (DOM only; never called by the pure *GenSteps) ── */
+  function rsCells(containerId, cells) {
+    const con = document.getElementById(containerId);
+    if (!con) return;
+    con.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'rs-strip';
+    cells.forEach(c => {
+      const el = document.createElement('div');
+      el.className = 'rs-cell' + (c.cls ? ' ' + c.cls : '');
+      el.textContent = c.ch;
+      wrap.appendChild(el);
+    });
+    con.appendChild(wrap);
+  }
+  function rsStrip(containerId, tiled, winStart, winLen, ok, spill) {
+    const cells = tiled.map((t, i) => {
+      let cls = (t.copy % 2) ? 'copy1' : 'copy0';
+      if (winStart >= 0 && i >= winStart && i < winStart + winLen) cls += ok ? ' ok' : ' win';
+      return { ch: t.ch, cls: cls.trim() };
+    });
+    for (let g = 0; g < (spill || 0); g++) cells.push({ ch: '·', cls: 'gap' });
+    rsCells(containerId, cells);
+  }
+  function rsTarget(containerId, b, ok) {
+    rsCells(containerId, [...b].map(ch => ({ ch, cls: ok ? 'ok' : 'tgt' })));
+  }
+
+  /* ── answer-bearing examples (drive bf / cv / dr panels AND the verifier) ── */
+  const EX = [
+    { a: 'abcd', b: 'cdabcdab', answer: 3 },
+    { a: 'abcd', b: 'abcdabcd', answer: 2 },
+    { a: 'abc',  b: 'abac',     answer: -1 },
+    { a: 'a',    b: 'aa',       answer: 2 },
+  ];
+
+  const CV_LINES = [
+    { n:1,  c:'int repeatedStringMatch(string a, string b) {' },
+    { n:2,  c:'    int m = a.size(), n = b.size();' },
+    { n:3,  c:'    int k = (n + m - 1) / m;            // ceil(n / m)' },
+    { n:4,  c:'    string s = "";' },
+    { n:5,  c:'    for (int t = 0; t < k; t++) s += a; // build k copies' },
+    { n:6,  c:'    if (s.find(b) != string::npos) return k;' },
+    { n:7,  c:'    s += a;                             // one extra copy' },
+    { n:8,  c:'    if (s.find(b) != string::npos) return k + 1;' },
+    { n:9,  c:'    return -1;' },
+    { n:10, c:'}' },
+  ];
+
+  /* small helper used by every generator: the tiling of a as {ch, copy} cells */
+  function rsTiles(a, k) {
+    const arr = [];
+    for (let c = 0; c < k; c++) for (let p = 0; p < a.length; p++) arr.push({ ch: a[p], copy: c });
+    return arr;
+  }
+
+  /* ════════════════ §1 INSIGHT — grow the tiling until b fits ════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+  const SI_A = 'abcd', SI_B = 'cdabcdab';
+
+  function siGenSteps(a, b) {
+    const m = a.length, n = b.length, steps = [];
+    const base = Math.ceil(n / m);
+    const tiles = k => { const arr = []; for (let c = 0; c < k; c++) for (let p = 0; p < m; p++) arr.push({ ch: a[p], copy: c }); return arr; };
+    // find the offset where b first aligns with the periodic tiling (for this example)
+    let off = -1;
+    for (let s = 0; s < m && off < 0; s++) {
+      let ok = true;
+      for (let j = 0; j < n; j++) { if (b[j] !== a[(s + j) % m]) { ok = false; break; } }
+      if (ok) off = s;
+    }
+    steps.push({ tiled: tiles(1), winStart: -1, winLen: n, ok: false, spill: 0,
+      cap: `b is ${n} chars but one copy of a is only ${m}. A single copy cannot hold b.` });
+    steps.push({ tiled: tiles(base), winStart: -1, winLen: n, ok: false, spill: 0,
+      cap: `Length floor: ⌈${n}/${m}⌉ = ${base} copies reach length ${base * m} ≥ ${n} — the fewest that could fit b.` });
+    steps.push({ tiled: tiles(base), winStart: off, winLen: n, ok: false, spill: Math.max(0, off + n - base * m),
+      cap: `But b aligns at offset ${off}, so its ${n}-char window needs ${off + n - base * m} char(s) past the end. ${base} copies are not enough.` });
+    steps.push({ tiled: tiles(base + 1), winStart: off, winLen: n, ok: true, spill: 0,
+      cap: `One extra copy (${base + 1} total) covers the offset. b matches starting at index ${off} → answer ${base + 1}.` });
+    steps.push({ tiled: tiles(base + 1), winStart: off, winLen: n, ok: true, spill: 0,
+      cap: `So the answer is always ⌈n/m⌉ or ⌈n/m⌉+1 — and if b is in neither, no repetition ever contains it (−1).` });
+    return steps;
+  }
+
+  function siRender(st) {
+    rsTarget('si-target', SI_B, st.ok);
+    rsStrip('si-strip', st.tiled, st.winStart, st.winLen, st.ok, st.spill);
+    document.getElementById('si-cap').textContent = st.cap;
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+
+  /* ════════════════ §2 BRUTE FORCE — naive unbounded loop (capped for display) ════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null;
+  let bfA = EX[0].a, bfB = EX[0].b;
+
+  function bfGenSteps(a, b) {
+    const m = a.length, n = b.length, steps = [];
+    const base = Math.ceil(n / m), cap = base + 1;
+    steps.push({ k: 0, tiled: [], winStart: -1, ok: false, searches: 0,
+      narr: `Naive idea: repeat a = "${a}" one copy at a time and search for b = "${b}" after each. Stop when b appears.` });
+    let foundK = -1, foundIdx = -1;
+    for (let k = 1; k <= cap; k++) {
+      const s = a.repeat(k), idx = s.indexOf(b);
+      const ok = idx >= 0;
+      steps.push({ k, tiled: rsTiles(a, k), winStart: ok ? idx : -1, ok, searches: k,
+        narr: ok ? `k=${k}: found b at index ${idx}. Answer ${k}.`
+                 : `k=${k}: "${b}" not in the length-${k * m} string. Append another copy and search again.` });
+      if (ok) { foundK = k; foundIdx = idx; break; }
+    }
+    if (foundK >= 0) {
+      steps.push({ k: foundK, tiled: rsTiles(a, foundK), winStart: foundIdx, ok: true, searches: foundK, result: foundK,
+        narr: `Found in ${foundK} search(es). Fine for matches — but the loop has no rule for when to give up.` });
+    } else {
+      steps.push({ k: cap, tiled: rsTiles(a, cap), winStart: -1, ok: false, searches: cap, result: -1,
+        narr: `After ${cap} copies, still nothing — naive code would append forever (TLE). The bound says: stop at ⌈n/m⌉+1 = ${cap} and answer −1.` });
+    }
+    return steps;
+  }
+
+  function bfRender(st) {
+    rsTarget('bf-target', bfB, st.ok);
+    rsStrip('bf-strip', st.tiled, st.winStart, bfB.length, st.ok, 0);
+    document.getElementById('bf-copies').textContent = st.k;
+    document.getElementById('bf-searches').textContent = st.searches;
+    const nb = document.getElementById('bf-narr'); if (nb) nb.textContent = st.narr;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+  function bfLoadEx(idx) {
+    bfStopPlay(); bfCur = 0;
+    [0, 1, 2, 3].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+    bfA = EX[idx].a; bfB = EX[idx].b;
+    bfSteps = bfGenSteps(bfA, bfB);
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ════════════════ §6 CODE VIZ — bounded solution line by line ════════════════ */
+  let cvCur = 0, cvSteps = [], cvTimer = null;
+  let cvA = EX[0].a, cvB = EX[0].b;
+
+  function cvGenSteps(a, b) {
+    const m = a.length, n = b.length, steps = [];
+    const base = Math.ceil(n / m);
+    const push = (line, f) => steps.push(Object.assign({
+      line, vM: '—', vN: '—', vK: '—', vLen: '—', vFound: '—',
+      tiled: [], winStart: -1, changed: [], narr: '', done: false }, f));
+    push(1, { narr: `Enter: a = "${a}", b = "${b}".` });
+    push(2, { vM: m, vN: n, changed: ['m', 'n'], narr: `m = |a| = ${m}, n = |b| = ${n}.` });
+    push(3, { vM: m, vN: n, vK: base, changed: ['k'], narr: `k = ⌈n/m⌉ = ${base} — copies just to reach length n.` });
+    push(4, { vM: m, vN: n, vK: base, vLen: 0, changed: ['len'], narr: `Start with an empty string s.` });
+    push(5, { vM: m, vN: n, vK: base, vLen: base * m, tiled: rsTiles(a, base), changed: ['len'],
+      narr: `Append a ${base}×: |s| = k·m = ${base * m}.` });
+    let s = a.repeat(base), idx = s.indexOf(b);
+    if (idx >= 0) {
+      push(6, { vM: m, vN: n, vK: base, vLen: base * m, vFound: 'yes', tiled: rsTiles(a, base), winStart: idx, changed: ['found'], done: true,
+        narr: `b found in ${base} copies at index ${idx} → return ${base}.`, result: base });
+      return steps;
+    }
+    push(6, { vM: m, vN: n, vK: base, vLen: base * m, vFound: 'no', tiled: rsTiles(a, base), winStart: -1, changed: ['found'],
+      narr: `b not in ${base} copies — it can start mid-copy and spill past the end.` });
+    push(7, { vM: m, vN: n, vK: base, vLen: (base + 1) * m, tiled: rsTiles(a, base + 1), changed: ['len'],
+      narr: `Append one more copy: |s| = ${(base + 1) * m}.` });
+    s = a.repeat(base + 1); idx = s.indexOf(b);
+    if (idx >= 0) {
+      push(8, { vM: m, vN: n, vK: base, vLen: (base + 1) * m, vFound: 'yes', tiled: rsTiles(a, base + 1), winStart: idx, changed: ['found'], done: true,
+        narr: `b found at index ${idx} → return k+1 = ${base + 1}.`, result: base + 1 });
+      return steps;
+    }
+    push(8, { vM: m, vN: n, vK: base, vLen: (base + 1) * m, vFound: 'no', tiled: rsTiles(a, base + 1), winStart: -1, changed: ['found'],
+      narr: `Still not found. One extra copy already covers every offset.` });
+    push(9, { vM: m, vN: n, vK: base, vLen: (base + 1) * m, vFound: 'no', tiled: rsTiles(a, base + 1), winStart: -1, done: true,
+      narr: `Return −1 — b is not a substring of any repetition of a.`, result: -1 });
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const ln = document.getElementById('cvL' + st.line);
+    if (ln) ln.classList.add(st.done ? 'active-match' : 'active');
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    setCard('cv-v-m', st.vM, ch.includes('m'));
+    setCard('cv-v-n', st.vN, ch.includes('n'));
+    setCard('cv-v-k', st.vK, ch.includes('k'));
+    setCard('cv-v-len', st.vLen, ch.includes('len'));
+    setCard('cv-v-found', st.vFound, ch.includes('found'));
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.done ? ' is-match' : ' is-active');
+    rsStrip('cv-list-con', st.tiled, st.winStart, cvB.length, st.winStart >= 0, 0);
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+  function cvLoadEx(idx) {
+    cvStopPlay(); cvCur = 0;
+    [0, 1, 2, 3].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
+    cvA = EX[idx].a; cvB = EX[idx].b;
+    cvSteps = cvGenSteps(cvA, cvB);
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ════════════════ §7 DRY RUN — the oracle ════════════════ */
+  let drCur = 0, drSteps = [], drTimer = null;
+  let drA = EX[0].a, drB = EX[0].b;
+
+  function drGenSteps(a, b) {
+    const m = a.length, n = b.length, steps = [];
+    const base = Math.ceil(n / m);
+    const tiles = k => { const arr = []; for (let c = 0; c < k; c++) for (let p = 0; p < m; p++) arr.push({ ch: a[p], copy: c }); return arr; };
+    steps.push({ k: 0, sLen: 0, tiled: [], winStart: -1, found: false, phase: 'init', ans: null,
+      what: `a = "${a}"  (m=${m}),  b = "${b}"  (n=${n})`,
+      why: `Find the fewest copies of a that contain b. You need at least ⌈n/m⌉ = ${base} copies just to reach length n = ${n}.` });
+    let s = a.repeat(base), idx = s.indexOf(b);
+    steps.push({ k: base, sLen: base * m, tiled: tiles(base), winStart: idx, found: idx >= 0, phase: idx >= 0 ? 'ok' : 'fail', ans: null,
+      what: `Try k = ${base}: repeat a ${base}× → length ${base * m}`,
+      why: idx >= 0 ? `b appears starting at index ${idx}. ${base} copies suffice.`
+                    : `b is not inside ${base} copies — it may start mid-copy and run off the end. Add one more copy.` });
+    if (idx >= 0) {
+      steps.push({ k: base, sLen: base * m, tiled: tiles(base), winStart: idx, found: true, phase: 'done', ans: base,
+        what: `Answer: ${base}`, why: `Minimum copies = ⌈n/m⌉ = ${base}.`, result: base });
+      return steps;
+    }
+    s = a.repeat(base + 1); idx = s.indexOf(b);
+    steps.push({ k: base + 1, sLen: (base + 1) * m, tiled: tiles(base + 1), winStart: idx, found: idx >= 0, phase: idx >= 0 ? 'ok' : 'fail', ans: null,
+      what: `Try k = ${base + 1}: one extra copy → length ${(base + 1) * m}`,
+      why: idx >= 0 ? `Now b appears at index ${idx} — it started mid-copy, so it needed the +1.`
+                    : `b is still missing. One more copy covers every offset, so b can never appear.` });
+    const ans = idx >= 0 ? base + 1 : -1;
+    steps.push({ k: base + 1, sLen: (base + 1) * m, tiled: tiles(base + 1), winStart: idx, found: idx >= 0, phase: 'done', ans,
+      what: `Answer: ${ans}`,
+      why: idx >= 0 ? `Minimum copies = ⌈n/m⌉ + 1 = ${base + 1}. The +1 is the spill into an extra copy.`
+                    : `Neither ${base} nor ${base + 1} copies contain b, and longer tilings only repeat — impossible → −1.`,
+      result: ans });
+    return steps;
+  }
+
+  function drRender(st) {
+    rsTarget('dr-target', drB, st.found);
+    rsStrip('dr-strip', st.tiled, st.winStart, drB.length, st.found, 0);
+    document.getElementById('dr-f-k').textContent = st.k;
+    document.getElementById('dr-f-len').textContent = st.sLen;
+    const foundEl = document.getElementById('dr-f-found');
+    foundEl.textContent = st.phase === 'init' ? '—' : (st.found ? 'yes' : 'no');
+    foundEl.style.color = st.found ? 'var(--text-success)' : (st.phase === 'fail' ? 'var(--text-danger)' : 'var(--text2)');
+    document.getElementById('dr-f-ans').textContent = st.ans == null ? '…' : st.ans;
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.what;
+    if (whyEl) whyEl.textContent = st.why;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+  function drLoadEx(idx) {
+    drStopPlay(); drCur = 0;
+    [0, 1, 2, 3].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+    drA = EX[idx].a; drB = EX[idx].b;
+    drSteps = drGenSteps(drA, drB);
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ── init ── */
+  siSteps = siGenSteps(SI_A, SI_B);
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>
