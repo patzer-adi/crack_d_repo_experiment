@@ -1,0 +1,1208 @@
+[
+  {
+    "order": 10,
+    "slug": "hello-world",
+    "name": "Hello, World",
+    "section": "Output, Input & Variables",
+    "difficulty": "Easy",
+    "statement": "Print the exact text \"Hello world…\" followed by a newline.",
+    "details": "The traditional first program: prove you can compile/run a file and get text onto the screen. Note whether your language's print adds the newline for you or you must add it yourself.",
+    "example": {
+      "output": "Hello world…"
+    },
+    "source": [
+      "S1.1"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 20,
+    "slug": "print-a-constant",
+    "name": "Print a Constant",
+    "section": "Output, Input & Variables",
+    "difficulty": "Easy",
+    "statement": "Print an integer literal (e.g. 42), then print the value of a numeric expression such as 6 * 7 — notice both produce the same output.",
+    "details": "Shows that the language evaluates an expression before printing it — the program prints a value, not the text you typed. Try a division like 7 / 2 and see whether you get 3 or 3.5.",
+    "example": {
+      "output": "42\n42"
+    },
+    "source": [
+      "S1.2"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 30,
+    "slug": "echo-an-integer",
+    "name": "Echo an Integer",
+    "section": "Output, Input & Variables",
+    "difficulty": "Easy",
+    "statement": "Read an integer from the user and print it back.",
+    "details": "Your first round-trip: read → store → print. The point is the read step and its format specifier / parse call, not the printing.",
+    "example": {
+      "input": "7",
+      "output": "You entered: 7"
+    },
+    "source": [
+      "S1.3"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 40,
+    "slug": "echo-two-values",
+    "name": "Echo Two Values",
+    "section": "Output, Input & Variables",
+    "difficulty": "Easy",
+    "statement": "Read two integers and display both with clear labels (e.g. \"first = 3, second = 8\").",
+    "details": "Two reads in sequence. Watch how your language separates the two inputs — whitespace, newline, or an explicit split.",
+    "example": {
+      "input": "3 8",
+      "output": "first = 3, second = 8"
+    },
+    "source": [
+      "S1.4"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 50,
+    "slug": "characters-in-and-out",
+    "name": "Characters In & Out",
+    "section": "Output, Input & Variables",
+    "difficulty": "Easy",
+    "statement": "Assign a character constant to a variable and print it; then read a character from the user and print that too.",
+    "details": "A character is a small integer with a display rule. Note the quoting convention for a single character versus a string, and what happens when you print the character as a number.",
+    "example": {
+      "input": "Q",
+      "output": "stored: A\nyou typed: Q"
+    },
+    "source": [
+      "S1.9",
+      "S1.10"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 60,
+    "slug": "read-a-full-line",
+    "name": "Read a Full Line",
+    "section": "Output, Input & Variables",
+    "difficulty": "Easy",
+    "statement": "Read the text \"Hello World\" from input and print it. Explore why reading word-by-word (token input) drops everything after the space, and how line-based reading fixes it.",
+    "details": "Token input stops at the first space, so \"Hello World\" comes back as just \"Hello\". Find your language's read-a-whole-line call and see the difference. The leftover newline in the input buffer is a classic first bug.",
+    "example": {
+      "input": "Hello World",
+      "output": "token read → Hello\nline read  → Hello World"
+    },
+    "source": [
+      "S1.11"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 70,
+    "slug": "know-your-types",
+    "name": "Know Your Types",
+    "section": "Output, Input & Variables",
+    "difficulty": "Easy",
+    "statement": "Print what your language offers for numbers and text: the size, range, or precision of its integer, floating-point, and character/string types.",
+    "details": "Print the width and range of each numeric type your language offers. This is the table you will fall back on later when a factorial overflows or a division loses precision.",
+    "example": {
+      "output": "int    : 4 bytes, -2147483648 … 2147483647\nfloat  : 4 bytes, ~7 significant digits\nchar   : 1 byte, 0 … 255"
+    },
+    "source": [
+      "S1.8"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 80,
+    "slug": "basic-operations-two-ways",
+    "name": "Basic Operations, Two Ways",
+    "section": "Arithmetic & Expressions",
+    "difficulty": "Easy",
+    "statement": "Read two integers and print their sum, difference, and product — (a) computing into a separate result variable, (b) printing the expressions directly without one.",
+    "details": "Same answer, two styles: store the result then print it, or print the expression inline. Both are correct — the exercise is to see that a variable is just a named place to keep a value.",
+    "example": {
+      "input": "9 4",
+      "output": "sum = 13\ndiff = 5\nprod = 36"
+    },
+    "source": [
+      "S1.5a",
+      "S1.5b"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 90,
+    "slug": "swap-two-numbers",
+    "name": "Swap Two Numbers",
+    "section": "Arithmetic & Expressions",
+    "difficulty": "Easy",
+    "statement": "Read two numbers and swap them: (a) using a temporary third variable, (b) without one (arithmetic or XOR).",
+    "details": "The temp-variable version is the one you will actually write. The no-temp versions (a = a + b; b = a − b; a = a − b, or the XOR trick) are worth doing once to see that they break on overflow and when both names refer to the same variable.",
+    "example": {
+      "input": "3 8",
+      "output": "before: a = 3, b = 8\nafter : a = 8, b = 3"
+    },
+    "source": [
+      "S1.6",
+      "S1.7"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 100,
+    "slug": "temperature-converter",
+    "name": "Temperature Converter",
+    "section": "Arithmetic & Expressions",
+    "difficulty": "Easy",
+    "statement": "Convert temperatures both ways: Celsius to Fahrenheit (F = C × 9/5 + 32) and back. Check what goes wrong if 9/5 is computed with integer division.",
+    "details": "The trap is 9/5: in a language with integer division that is 1, and every conversion is wrong. Force a floating-point division and compare the two results side by side.",
+    "example": {
+      "input": "37",
+      "output": "37.0°C = 98.6°F\n98.6°F = 37.0°C"
+    },
+    "source": [
+      "new"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 110,
+    "slug": "shapes-area-perimeter",
+    "name": "Shapes: Area & Perimeter",
+    "section": "Arithmetic & Expressions",
+    "difficulty": "Easy",
+    "statement": "From user-supplied dimensions, compute the area and perimeter of a circle and a rectangle, and the area of a triangle from its three sides (Heron's formula).",
+    "details": "Three formulas, one program. Heron's formula needs the semi-perimeter s = (a+b+c)/2, then area = √(s(s−a)(s−b)(s−c)). Use your language's π constant rather than typing 3.14.",
+    "example": {
+      "input": "radius 3, rect 4 5, tri 3 4 5",
+      "output": "circle : area 28.27, perimeter 18.85\nrect   : area 20.00, perimeter 18.00\ntriangle: area 6.00"
+    },
+    "source": [
+      "new"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 120,
+    "slug": "simple-interest",
+    "name": "Simple Interest",
+    "section": "Arithmetic & Expressions",
+    "difficulty": "Easy",
+    "statement": "Read principal, annual rate, and years; print the simple interest and the total amount. Then print the amount at the end of each year.",
+    "details": "Interest = P × R × T / 100, amount = P + interest. The per-year table is a preview of loops — for now, just print each year's amount on its own line.",
+    "example": {
+      "input": "1000 5 3",
+      "output": "interest = 150.00\namount   = 1150.00\nyear 1: 1050.00\nyear 2: 1100.00\nyear 3: 1150.00"
+    },
+    "source": [
+      "new"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 130,
+    "slug": "square-and-friends",
+    "name": "Square & Friends",
+    "section": "Arithmetic & Expressions",
+    "difficulty": "Easy",
+    "statement": "Read x and compute x² and x² + 2x.",
+    "details": "Trivial arithmetic, but it makes you decide how to square a number: x * x, or a library power call. Prefer x * x here — it is faster and exact for integers.",
+    "example": {
+      "input": "5",
+      "output": "x²      = 25\nx² + 2x = 35"
+    },
+    "source": [
+      "S1.12"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 140,
+    "slug": "polynomial-playground",
+    "name": "Polynomial Playground",
+    "section": "Arithmetic & Expressions",
+    "difficulty": "Easy",
+    "statement": "Read x and y and evaluate: (a) x³ + 3x² + 4x − y³, (b) √(2x² + 4y² + x³ + 10), (c) √(4x² + 8y² + x³ + 5) ÷ 2x².",
+    "details": "Practice at transcribing maths into code: operator precedence, parentheses, and a square-root call. Part (c) divides by 2x² — think about what happens when x is 0.",
+    "example": {
+      "input": "2 1",
+      "output": "(a) 19\n(b) 5.29\n(c) 0.79"
+    },
+    "source": [
+      "S1.13"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 150,
+    "slug": "quadratic-roots",
+    "name": "Quadratic Roots",
+    "section": "Arithmetic & Expressions",
+    "difficulty": "Medium",
+    "statement": "Find the roots of ax² + bx + c = 0 from coefficients a, b, c. Use the discriminant to distinguish two real roots, a repeated root, and complex roots — and don't forget a = 0.",
+    "details": "The discriminant d = b² − 4ac drives three branches: d > 0 two real roots, d = 0 one repeated root, d < 0 a complex pair (print them as p ± qi). Guard a = 0 first — that is a linear equation, not a quadratic.",
+    "example": {
+      "input": "1 -3 2",
+      "output": "d = 1 → two real roots: 2.0 and 1.0"
+    },
+    "source": [
+      "S1.14"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 160,
+    "slug": "guard-the-input",
+    "name": "Guard the Input",
+    "section": "Arithmetic & Expressions",
+    "difficulty": "Medium",
+    "statement": "See what your language does when non-numeric text is entered where a number is expected. Then handle it: detect the bad input and re-prompt until a valid number arrives.",
+    "details": "Type \"abc\" where a number is expected and watch what your language does — silently give 0, throw, or leave the input stuck in the buffer. Then wrap the read in a loop that detects the failure, clears the bad input, and asks again.",
+    "example": {
+      "input": "abc\n-\n12",
+      "output": "Not a number — try again.\nNot a number — try again.\nGot: 12"
+    },
+    "source": [
+      "S1.15"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 170,
+    "slug": "positive-negative-zero",
+    "name": "Positive, Negative or Zero",
+    "section": "Conditionals",
+    "difficulty": "Easy",
+    "statement": "Read an integer and report whether it is positive, negative, or zero. Then rewrite it as a single (nested) conditional expression.",
+    "details": "Three outcomes from two comparisons: the if/else-if/else ladder is the natural shape. The one-liner version nests a conditional (ternary) expression inside another — write it once to see why it gets unreadable fast.",
+    "example": {
+      "input": "-4",
+      "output": "negative"
+    },
+    "source": [
+      "S2.1",
+      "S2.20"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 180,
+    "slug": "larger-of-two",
+    "name": "Larger of Two",
+    "section": "Conditionals",
+    "difficulty": "Easy",
+    "statement": "Read two integers; report if they are equal, otherwise which is larger. Also solve it with a one-line conditional expression.",
+    "details": "Remember the equal case — it is the one most people forget. The conditional-expression version is a single line: a > b ? a : b, extended to handle equality.",
+    "example": {
+      "input": "5 5",
+      "output": "they are equal"
+    },
+    "source": [
+      "S2.2",
+      "S2.17"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 190,
+    "slug": "largest-of-three",
+    "name": "Largest of Three",
+    "section": "Conditionals",
+    "difficulty": "Easy",
+    "statement": "Read three integers and find the largest.",
+    "details": "Two ways in: nested if/else, or carry a running maximum and compare each value against it. The running-maximum shape is the one that generalises to n numbers later.",
+    "example": {
+      "input": "4 9 6",
+      "output": "largest = 9"
+    },
+    "source": [
+      "S2.3"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 200,
+    "slug": "odd-or-even",
+    "name": "Odd or Even",
+    "section": "Conditionals",
+    "difficulty": "Easy",
+    "statement": "Read an integer and report odd or even. Then write it as a one-line conditional expression.",
+    "details": "n % 2 is the whole problem. Check what your language's remainder does with negative numbers — in many, −3 % 2 is −1, not 1, so test against 0 rather than 1.",
+    "example": {
+      "input": "-7",
+      "output": "odd"
+    },
+    "source": [
+      "S2.4",
+      "S2.18"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 210,
+    "slug": "leap-year",
+    "name": "Leap Year",
+    "section": "Conditionals",
+    "difficulty": "Easy",
+    "statement": "Determine whether a given year is a leap year using the full rule: divisible by 4, except centuries, unless divisible by 400.",
+    "details": "The full rule, in order: divisible by 400 → leap; else divisible by 100 → not leap; else divisible by 4 → leap; else not. Test 1900 (not a leap year) and 2000 (a leap year) — the naive \"divisible by 4\" rule gets both wrong.",
+    "example": {
+      "input": "1900",
+      "output": "1900 is not a leap year"
+    },
+    "source": [
+      "S2.5"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 220,
+    "slug": "letter-digit-symbol",
+    "name": "Letter, Digit or Symbol?",
+    "section": "Conditionals",
+    "difficulty": "Easy",
+    "statement": "Read a character and classify it as a letter, a digit, or a special character.",
+    "details": "Compare the character against ranges ('a'–'z', 'A'–'Z', '0'–'9'), or use your language's character-classification helpers. Doing it once by hand with ranges shows why characters are ordered.",
+    "example": {
+      "input": "&",
+      "output": "special character"
+    },
+    "source": [
+      "S2.6",
+      "S2.9"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 230,
+    "slug": "vowel-consonant-case",
+    "name": "Vowel, Consonant & Case",
+    "section": "Conditionals",
+    "difficulty": "Easy",
+    "statement": "Read a letter and report (a) vowel or consonant, (b) uppercase or lowercase.",
+    "details": "Two independent questions about the same character. Handle both cases of each vowel — either test all ten letters, or normalise the case first and test five.",
+    "example": {
+      "input": "E",
+      "output": "vowel, uppercase"
+    },
+    "source": [
+      "S2.7",
+      "S2.8"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 240,
+    "slug": "profit-or-loss",
+    "name": "Profit or Loss",
+    "section": "Conditionals",
+    "difficulty": "Easy",
+    "statement": "From cost price and selling price, report profit, loss, or break-even — and the amount.",
+    "details": "Three branches driven by one subtraction. Print the magnitude of the gap, not the signed difference — a loss of 20 should read \"loss of 20\", not \"−20\".",
+    "example": {
+      "input": "500 620",
+      "output": "profit of 120"
+    },
+    "source": [
+      "S2.11"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 250,
+    "slug": "number-range-ladder",
+    "name": "Number Range Ladder",
+    "section": "Conditionals",
+    "difficulty": "Easy",
+    "statement": "Warm-up: compare a number to 10 and print \"small\" / \"large\" / \"equal\". Then the ladder: below 100 \"small\", 100–200 \"large\", 201–300 \"bigger\", 301–400 \"largest\", above 400 \"very large\".",
+    "details": "The ladder must be ordered and non-overlapping: once you have ruled out \"< 100\", the next test only needs its upper bound. Watch the boundaries — 100, 200, 300, 400 each belong to exactly one band.",
+    "example": {
+      "input": "250",
+      "output": "bigger"
+    },
+    "source": [
+      "S2.16",
+      "S2.25"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 260,
+    "slug": "day-of-the-week",
+    "name": "Day of the Week",
+    "section": "Conditionals",
+    "difficulty": "Easy",
+    "statement": "Read a number 1–7 and print the weekday name. Solve twice: with an if/else ladder and with your language's multi-way selection; compare the readability.",
+    "details": "Solve it twice — an if/else ladder and a switch/match — and compare. The multi-way form is flatter and shows the intent (\"dispatch on a value\") better. Don't forget the invalid-input branch.",
+    "example": {
+      "input": "3",
+      "output": "Wednesday"
+    },
+    "source": [
+      "S2.14",
+      "S2.22"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 270,
+    "slug": "triangle-angles-valid",
+    "name": "Valid Triangle — Angles",
+    "section": "Conditionals",
+    "difficulty": "Easy",
+    "statement": "Read three angles and check whether they form a valid triangle: every angle greater than 0° and the three summing to exactly 180°.",
+    "details": "Two conditions, both required: every angle strictly greater than 0, and the three summing to exactly 180. If the angles can be decimals, exact equality is unreliable — compare against a small tolerance instead.",
+    "example": {
+      "input": "60 60 60",
+      "output": "valid triangle"
+    },
+    "source": [
+      "S2.12"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 280,
+    "slug": "grade-the-marks",
+    "name": "Grade the Marks",
+    "section": "Conditionals",
+    "difficulty": "Medium",
+    "statement": "Read marks for five subjects and compute the percentage. Print (a) Pass/Fail, (b) a grade from an A–F ladder, and (c) read a grade character and print remarks for it using multi-way selection.",
+    "details": "Three exercises stacked: an average, a pass/fail test, and a grade ladder. Keep the ladder ordered from the top band down so each test only needs one bound. Part (c) turns the grade back into a remark using multi-way selection.",
+    "example": {
+      "input": "88 91 79 84 95",
+      "output": "percentage = 87.4\nPass\ngrade = A"
+    },
+    "source": [
+      "S2.10",
+      "S2.19",
+      "S2.24"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 290,
+    "slug": "triangle-sides-type",
+    "name": "Valid Triangle — Sides & Type",
+    "section": "Conditionals",
+    "difficulty": "Medium",
+    "statement": "Read three positive lengths; check the triangle inequality (each pair of sides must sum past the third), then classify: equilateral, isosceles, or scalene.",
+    "details": "Validity first: each pair of sides must sum to strictly more than the third — testing only one pair is not enough. Only then classify: all three equal → equilateral, exactly two equal → isosceles, none equal → scalene.",
+    "example": {
+      "input": "5 5 8",
+      "output": "valid — isosceles"
+    },
+    "source": [
+      "S2.13"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 300,
+    "slug": "month-lookup",
+    "name": "Month Lookup",
+    "section": "Conditionals",
+    "difficulty": "Medium",
+    "statement": "Read a month number 1–12 and print the month's name and its number of days — February needs the year to handle leaps.",
+    "details": "Days per month is a lookup, but February is a conditional that depends on the year — reuse your leap-year rule here rather than rewriting it.",
+    "example": {
+      "input": "2 2024",
+      "output": "February — 29 days"
+    },
+    "source": [
+      "S2.15",
+      "S2.23"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 310,
+    "slug": "sort-three-numbers",
+    "name": "Sort Three Numbers",
+    "section": "Conditionals",
+    "difficulty": "Medium",
+    "statement": "Read three numbers and print them in ascending order using only comparisons and swaps — no arrays, no library sort.",
+    "details": "No arrays and no sort call — just comparisons and swaps. Three pairwise comparisons in the right order are enough; this is bubble sort with n = 3, so it is worth seeing the shape now.",
+    "example": {
+      "input": "7 2 5",
+      "output": "2 5 7"
+    },
+    "source": [
+      "new"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 320,
+    "slug": "electricity-bill-slabs",
+    "name": "Electricity Bill Slabs",
+    "section": "Conditionals",
+    "difficulty": "Medium",
+    "statement": "Compute an electricity bill with slab pricing: the first 100 units at one rate, the next 100 at a higher rate, everything beyond at a third. Print an itemized bill.",
+    "details": "Slab pricing charges each band at its own rate — 250 units is not 250 × the top rate. Subtract each band as you consume it, and print the itemised lines so you can check the arithmetic.",
+    "example": {
+      "input": "250",
+      "output": "first 100 @ 1.50 = 150.00\nnext  100 @ 2.50 = 250.00\nabove     @ 4.00 = 200.00\ntotal            = 600.00"
+    },
+    "source": [
+      "new"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 330,
+    "slug": "four-function-calculator",
+    "name": "Four-Function Calculator",
+    "section": "Conditionals",
+    "difficulty": "Medium",
+    "statement": "Read an operator (+, −, ×, ÷) and two numbers, and apply it. Reject unknown operators and division by zero with clear messages.",
+    "details": "Multi-way selection on the operator character. Two guards matter: an operator you don't recognise, and division by zero — both should print a clear message rather than crashing or printing garbage.",
+    "example": {
+      "input": "/ 7 0",
+      "output": "Error: division by zero"
+    },
+    "source": [
+      "S2.21"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 340,
+    "slug": "count-to-n",
+    "name": "Count to n",
+    "section": "Loop Fundamentals",
+    "difficulty": "Easy",
+    "statement": "Read n and print the numbers 1 through n.",
+    "details": "The smallest possible loop: a counter, a condition, and an increment. Write it as a while first so the three parts are visible on separate lines, then collapse it into a for.",
+    "example": {
+      "input": "5",
+      "output": "1 2 3 4 5"
+    },
+    "note": "Section drill (from the source sheet): solve every problem in this section twice — once with a while loop, once with a for loop.",
+    "source": [
+      "S3.1.1"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 350,
+    "slug": "evens-only",
+    "name": "Evens Only",
+    "section": "Loop Fundamentals",
+    "difficulty": "Easy",
+    "statement": "Print all even numbers from 1 to n by stepping two at a time — no skipping logic needed.",
+    "details": "Two routes: loop over every number and test n % 2, or start at 2 and step by 2. The second does half the work and needs no condition inside the body — that is the lesson.",
+    "example": {
+      "input": "10",
+      "output": "2 4 6 8 10"
+    },
+    "source": [
+      "S3.1.2"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 360,
+    "slug": "skip-by-rule",
+    "name": "Skip by Rule",
+    "section": "Loop Fundamentals",
+    "difficulty": "Easy",
+    "statement": "Print 1 to N but skip, in turn: (a) odd numbers, (b) multiples of 3, (c) numbers ending in 5. Use the loop's skip/continue mechanism rather than restructuring the loop.",
+    "details": "Each variant is a one-line condition plus a continue. Practise reading it as \"if this holds, abandon this iteration and go to the next\" — the loop's increment must still run, which is why a while loop with continue can loop forever if you're careless.",
+    "example": {
+      "input": "12",
+      "output": "(skip multiples of 3) 1 2 4 5 7 8 10 11"
+    },
+    "source": [
+      "S3.4.1",
+      "S3.4.5",
+      "S3.4.7"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 370,
+    "slug": "running-totals",
+    "name": "Running Totals",
+    "section": "Loop Fundamentals",
+    "difficulty": "Easy",
+    "statement": "Read n and compute, in separate loops: the sum 1..n, the sum of the odd numbers up to n, and the sum of squares 1² + 2² + … + n².",
+    "details": "Three separate accumulators, each initialised to 0 before its loop. The pattern — set up, loop, add, report — is the one you will reuse constantly. Check the closed forms afterwards: 1..n sums to n(n+1)/2.",
+    "example": {
+      "input": "5",
+      "output": "sum        = 15\nodd sum    = 9\nsquare sum = 55"
+    },
+    "source": [
+      "S3.1.3",
+      "S3.1.4",
+      "S3.1.6"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 380,
+    "slug": "multiplication-table",
+    "name": "Multiplication Table",
+    "section": "Loop Fundamentals",
+    "difficulty": "Easy",
+    "statement": "Print the multiplication table of a given number (e.g. 7 × 1 through 7 × 10).",
+    "details": "A fixed-count loop with a formatted line inside. Line up the columns — getting the output to align is half the exercise.",
+    "example": {
+      "input": "7",
+      "output": "7 x 1 = 7\n7 x 2 = 14\n…\n7 x 10 = 70"
+    },
+    "source": [
+      "S3.1.7"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 390,
+    "slug": "letters-and-codes",
+    "name": "Letters & Codes",
+    "section": "Loop Fundamentals",
+    "difficulty": "Easy",
+    "statement": "Print the letters A–Z alongside their numeric character codes, one pair per line.",
+    "details": "Loop over characters directly, or loop over their numeric codes and convert. Either way you learn that 'A' and 65 are the same value viewed two ways — and that 'a' − 'A' is a constant.",
+    "example": {
+      "output": "A 65\nB 66\n…\nZ 90"
+    },
+    "source": [
+      "S3.1.14"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 400,
+    "slug": "power-without-pow",
+    "name": "Power Without pow()",
+    "section": "Loop Fundamentals",
+    "difficulty": "Easy",
+    "statement": "Compute xʸ for a non-negative integer y using repeated multiplication — no library power function.",
+    "details": "Multiply a running result by x, y times over. Get the y = 0 case right — the answer is 1, not 0 — and notice how quickly the result overflows for even modest x and y.",
+    "example": {
+      "input": "2 10",
+      "output": "1024"
+    },
+    "source": [
+      "S3.1.13"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 410,
+    "slug": "stream-min-max-average",
+    "name": "Min, Max & Average of a Stream",
+    "section": "Loop Fundamentals",
+    "difficulty": "Medium",
+    "statement": "Read n, then read n numbers one at a time and report their minimum, maximum, and average without storing them all.",
+    "details": "You may not store the numbers, so you must decide what to keep: a running min, a running max, and a running sum. Seed min and max from the *first* value read, not from 0 — otherwise all-negative input breaks the max.",
+    "example": {
+      "input": "4\n5 -2 9 3",
+      "output": "min = -2\nmax = 9\navg = 3.75"
+    },
+    "source": [
+      "new"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 420,
+    "slug": "harmonic-sum",
+    "name": "Harmonic Sum",
+    "section": "Loop Fundamentals",
+    "difficulty": "Medium",
+    "statement": "Compute 1 + 1/2 + 1/3 + … + 1/n. Watch what happens if the division is done with integers.",
+    "details": "1/i with integer i is 0 for every i > 1 — the whole sum comes out as 1. Force floating-point division and watch the sum creep up: it diverges, but very slowly.",
+    "example": {
+      "input": "5",
+      "output": "2.283333"
+    },
+    "source": [
+      "S3.1.5"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 430,
+    "slug": "doubling-series",
+    "name": "Doubling Series",
+    "section": "Loop Fundamentals",
+    "difficulty": "Medium",
+    "statement": "Compute 1 + 2 + 4 + … + 2ⁿ. Print each partial sum and notice how fast it grows — and where your integer type overflows.",
+    "details": "Each term is the previous one doubled, so don't recompute the power from scratch. The partial sums are 2^(n+1) − 1 — print them and watch the moment your integer type wraps around to a negative number.",
+    "example": {
+      "input": "5",
+      "output": "1 3 7 15 31 63"
+    },
+    "source": [
+      "new"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 440,
+    "slug": "fibonacci-terms",
+    "name": "Fibonacci",
+    "section": "Loop Fundamentals",
+    "difficulty": "Medium",
+    "statement": "Print the first n terms of the Fibonacci series, keeping only the last two values as you go.",
+    "details": "Keep only two variables and roll them forward each step. The whole trick is doing the update in the right order — compute the next term before you overwrite the values it depends on.",
+    "example": {
+      "input": "8",
+      "output": "0 1 1 2 3 5 8 13"
+    },
+    "source": [
+      "S3.1.11"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 450,
+    "slug": "factorial-of-n",
+    "name": "Factorial",
+    "section": "Loop Fundamentals",
+    "difficulty": "Medium",
+    "statement": "Compute n! with a loop. Find the largest n your integer type can handle before overflowing.",
+    "details": "A running product, seeded at 1. Then find the ceiling: on a 32-bit signed int, 12! fits and 13! does not; on 64-bit, 20! fits and 21! does not. Verify it on your own machine.",
+    "example": {
+      "input": "6",
+      "output": "720"
+    },
+    "source": [
+      "S3.1.10"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 460,
+    "slug": "digits-one-per-line",
+    "name": "Digits, One Per Line",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "Print a number's digits one per line using division and remainder by 10. In what order do they come out?",
+    "details": "n % 10 gives the last digit, n / 10 chops it off; repeat until n is 0. The digits come out backwards — that observation is the seed for reversing a number.",
+    "example": {
+      "input": "1234",
+      "output": "4\n3\n2\n1"
+    },
+    "source": [
+      "S3.2.4"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 470,
+    "slug": "count-the-digits",
+    "name": "Count the Digits",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "Count how many digits a number has via repeated division by 10. Mind the edge case n = 0.",
+    "details": "Divide by 10 until you reach 0, counting the steps. The loop body never runs for n = 0, which would report 0 digits instead of 1 — special-case it.",
+    "example": {
+      "input": "7801",
+      "output": "4 digits"
+    },
+    "source": [
+      "S3.1.9"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 480,
+    "slug": "sum-of-digits",
+    "name": "Sum of Digits",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "Add up the digits of a number. Extend: repeat until a single digit remains (the digital root).",
+    "details": "Same extract-and-chop loop, accumulating instead of printing. For the digital root, wrap that loop in another that keeps going while the number is bigger than 9.",
+    "example": {
+      "input": "9875",
+      "output": "sum = 29\ndigital root = 2"
+    },
+    "source": [
+      "new"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 490,
+    "slug": "reverse-a-number",
+    "name": "Reverse a Number",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "Reverse a number's digits arithmetically (e.g. 1234 → 4321) — no string conversion.",
+    "details": "Build the answer digit by digit: rev = rev * 10 + (n % 10). Trailing zeros vanish (1200 → 21), which is correct arithmetically — and a reversed value can overflow even when the original did not.",
+    "example": {
+      "input": "1234",
+      "output": "4321"
+    },
+    "source": [
+      "S3.1.8"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 500,
+    "slug": "numeric-palindrome",
+    "name": "Numeric Palindrome",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "Check whether a number reads the same reversed, reusing the digit-reversal idea.",
+    "details": "Reverse it and compare to the original — so keep a copy before the loop destroys n. Decide what you want negative numbers to do; most definitions say −121 is not a palindrome.",
+    "example": {
+      "input": "12321",
+      "output": "palindrome"
+    },
+    "source": [
+      "S3.1.16"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 510,
+    "slug": "decimal-to-binary",
+    "name": "Decimal to Binary",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "Convert a decimal number to binary via repeated division by 2. Extend to any base from 2 to 16.",
+    "details": "Remainders by 2, collected and then reversed — the same digit-extraction loop with a different divisor. For bases above 10 you need digit characters beyond '9', so map 10–15 onto A–F.",
+    "example": {
+      "input": "26",
+      "output": "11010"
+    },
+    "source": [
+      "new"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 520,
+    "slug": "prime-or-composite",
+    "name": "Prime or Composite",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "Check whether a number is prime by trial division — and explain why testing divisors up to √n suffices.",
+    "details": "Trial-divide from 2 upward; the first divisor found means composite. You may stop at √n because divisors come in pairs — if n = a × b with a > √n, then b < √n and you already tested it. Handle n < 2 explicitly.",
+    "example": {
+      "input": "97",
+      "output": "prime"
+    },
+    "source": [
+      "S3.1.12"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 530,
+    "slug": "smallest-divisor",
+    "name": "Smallest Divisor > 1",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "Find the smallest divisor greater than 1 of a number, stopping the loop as soon as it is found. What does it mean if the answer is the number itself?",
+    "details": "The same trial-division loop, but return the divisor instead of a yes/no — and break the moment you find it. If the answer comes back as n itself, n has no smaller divisor, which is exactly the definition of prime.",
+    "example": {
+      "input": "91",
+      "output": "7"
+    },
+    "source": [
+      "S3.4.3"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 540,
+    "slug": "gcd-and-lcm",
+    "name": "GCD & LCM",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "Compute the GCD of two numbers (Euclid's remainder method encouraged) and derive the LCM from it.",
+    "details": "Euclid: replace (a, b) with (b, a % b) until b is 0; a is then the GCD. LCM follows as a × b / gcd — divide before multiplying to keep the product from overflowing.",
+    "example": {
+      "input": "12 18",
+      "output": "gcd = 6\nlcm = 36"
+    },
+    "source": [
+      "S3.1.17"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 550,
+    "slug": "nearest-multiples",
+    "name": "Nearest Multiples",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "(a) Find the first number greater than n that is divisible by 7. (b) Find the largest number ≤ N divisible by both 4 and 6.",
+    "details": "(a) Step upward from n + 1 until n % 7 is 0 — or compute it directly with arithmetic and check your loop against it. (b) Divisible by both 4 and 6 means divisible by their LCM, 12, so count downward from N in steps of 12.",
+    "example": {
+      "input": "n = 30, N = 100",
+      "output": "(a) 35\n(b) 96"
+    },
+    "note": "Part (b) restated from the sheet — the original \"smallest number ≤ N divisible by 4 and 6\" is always 12.",
+    "source": [
+      "S3.4.4",
+      "S3.4.8"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 560,
+    "slug": "armstrong-numbers",
+    "name": "Armstrong Numbers",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "Find all Armstrong numbers in a range — numbers equal to the sum of their digits each raised to the digit-count power (e.g. 153 = 1³ + 5³ + 3³).",
+    "details": "For each candidate: count its digits, then sum each digit raised to that power, and compare. 153, 370, 371 and 407 are the three-digit ones — use them to check your loop.",
+    "example": {
+      "input": "100 500",
+      "output": "153 370 371 407"
+    },
+    "source": [
+      "S3.3.4"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 570,
+    "slug": "strong-number",
+    "name": "Strong Number",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "Check whether a number equals the sum of the factorials of its digits (e.g. 145 = 1! + 4! + 5!).",
+    "details": "Two loops nested in spirit: walk the digits, and for each compute a factorial. Digits are only 0–9, so a small precomputed table beats recomputing 0!–9! every time. 1, 2 and 145 are the only ones below 1000.",
+    "example": {
+      "input": "145",
+      "output": "strong number (1! + 4! + 5! = 145)"
+    },
+    "source": [
+      "new"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 580,
+    "slug": "perfect-number",
+    "name": "Perfect Number",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "Check whether a number equals the sum of its proper divisors (e.g. 28 = 1 + 2 + 4 + 7 + 14).",
+    "details": "Sum the divisors from 1 to n/2 (a proper divisor can never exceed n/2) and compare to n. 6, 28, 496 and 8128 are the first four — a good self-test.",
+    "example": {
+      "input": "28",
+      "output": "perfect (1 + 2 + 4 + 7 + 14 = 28)"
+    },
+    "source": [
+      "S3.3.6"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 590,
+    "slug": "amicable-pair",
+    "name": "Amicable Pair",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "Check whether two numbers are amicable: each equals the sum of the other's proper divisors (220 and 284).",
+    "details": "You need the proper-divisor sum twice, so factor it out — this is the natural moment to write your first helper function. Then the check is just d(a) == b and d(b) == a.",
+    "example": {
+      "input": "220 284",
+      "output": "amicable"
+    },
+    "source": [
+      "S3.3.5"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 600,
+    "slug": "prime-factorization",
+    "name": "Prime Factorization",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Medium",
+    "statement": "For every number from 1 to n, print its prime-factored form (e.g. 12 = 2 × 2 × 3).",
+    "details": "Divide out each factor as many times as it goes before moving to the next — that is what puts 2 in twice for 12. Any factor left above 1 at the end is itself prime, so the loop can stop at √n.",
+    "example": {
+      "input": "12",
+      "output": "12 = 2 x 2 x 3"
+    },
+    "source": [
+      "S3.3.3"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 610,
+    "slug": "primes-to-a-million",
+    "name": "Primes to a Million",
+    "section": "Digits, Divisors & Primes",
+    "difficulty": "Hard",
+    "statement": "Print all primes below 1,000,000. Start with trial division, then try a sieve — measure the difference.",
+    "details": "Trial division works but will take a noticeable time. A sieve of Eratosthenes instead marks multiples off a boolean array and gets the same answer in a fraction of a second — time both and see the gap for yourself. This is your first taste of why algorithmic complexity matters.",
+    "example": {
+      "output": "2 3 5 7 11 … 999983\n(78498 primes)"
+    },
+    "source": [
+      "S3.3.2"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 620,
+    "slug": "sum-until-sentinel",
+    "name": "Sum Until Sentinel",
+    "section": "Interactive Programs & Loop Control",
+    "difficulty": "Medium",
+    "statement": "Keep reading numbers and summing until the user enters 0, then print the sum — with a loop that runs at least once. Variant: stop on any negative number instead.",
+    "details": "The user's input decides when to stop, so you cannot know the trip count up front — this is what while (and do-while) exist for. Use a loop that runs at least once so the first number is always read before the test.",
+    "example": {
+      "input": "5 10 3 0",
+      "output": "sum = 18"
+    },
+    "source": [
+      "S3.2.1",
+      "S3.4.2"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 630,
+    "slug": "password-gate",
+    "name": "Password Gate",
+    "section": "Interactive Programs & Loop Control",
+    "difficulty": "Medium",
+    "statement": "Ask for a password, allowing up to 3 attempts: print \"Access granted\" on success or \"Account locked\" after the third failure. Variant: retry forever until correct.",
+    "details": "A bounded retry loop: a counter capping the attempts, plus an early exit when the password matches. The two exits — success and exhaustion — must print different things, which is the bug people ship.",
+    "example": {
+      "input": "letmein\nhunter2\nswordfish",
+      "output": "Wrong (2 attempts left)\nWrong (1 attempt left)\nAccount locked"
+    },
+    "source": [
+      "S3.2.2",
+      "S3.4.6"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 640,
+    "slug": "number-guessing-game",
+    "name": "Number Guessing Game",
+    "section": "Interactive Programs & Loop Control",
+    "difficulty": "Medium",
+    "statement": "Pick a random number 1–100; let the player guess, answering \"higher\" or \"lower\" each time; report the number of attempts on success.",
+    "details": "Seed your language's random generator, then loop until the guess matches, narrowing with \"higher\"/\"lower\" each round. Count the attempts — a player using binary search should never need more than 7.",
+    "example": {
+      "input": "50\n75\n62",
+      "output": "higher\nlower\nCorrect! 3 attempts"
+    },
+    "source": [
+      "new"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 650,
+    "slug": "menu-calculator",
+    "name": "Menu Calculator",
+    "section": "Interactive Programs & Loop Control",
+    "difficulty": "Medium",
+    "statement": "Show a menu of operations (add, subtract, multiply, divide, quit) in a loop; perform the chosen operation each round until the user quits. Builds on Four-Function Calculator.",
+    "details": "The outer loop is the session, the inner logic is the calculator you already wrote. Keep the menu inside the loop so it reprints each round, and make \"quit\" the only way out.",
+    "example": {
+      "input": "1\n4 5\n5",
+      "output": "1) add  2) sub  3) mul  4) div  5) quit\n> 4 + 5 = 9\n> bye"
+    },
+    "source": [
+      "S3.2.3"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 660,
+    "slug": "tables-grid",
+    "name": "Tables Grid",
+    "section": "Nested Loops & Patterns",
+    "difficulty": "Medium",
+    "statement": "Print the multiplication tables 2 through 11 using nested loops — outer loop for the table, inner loop for its entries.",
+    "details": "The outer loop picks the table, the inner loop runs its ten entries. The mental model to build here: the inner loop runs to completion for every single step of the outer one.",
+    "example": {
+      "output": "2 x 1 = 2 … 2 x 10 = 20\n3 x 1 = 3 … 3 x 10 = 30\n…"
+    },
+    "source": [
+      "S3.3.1"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 670,
+    "slug": "star-patterns",
+    "name": "Star Patterns",
+    "section": "Nested Loops & Patterns",
+    "difficulty": "Medium",
+    "statement": "From a height h, print (a) an h × h square of stars, (b) a right triangle growing from 1 to h stars per row.",
+    "details": "For the square, both loops run h times. For the triangle, the inner loop's bound depends on the outer loop's counter — that single change is the whole idea behind every pattern that follows.",
+    "example": {
+      "input": "4",
+      "output": "*\n**\n***\n****"
+    },
+    "source": [
+      "S3.1.15"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 680,
+    "slug": "floyds-triangle",
+    "name": "Floyd's Triangle",
+    "section": "Nested Loops & Patterns",
+    "difficulty": "Medium",
+    "statement": "Print Floyd's triangle: consecutive numbers 1 / 2 3 / 4 5 6 / … in rows. Variant: each row repeats its row number instead.",
+    "details": "Row i holds i numbers, and a single counter keeps incrementing across rows — it is not reset at the start of each row. That shared counter is the point.",
+    "example": {
+      "input": "4",
+      "output": "1\n2 3\n4 5 6\n7 8 9 10"
+    },
+    "source": [
+      "new"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 690,
+    "slug": "pyramid-and-diamond",
+    "name": "Pyramid & Diamond",
+    "section": "Nested Loops & Patterns",
+    "difficulty": "Medium",
+    "statement": "Print a centered star pyramid of height h, then extend it to a diamond. The trick is counting the spaces before the stars.",
+    "details": "Each row needs two inner loops: one printing the leading spaces, one printing the stars. For height h, row i has (h − i) spaces and (2i − 1) stars. The diamond is the pyramid followed by the same loop running backwards.",
+    "example": {
+      "input": "4",
+      "output": "   *\n  ***\n *****\n*******"
+    },
+    "source": [
+      "S3.3.7"
+    ],
+    "status": "new"
+  },
+  {
+    "order": 700,
+    "slug": "pascals-triangle",
+    "name": "Pascal's Triangle",
+    "section": "Nested Loops & Patterns",
+    "difficulty": "Hard",
+    "statement": "Print the first n rows of Pascal's triangle, computing each row's numbers from the previous row; align the output reasonably.",
+    "details": "Each entry is the sum of the two above it, so keep the previous row and build the next from it — no factorials needed. Padding each row with leading spaces to centre it is the finishing touch.",
+    "example": {
+      "input": "5",
+      "output": "    1\n   1 1\n  1 2 1\n 1 3 3 1\n1 4 6 4 1"
+    },
+    "source": [
+      "S3.3.7"
+    ],
+    "status": "new"
+  }
+]

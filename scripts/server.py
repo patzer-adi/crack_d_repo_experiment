@@ -15,6 +15,11 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROBLEMS_JSON = PROJECT_ROOT / "data" / "problems.json"
+STATUS_DATASETS = {
+    "problems": PROBLEMS_JSON,
+    "basics": PROJECT_ROOT / "data" / "basics.json",
+    "warmup": PROJECT_ROOT / "data" / "warmup.json",
+}
 
 _lock = threading.Lock()
 
@@ -48,6 +53,15 @@ class CrackDHandler(SimpleHTTPRequestHandler):
         slug          = body.get("slug", "").strip()
         status        = body.get("status", "").strip()
         lesson_status = body.get("lesson_status", "").strip()
+        dataset       = body.get("dataset", "problems").strip() or "problems"
+        if dataset not in STATUS_DATASETS:
+            return self._send_json(
+                {"ok": False, "error": f"dataset must be one of {sorted(STATUS_DATASETS)}"}, 400
+            )
+        if lesson_status and dataset != "problems":
+            return self._send_json(
+                {"ok": False, "error": "lesson_status only applies to the problems dataset"}, 400
+            )
         if not slug:
             return self._send_json({"ok": False, "error": "slug required"}, 400)
         if not status and not lesson_status:
@@ -63,9 +77,10 @@ class CrackDHandler(SimpleHTTPRequestHandler):
                 {"ok": False, "error": "lesson_status must be 'none' or 'generated'"}, 400
             )
 
+        json_path = STATUS_DATASETS[dataset]
         with _lock:
             try:
-                problems = json.loads(PROBLEMS_JSON.read_text(encoding="utf-8"))
+                problems = json.loads(json_path.read_text(encoding="utf-8"))
             except Exception as e:
                 return self._send_json({"ok": False, "error": f"read error: {e}"}, 500)
 
@@ -78,7 +93,7 @@ class CrackDHandler(SimpleHTTPRequestHandler):
             if lesson_status:
                 problems[idx]["lesson_status"] = lesson_status
             try:
-                PROBLEMS_JSON.write_text(
+                json_path.write_text(
                     json.dumps(problems, indent=2, ensure_ascii=False) + "\n",
                     encoding="utf-8"
                 )

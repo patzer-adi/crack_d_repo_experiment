@@ -254,7 +254,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -272,7 +272,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -342,7 +342,7 @@
     "ramp_pos": 1,
     "twist": "primer: shrink window from the left while constraint still met",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -392,7 +392,7 @@
     "ramp_pos": 4,
     "twist": "same budget shape with k=1; must-delete-one edge case",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -516,7 +516,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -1390,7 +1390,7 @@
     "ramp_pos": 1,
     "twist": "primer: pop top two, push their diff back",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -1424,7 +1424,7 @@
     "ramp_pos": 3,
     "twist": "same min-heap-of-size-k shape with a custom comparator key",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -1442,7 +1442,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -1460,7 +1460,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -1476,7 +1476,7 @@
     "ramp_pos": 6,
     "twist": "greedy: always place the highest-remaining-freq char that isn't the previous",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -1510,7 +1510,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -1660,7 +1660,7 @@
     "ramp_pos": 8,
     "twist": "multi-source BFS for the *max-min* (farthest water cell)",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -1694,7 +1694,7 @@
     "ramp_pos": 10,
     "twist": "DFS in a DAG accumulating the current path on backtrack",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -1710,7 +1710,7 @@
     "ramp_pos": 11,
     "twist": "BFS over an *implicit* graph (states are strings, neighbours generated on-the-fly)",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -1780,7 +1780,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -2098,7 +2098,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -2114,7 +2114,7 @@
     "ramp_pos": 5,
     "twist": "Kadane variant: track *both* min and max because of negatives",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -2146,7 +2146,7 @@
     "ramp_pos": 7,
     "twist": "primer for stock DP: track running min and best profit",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -2162,7 +2162,7 @@
     "ramp_pos": 8,
     "twist": "3-state machine: hold / sold-today / rest",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -2178,7 +2178,7 @@
     "ramp_pos": 9,
     "twist": "2-state machine: hold / cash, with fee on sell",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -2582,7 +2582,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -2598,7 +2598,7 @@
     "ramp_pos": 2,
     "twist": "sort, then skip same-value siblings at the same depth to dedup",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -2632,7 +2632,7 @@
     "ramp_pos": 4,
     "twist": "permutations + dedup: skip if same value AND prior duplicate unused",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -2648,7 +2648,7 @@
     "ramp_pos": 5,
     "twist": "tree of choices: digit-i contributes its letter alphabet at depth i",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -2664,7 +2664,7 @@
     "ramp_pos": 6,
     "twist": "constrained branching: only branch '(' if open<n, only ')' if close<open",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -2714,7 +2714,7 @@
     "ramp_pos": 9,
     "twist": "fixed-size combo from a fixed alphabet (1..9)",
     "tracks": [],
-    "status": "done",
+    "status": "new",
     "lesson_status": "none"
   },
   {
@@ -2802,7 +2802,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -2852,7 +2852,7 @@
     "tracks": [
       "google_focused"
     ],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -2902,7 +2902,7 @@
     "ramp_pos": 8,
     "twist": "single pass with running tank; reset start when tank goes negative",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -2918,7 +2918,7 @@
     "ramp_pos": 9,
     "twist": "sorted counter + greedy: always start a run from the smallest available card",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -2934,7 +2934,7 @@
     "ramp_pos": 10,
     "twist": "greedy: track [lo, hi] possible open-paren counts across the scan",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -3100,7 +3100,7 @@
     "ramp_pos": 1,
     "twist": "primer: XOR cancels equal pairs; the survivor is the unique value",
     "tracks": [],
-    "status": "done",
+    "status": "new",
     "lesson_status": "none"
   },
   {
@@ -3308,7 +3308,7 @@
     "ramp_pos": 1,
     "twist": "primer: brute O(nm) is fine to start; KMP/Z reaches O(n+m)",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "none"
   },
   {
@@ -3324,7 +3324,7 @@
     "ramp_pos": 2,
     "twist": "trick: s repeats iff s appears inside (s+s)[1:-1] — or use KMP failure function",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -3340,7 +3340,7 @@
     "ramp_pos": 3,
     "twist": "bounded brute: only need to repeat a up to ⌈len(b)/len(a)⌉ + 1 times",
     "tracks": [],
-    "status": "new",
+    "status": "done",
     "lesson_status": "generated"
   },
   {
@@ -3541,9 +3541,9 @@
     "name": "Minimum Time To Finish The Race",
     "url": "https://leetcode.com/problems/minimum-time-to-finish-the-race/",
     "slug": "minimum-time-to-finish-the-race",
-    "topic": "DP",
+    "topic": "Dynamic Programming",
     "difficulty": "Hard",
-    "section": "Ad-hoc",
+    "section": "Dynamic Programming",
     "tier": 2,
     "ramp_pos": 999,
     "twist": "",
