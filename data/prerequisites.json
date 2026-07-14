@@ -17,17 +17,24 @@
       "Append at the end (dynamic array): amortised O(1)"
     ],
     "snippets": [
-      { "label": "Index, iterate, two-pointer",
+      {
+        "label": "Index, iterate, two-pointer",
         "code": [
           "vector<int> a = {5, 2, 9, 1};",
           "int x = a[2];                 // O(1) random access -> 9",
           "for (int v : a) use(v);       // O(n) linear scan",
           "int l = 0, r = a.size() - 1;  // the two-pointer setup",
           "while (l < r) { /* shrink from both ends */ l++; r--; }"
-        ] }
+        ]
+      }
     ],
     "complexity": "Access O(1), search O(n), middle insert/erase O(n), space O(n).",
-    "topics": ["Arrays & Hashing", "Two Pointers", "Prefix Sum", "Sliding Window"],
+    "topics": [
+      "Arrays & Hashing",
+      "Two Pointers",
+      "Prefix Sum",
+      "Sliding Window"
+    ],
     "animation": null
   },
   {
@@ -47,15 +54,18 @@
       "iteration order is unspecified — sort separately if you need order"
     ],
     "snippets": [
-      { "label": "Membership / de-dup with a set",
+      {
+        "label": "Membership / de-dup with a set",
         "code": [
           "unordered_set<int> seen;",
           "for (int x : nums) {",
           "    if (seen.count(x)) return true;   // duplicate found",
           "    seen.insert(x);",
           "}"
-        ] },
-      { "label": "Complement lookup (Two Sum, one pass)",
+        ]
+      },
+      {
+        "label": "Complement lookup (Two Sum, one pass)",
         "code": [
           "unordered_map<int,int> idx;           // value -> position",
           "for (int i = 0; i < n; i++) {",
@@ -63,14 +73,18 @@
           "    if (idx.count(need)) return {idx[need], i};",
           "    idx[nums[i]] = i;                 // insert AFTER the check",
           "}"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "Average O(1) but worst-case O(n) under adversarial hashing — rarely matters, but know it.",
       "For complement-style problems, check for the key *before* inserting the current value, or an element matches itself."
     ],
     "complexity": "Lookup/insert/erase O(1) average, O(n) worst; O(n) extra space.",
-    "topics": ["Arrays & Hashing", "Design"],
+    "topics": [
+      "Arrays & Hashing",
+      "Design"
+    ],
     "animation": "anim-hash-map"
   },
   {
@@ -91,7 +105,8 @@
       "Reverse in place: O(n) time, O(1) space"
     ],
     "snippets": [
-      { "label": "Iterate and reverse in place",
+      {
+        "label": "Iterate and reverse in place",
         "code": [
           "ListNode* prev = nullptr;",
           "ListNode* cur  = head;",
@@ -101,14 +116,18 @@
           "    prev = cur; cur = nxt;       // advance both pointers",
           "}",
           "return prev;                     // new head"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "Overwriting `cur->next` before saving it loses the rest of the list — save `nxt` first.",
       "Always handle the `nullptr` terminator; many bugs are missing tail checks."
     ],
     "complexity": "Access/search O(n), known-node insert/delete O(1), space O(n).",
-    "topics": ["Linked Lists", "Design"],
+    "topics": [
+      "Linked Lists",
+      "Design"
+    ],
     "animation": null
   },
   {
@@ -128,7 +147,8 @@
       "Monotonic stack: keep elements in sorted order, pop violators on push"
     ],
     "snippets": [
-      { "label": "Monotonic stack — next greater element",
+      {
+        "label": "Monotonic stack — next greater element",
         "code": [
           "stack<int> st;                       // holds indices, values decreasing",
           "for (int i = 0; i < n; i++) {",
@@ -138,14 +158,17 @@
           "    }",
           "    st.push(i);",
           "}"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "Check `empty()` before every `top()`/`pop()`.",
       "Decide up front whether the stack holds values or indices — mixing them is a classic bug."
     ],
     "complexity": "All core operations O(1); space O(n).",
-    "topics": ["Stack & Monotonic Stack"],
+    "topics": [
+      "Stack & Monotonic Stack"
+    ],
     "animation": null
   },
   {
@@ -165,7 +188,8 @@
       "In-order traversal of a BST = sorted order"
     ],
     "snippets": [
-      { "label": "Recursive DFS — return value bubbles up",
+      {
+        "label": "Recursive DFS — return value bubbles up",
         "code": [
           "int height(TreeNode* node) {",
           "    if (!node) return 0;                 // base case: empty subtree",
@@ -173,14 +197,18 @@
           "    int r = height(node->right);",
           "    return 1 + max(l, r);                // combine children's answers",
           "}"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "Forgetting the `nullptr` base case — it is the recursion's stop condition.",
       "Assuming balance: a skewed tree degrades every O(log n) bound to O(n)."
     ],
     "complexity": "Balanced ops O(log n); worst case O(n); space O(h) for the call stack.",
-    "topics": ["Trees", "BST"],
+    "topics": [
+      "Trees",
+      "BST"
+    ],
     "animation": null
   },
   {
@@ -201,7 +229,8 @@
       "top-k: keep a size-k heap, evict the worst -> O(n log k)"
     ],
     "snippets": [
-      { "label": "k largest with a size-k min-heap",
+      {
+        "label": "k largest with a size-k min-heap",
         "code": [
           "priority_queue<int, vector<int>, greater<int>> pq;  // min-heap",
           "for (int x : nums) {",
@@ -209,14 +238,17 @@
           "    if (pq.size() > k) pq.pop();    // drop the smallest so far",
           "}",
           "return pq.top();                    // the k-th largest"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "A heap is not searchable — do not expect to find an arbitrary element quickly.",
       "C++ `priority_queue` is a max-heap by default; pass `greater<>` for a min-heap."
     ],
     "complexity": "Peek O(1), push/pop O(log n), build O(n), space O(n).",
-    "topics": ["Heaps / Priority Queue"],
+    "topics": [
+      "Heaps / Priority Queue"
+    ],
     "animation": null
   },
   {
@@ -236,21 +268,26 @@
       "Grid as graph: neighbours are the 4 (or 8) adjacent cells"
     ],
     "snippets": [
-      { "label": "Build an adjacency list from an edge list",
+      {
+        "label": "Build an adjacency list from an edge list",
         "code": [
           "vector<vector<int>> adj(n);",
           "for (auto& e : edges) {",
           "    adj[e[0]].push_back(e[1]);",
           "    adj[e[1]].push_back(e[0]);   // omit this line for a directed graph",
           "}"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "Directed vs undirected changes everything — add one edge or two accordingly.",
       "On a grid, always bounds-check the neighbour before stepping into it."
     ],
     "complexity": "List O(V+E) space; matrix O(V^2) space; traversal O(V+E).",
-    "topics": ["Graphs — BFS / DFS", "Graphs — Advanced"],
+    "topics": [
+      "Graphs — BFS / DFS",
+      "Graphs — Advanced"
+    ],
     "animation": null
   },
   {
@@ -270,7 +307,8 @@
       "space: O(total characters across all words)"
     ],
     "snippets": [
-      { "label": "Trie node and insert",
+      {
+        "label": "Trie node and insert",
         "code": [
           "struct Node { Node* next[26] = {}; bool end = false; };",
           "void insert(Node* root, const string& w) {",
@@ -282,14 +320,17 @@
           "    }",
           "    cur->end = true;",
           "}"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "Forgetting the `end` flag — without it you cannot tell a stored word from a mere prefix.",
       "A trie costs memory; if you never ask prefix questions, a hash set is simpler."
     ],
     "complexity": "Insert/search/prefix O(L); space O(total chars).",
-    "topics": ["Tries"],
+    "topics": [
+      "Tries"
+    ],
     "animation": null
   },
   {
@@ -309,7 +350,8 @@
       "Compute mid as lo + (hi - lo) / 2 to avoid overflow"
     ],
     "snippets": [
-      { "label": "Classic lower_bound on a sorted array",
+      {
+        "label": "Classic lower_bound on a sorted array",
         "code": [
           "int lo = 0, hi = n;             // half-open [lo, hi)",
           "while (lo < hi) {",
@@ -318,14 +360,17 @@
           "    else hi = mid;             // a[mid] >= target, keep it in range",
           "}",
           "return lo;                     // first index with a[lo] >= target"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "Mixing inclusive and half-open conventions mid-loop causes off-by-one and infinite loops.",
       "`(lo + hi) / 2` can overflow; use `lo + (hi - lo) / 2`."
     ],
     "complexity": "O(log n) time, O(1) space.",
-    "topics": ["Binary Search"],
+    "topics": [
+      "Binary Search"
+    ],
     "animation": "anim-binary-search"
   },
   {
@@ -345,7 +390,8 @@
       "BFS on an unweighted graph yields shortest path / fewest steps"
     ],
     "snippets": [
-      { "label": "BFS over a grid, counting layers",
+      {
+        "label": "BFS over a grid, counting layers",
         "code": [
           "queue<pair<int,int>> q; q.push({sr, sc}); seen[sr][sc] = true;",
           "int steps = 0;",
@@ -359,14 +405,19 @@
           "    }",
           "    steps++;",
           "}"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "Mark a node visited when you *enqueue* it in BFS, or it gets added many times.",
       "Deep DFS recursion can blow the call stack — switch to an explicit stack for huge graphs."
     ],
     "complexity": "O(V+E) time; O(V) space for the queue/stack and visited set.",
-    "topics": ["Graphs — BFS / DFS", "Graphs — Advanced", "Trees"],
+    "topics": [
+      "Graphs — BFS / DFS",
+      "Graphs — Advanced",
+      "Trees"
+    ],
     "animation": null
   },
   {
@@ -386,7 +437,8 @@
       "Backtracking: choose -> recurse -> un-choose (restore state)"
     ],
     "snippets": [
-      { "label": "Backtracking skeleton (subsets / permutations)",
+      {
+        "label": "Backtracking skeleton (subsets / permutations)",
         "code": [
           "void backtrack(vector<int>& path, int start) {",
           "    record(path);                       // every node is a valid state",
@@ -396,14 +448,19 @@
           "        path.pop_back();                // un-choose (backtrack)",
           "    }",
           "}"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "A missing or unreachable base case causes infinite recursion / stack overflow.",
       "In backtracking, forgetting to undo the choice corrupts sibling branches."
     ],
     "complexity": "Time depends on the branching; space is O(depth) for the call stack.",
-    "topics": ["Backtracking", "Trees", "Graphs — BFS / DFS"],
+    "topics": [
+      "Backtracking",
+      "Trees",
+      "Graphs — BFS / DFS"
+    ],
     "animation": "anim-recursion"
   },
   {
@@ -423,7 +480,8 @@
       "Custom comparator to sort by a derived key (e.g. interval start)"
     ],
     "snippets": [
-      { "label": "Sort intervals by start, then merge",
+      {
+        "label": "Sort intervals by start, then merge",
         "code": [
           "sort(iv.begin(), iv.end());        // by start ascending",
           "vector<vector<int>> out;",
@@ -432,14 +490,18 @@
           "        out.back()[1] = max(out.back()[1], cur[1]);   // overlap -> extend",
           "    else out.push_back(cur);                          // disjoint -> append",
           "}"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "Sorting throws away original positions — carry the index if the answer needs it.",
       "Do not hand-roll a sort under time pressure; reach for the library and a comparator."
     ],
     "complexity": "O(n log n) time; O(1)-O(n) space depending on the sort.",
-    "topics": ["Greedy / Intervals", "Two Pointers"],
+    "topics": [
+      "Greedy / Intervals",
+      "Two Pointers"
+    ],
     "animation": null
   },
   {
@@ -459,7 +521,8 @@
       "Memoise (top-down) or tabulate (bottom-up); often O(states x transition)"
     ],
     "snippets": [
-      { "label": "1-D DP — house robber recurrence",
+      {
+        "label": "1-D DP — house robber recurrence",
         "code": [
           "int prev2 = 0, prev1 = 0;",
           "for (int x : nums) {",
@@ -469,14 +532,17 @@
           "    prev2 = prev1; prev1 = cur;     // roll the window",
           "}",
           "return prev1;"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "A state that misses a needed dimension gives wrong answers that look almost right.",
       "Initialise base cases explicitly; an off-by-one in the table seed corrupts everything above it."
     ],
     "complexity": "Typically O(#states x transition cost) time and O(#states) space.",
-    "topics": ["Dynamic Programming", "DP"],
+    "topics": [
+      "Dynamic Programming"
+    ],
     "animation": null
   },
   {
@@ -496,20 +562,26 @@
       "Map the input bound to a target complexity before designing"
     ],
     "snippets": [
-      { "label": "Reading complexity off the code",
+      {
+        "label": "Reading complexity off the code",
         "code": [
           "for (int i = 0; i < n; i++)        // O(n)",
           "    for (int j = i+1; j < n; j++)  //   x O(n)  ->  O(n^2) overall",
           "        if (a[i] + a[j] == t) ...; ",
           "// a hash map collapses the inner loop to O(1)  ->  O(n) total"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "Hidden costs count: building a string in a loop, or `substr`, can add a factor of n.",
       "Average vs worst case differ — hash maps are O(1) average but O(n) worst."
     ],
     "complexity": "A lens, not a structure — apply it to every solution you sketch.",
-    "topics": ["Arrays & Hashing", "Dynamic Programming", "Binary Search"],
+    "topics": [
+      "Arrays & Hashing",
+      "Dynamic Programming",
+      "Binary Search"
+    ],
     "animation": null
   },
   {
@@ -530,19 +602,23 @@
       "A bitmask encodes a subset of <= ~20 elements in one int"
     ],
     "snippets": [
-      { "label": "Find the single unique value with XOR",
+      {
+        "label": "Find the single unique value with XOR",
         "code": [
           "int unique = 0;",
           "for (int x : nums) unique ^= x;   // pairs cancel to 0",
           "return unique;                    // the one un-paired value"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "Watch signed-integer shifts and overflow; use unsigned or wider types when shifting high bits.",
       "Operator precedence: `&` is lower than `==`, so parenthesise `(x & 1) == 0`."
     ],
     "complexity": "Each bitwise op O(1); subset enumeration over a mask O(2^bits).",
-    "topics": ["Bit Manipulation"],
+    "topics": [
+      "Bit Manipulation"
+    ],
     "animation": null
   },
   {
@@ -563,21 +639,25 @@
       "Promote to 64-bit before multiplying near INT_MAX"
     ],
     "snippets": [
-      { "label": "Euclid's gcd and safe modular multiply",
+      {
+        "label": "Euclid's gcd and safe modular multiply",
         "code": [
           "long long gcd(long long a, long long b) {",
           "    return b ? gcd(b, a % b) : a;",
           "}",
           "const long long MOD = 1e9 + 7;",
           "long long prod = (a % MOD) * (b % MOD) % MOD;   // no overflow"
-        ] }
+        ]
+      }
     ],
     "pitfalls": [
       "C++ `%` can be negative for negative operands — add `m` then `% m` to normalise.",
       "Multiplying two ints near 2^31 overflows before the modulo; cast first."
     ],
     "complexity": "gcd O(log min(a,b)); primality O(sqrt n); sieve O(n log log n).",
-    "topics": ["Math"],
+    "topics": [
+      "Math"
+    ],
     "animation": null
   }
 ]

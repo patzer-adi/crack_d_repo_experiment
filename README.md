@@ -61,8 +61,8 @@ The full workflow specification lives in [`.claude/commands/batch-lesson.md`](.c
 ```
 crack_d/
 ├── dashboard/
-│   ├── index.html              # 4 tabs: Problems (track/filter), Algorithms, Patterns, Prerequisites
-│   └── prereq-anims.js         # hero step-animations for the Prerequisites tab (PLAN-021)
+│   ├── index.html              # 6 tabs in 2 groups — Practice: Basics, Warm-Up, Problems │ Learn: Foundations, Patterns, Algorithms
+│   └── prereq-anims.js         # hero step-animations for the Foundations tab (PLAN-021)
 ├── static/
 │   ├── lesson.css              # shared styles for all lessons (extracted once)
 │   ├── lesson.js               # shared JS functions for all lessons
@@ -80,7 +80,10 @@ crack_d/
 │   ├── algorithms.json         # algorithm/data-structure catalog (Algorithms tab)
 │   ├── patterns.json           # problem-solving patterns by topic (Patterns tab)
 │   ├── prerequisites.json      # foundational knowledge units (Prerequisites tab, PLAN-021)
-│   └── prerequisites.schema.json # contract for prerequisites.json
+│   ├── prerequisites.schema.json # contract for prerequisites.json
+│   ├── basics.json             # language-agnostic programming drills (Basics tab, PLAN-022)
+│   ├── warmup.json             # 30 easy LeetCode problems, the on-ramp (Warm-Up tab, PLAN-023)
+│   └── roadmap.json            # topic dependency DAG — edges + layout only, no counts (PLAN-024)
 ├── skills/
 │   ├── ds/                     # data structure reference sheets
 │   └── patterns/               # algorithm pattern reference sheets
@@ -92,6 +95,9 @@ crack_d/
 │   ├── render_check.mjs        # headless render gate (Chromium/CDP) — JS errors, active code line, overflow @ desktop + phone
 │   ├── lint_lesson.py          # structural + scaffold linter; delegates to the gate for §7
 │   ├── check_prerequisites.py  # data gate for prerequisites.json (ids, fields, topic cascade, coverage)
+│   ├── check_basics.py         # data gate for basics.json (slugs, ordering, difficulty ramp, sections)
+│   ├── check_warmup.py         # data gate for warmup.json (Easy-only, disjoint from the 211, URL/slug match)
+│   ├── check_roadmap.py        # data gate for roadmap.json (acyclic, full topic coverage, stores no counts)
 │   ├── audit_lessons.py        # corpus-wide sweep: full lint + render, baseline-aware regression gate
 │   ├── audit_baseline.json     # known pre-existing lint/render drift (grandfathered; list only shrinks)
 │   └── doctor.py               # planning-doc / lesson-status reconciliation invariants
@@ -147,18 +153,58 @@ Every generated lesson HTML follows the same 13-section layout (§0–§12), enf
 | 11 | Complexity |
 | 12 | Take home — related problems |
 
+### Tab architecture (PLAN-023)
+
+The dashboard has **six tabs in two labelled groups**, split by what you *do* with them:
+
+```
+  PRACTICE                        │  LEARN
+  Basics · Warm-Up · Problems     │  Foundations · Patterns · Algorithms
+   (70)     (30)      (211)       │
+```
+
+**Practice** holds the things you solve — they have a difficulty, a persistent done/new toggle, and a natural order, so they run left-to-right as the ramp you actually walk. **Learn** holds the things you read — reference material with no completion state. Tabs used to render in the order they were *built*, which put the easiest material (Basics) last and the hardest (Problems) first.
+
+`TABS` in [`dashboard/index.html`](dashboard/index.html) is declared in topbar order and is the single source of truth for both routing and rendering. PLAN-023 renamed **Prerequisites → Foundations**; `TAB_ALIASES` redirects `#prerequisites` to `#foundations`, so links that already exist keep working.
+
+**The ⓘ hover card.** Basics and Warm-Up rows carry a small ⓘ next to the name holding fuller guidance (`details`) and a worked `example`. It is one `.info-card` element at `<body>` level, re-anchored per trigger — deliberately *not* nested in the row, because the table wrappers carry `overflow-x: auto` and would clip a positioned descendant. It opens on mouse hover, on tap, **and** on keyboard focus; mouse-vs-touch is branched on `event.pointerType` rather than a `(hover: hover)` media query, so a hybrid laptop gets both right. On phones (≤560px) it docks as a bottom sheet.
+
+### Topic roadmap (PLAN-024)
+
+The Problems tab has two views, switched with `[ Table | Roadmap ]` in the stats bar. Roadmap renders [`data/roadmap.json`](data/roadmap.json) — a 20-node dependency DAG over the problem topics (Arrays & Hashing → Two Pointers → Binary Search / Linked Lists → **Trees** → Backtracking → DP / Graphs → Graphs Advanced). An arrow means *learn this first*. It answers the question the table can't: **what order do I learn topics in, and what does finishing this one unlock?**
+
+It is a *view* of the 211 problems, not a 7th tab — six tabs is already the practical limit of a nav row (PLAN-023).
+
+**`roadmap.json` stores edges and layout only — never a count.** Every `done/total` on the map is computed from `problems.json` at render time, nodes are coloured by progress (complete / in progress / not started), and clicking a node opens that topic in the table. [`scripts/check_roadmap.py`](scripts/check_roadmap.py) enforces this: it **fails if any node has a `count`/`total`/`n` field**, if any topic in `problems.json` lacks a node (a topic would silently vanish from the map), if an edge dangles, or if the graph has a cycle or a back-edge (checked twice — Kahn's algorithm *and* strict layer monotonicity).
+
+That constraint is the whole point. The diagram this replaces was a PNG whose transcribed counts did not match the dataset and could not track it; a derived count cannot drift.
+
 ### Responsive / mobile (PLAN-020)
 
 The lessons and the dashboard are usable on a phone — no horizontal page scroll down to 360px. It is plain CSS media queries, no framework:
 
 - **Lessons** ([`static/lesson.css`](static/lesson.css)) collapse two-column grids at `≤680px` and, at `≤480px`, trim padding, scale type down, wrap long code, and let the fixed-height dry-run panels grow. The render gate ([`scripts/render_check.mjs`](scripts/render_check.mjs)) enforces no overflow at 390px going forward.
-- **Dashboard** ([`dashboard/index.html`](dashboard/index.html)) hides low-value table columns at `≤700px`/`≤480px` and lets the wide tables scroll inside their own wrapper, so every column stays reachable while the page itself never scrolls sideways. At `≤480px` the topbar tab strip scrolls horizontally inside the bar so the four tabs never widen the page.
+- **Dashboard** ([`dashboard/index.html`](dashboard/index.html)) hides low-value table columns at `≤700px`/`≤480px`, and every wide table scrolls inside its own wrapper so the page itself never scrolls sideways. The tab strip scrolls horizontally inside the topbar (group labels drop at `≤900px`) so six tabs never widen the page. PLAN-023 widened the check to seven viewports (1440 → 360px), which caught a real bug: the table-wrapper `overflow-x` had been scoped to `≤480px`, so a 768px tablet in portrait scrolled the whole page sideways. It is now unconditional.
 
-### Prerequisites tab (PLAN-021)
+### Foundations tab (PLAN-021; renamed from Prerequisites by PLAN-023)
 
 The dashboard's fourth tab answers "what should I understand *before* attempting these problems?". [`data/prerequisites.json`](data/prerequisites.json) holds foundational knowledge units at three levels — **data structures**, **core algorithms**, and **foundational concepts** — each rendered as a card with a plain-language analogy, a lucid explanation, short code snippets, common pitfalls, and a complexity line. Three cards (Hash Map, Binary Search, Recursion) carry a lightweight inline step-animation from [`dashboard/prereq-anims.js`](dashboard/prereq-anims.js).
 
 The "→ N problems" cascade is **derived from each problem's `topic`**, never stored per-problem: a prerequisite lists the topics it unlocks, and the count + clickable topic pills are computed live from `problems.json`. The seed set maps to 20 of the 21 topics, covering 208/211 problems. [`scripts/check_prerequisites.py`](scripts/check_prerequisites.py) is the data gate — it fails if any `topics[]` value is not a real problem topic (so the cascade can never silently resolve to zero), if a referenced animation is unregistered, or if coverage drops below 90 %.
+
+### Basics tab (PLAN-022)
+
+The dashboard's fifth tab is the rung *below* Prerequisites: **language-agnostic learn-to-program drills** — I/O, arithmetic, conditionals, loops, and nested-loop patterns — curated from a user-supplied practice sheet, de-duplicated, difficulty-ramped, and stripped of any one language's syntax. [`data/basics.json`](data/basics.json) holds 70 entries across 7 collapsible sections (Output/Input & Variables → Arithmetic & Expressions → Conditionals → Loop Fundamentals → Digits, Divisors & Primes → Interactive Programs & Loop Control → Nested Loops & Patterns), each with a `statement` (the drill, in prose) and a `source` trace back to the original sheet (or `"new"` for the 12 gap-filling additions). The tab mirrors the Problems tab's idiom — collapsible tables, difficulty badges, a persistent done/new status toggle, search + filters — minus the columns that only make sense for a LeetCode problem (LC number, URL, algorithm cross-links, lesson link).
+
+The status toggle reuses `PATCH /api/status` with an added `dataset` field (`"problems"` default | `"basics"` | `"warmup"`) so [`scripts/server.py`](scripts/server.py) writes the right JSON file. [`scripts/check_basics.py`](scripts/check_basics.py) is the data gate — it fails on slug collisions with `data/problems.json`, non-kebab or duplicate slugs, out-of-order `order` values, a difficulty that drops within a section (the "build up gradually" guarantee), or an unrecognized section/source-ref format. Since PLAN-023 it also requires a `details` blurb and a well-formed `example` on every entry — those feed the ⓘ hover card, and a missing one ships an empty popover.
+
+### Warm-Up tab (PLAN-023)
+
+There is a cliff between Basics and Problems. Basics ends at nested loops and prime factorisation — no hash maps, no trees, no recursion beyond a factorial — while Problems opens on a 211-problem DSA set that is 73 % Medium/Hard and assumes all of it. **Warm-Up** is the ladder between them: [`data/warmup.json`](data/warmup.json) holds 30 **easy** LeetCode problems across 9 sections (Arrays & Hashing → Strings → Two Pointers & Sliding Window → Binary Search → Stack → Linked Lists → Trees → Math & Bits → Dynamic Programming), each picked because it introduces exactly one transferable idea.
+
+That idea is stored in a `skill` field ("prefix sums — a running accumulator", "the recursive tree template", "binary search on a predicate boundary") and rendered as a pill under the statement, so the tab reads as a curriculum rather than a list. All 30 are **disjoint from the 211** — Warm-Up is additive, so the catalogue is 70 + 30 + 211 = **311 problems with no double-entry**.
+
+[`scripts/check_warmup.py`](scripts/check_warmup.py) is the data gate. Beyond the usual field/slug/order checks it enforces the three invariants that make Warm-Up *Warm-Up*: exactly 30 entries and **all Easy** (a Medium belongs in Problems); slug **and** `lc_num` disjoint from `problems.json` and `basics.json` (an overlap would silently double-count a problem across two tabs); and the `url` slug matching `slug` (a row that links somewhere other than what it describes is worse than a row with no link).
 
 ---
 
@@ -355,7 +401,13 @@ Implementation work is tracked under `AGENT_MD/plan/`:
 - `current_state_report.md` — living snapshot of project state.
 - `rules.md` — authoring conventions for plan and report documents.
 
-The latest plan: [PLAN-021](AGENT_MD/plan/plans/PLAN-021_prerequisites_section.md) — a new **Prerequisites** dashboard tab (foundational data-structure / algorithm / concept knowledge, topic-derived problem cascade, a few hero animations), landed 2026-06-05 ([REPORT-021](AGENT_MD/plan/reports/REPORT-021_prerequisites_section.md)).
+The latest plan: [PLAN-024](AGENT_MD/plan/plans/PLAN-024_topic_roadmap_and_branding.md) — the **topic roadmap** (a live, clickable 20-node dependency DAG behind a `Table | Roadmap` switch on the Problems tab, with every count derived from the problem set rather than stored) and the **crack_IT** identity (pinned logo + favicon, replacing a topbar that picked a random logo on every page load), landed 2026-07-14 ([REPORT-024](AGENT_MD/plan/reports/REPORT-024_topic_roadmap_and_branding.md)).
+
+It builds on [PLAN-023](AGENT_MD/plan/plans/PLAN-023_tab_architecture_and_warmup.md) — regrouped the dashboard into six tabs across two groups (**Practice** ‖ **Learn**), renamed Prerequisites → **Foundations**, gave every Basics problem a fuller `details` blurb and a worked example behind an ⓘ hover card, and added the **Warm-Up** tab (30 easy LeetCode problems bridging Basics and the 211), landed 2026-07-14 ([REPORT-023](AGENT_MD/plan/reports/REPORT-023_tab_architecture_and_warmup.md)).
+
+It builds on [PLAN-022](AGENT_MD/plan/plans/PLAN-022_basics_problems_tab.md) — a new **Basics** dashboard tab (70 curated, language-agnostic learn-to-program drills across 7 sections, difficulty-ramped, sourced from a user-supplied practice sheet), landed 2026-07-14 ([REPORT-022](AGENT_MD/plan/reports/REPORT-022_basics_problems_tab.md)).
+
+It builds on [PLAN-021](AGENT_MD/plan/plans/PLAN-021_prerequisites_section.md) — a new **Prerequisites** dashboard tab (foundational data-structure / algorithm / concept knowledge, topic-derived problem cascade, a few hero animations), landed 2026-06-05 ([REPORT-021](AGENT_MD/plan/reports/REPORT-021_prerequisites_section.md)).
 
 It builds on [PLAN-020](AGENT_MD/plan/plans/PLAN-020_mobile_friendly_responsive.md) — mobile-friendly responsive layout for the lessons and dashboard (CSS-only breakpoints; the render gate now also asserts no overflow at 390px), landed 2026-06-04. It builds on [PLAN-019](AGENT_MD/plan/plans/PLAN-019_antidrift_visual_gate_and_doc_reconciliation.md) — anti-drift hardening (headless render gate, corpus re-verification, independent `verify.py` references, and a `doctor.py` for planning-doc/lesson reconciliation), landed 2026-06-03.
 

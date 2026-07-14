@@ -1,0 +1,512 @@
+[
+  {
+    "order": 10,
+    "lc_num": 1480,
+    "slug": "running-sum-of-1d-array",
+    "name": "Running Sum of 1d Array",
+    "url": "https://leetcode.com/problems/running-sum-of-1d-array/",
+    "section": "Arrays & Hashing",
+    "difficulty": "Easy",
+    "statement": "Return an array where each position holds the sum of every element up to and including it.",
+    "details": "Carry one accumulator across the array instead of re-summing a prefix each time — that turns an O(n²) solution into O(n). This is the prefix-sum idea in its smallest possible form.",
+    "example": {
+      "input": "nums = [1,2,3,4]",
+      "output": "[1,3,6,10]"
+    },
+    "skill": "prefix sums — a running accumulator",
+    "status": "new"
+  },
+  {
+    "order": 20,
+    "lc_num": 485,
+    "slug": "max-consecutive-ones",
+    "name": "Max Consecutive Ones",
+    "url": "https://leetcode.com/problems/max-consecutive-ones/",
+    "section": "Arrays & Hashing",
+    "difficulty": "Easy",
+    "statement": "Given a binary array, return the length of the longest unbroken run of 1s.",
+    "details": "Keep a current-run counter and a best-so-far. Reset the current run on every 0, and remember to take the best one final time after the loop — the longest run ending at the last element is the case people miss.",
+    "example": {
+      "input": "nums = [1,1,0,1,1,1]",
+      "output": "3"
+    },
+    "skill": "running counter with a best-so-far",
+    "status": "new"
+  },
+  {
+    "order": 30,
+    "lc_num": 27,
+    "slug": "remove-element",
+    "name": "Remove Element",
+    "url": "https://leetcode.com/problems/remove-element/",
+    "section": "Arrays & Hashing",
+    "difficulty": "Easy",
+    "statement": "Remove every occurrence of a value from an array in place and return the new length.",
+    "details": "Your first two-index array walk: a read index scanning every element, and a write index marking where the next keeper goes. Whatever sits past the write index afterwards does not matter.",
+    "example": {
+      "input": "nums = [3,2,2,3], val = 3",
+      "output": "2  (nums starts [2,2,…])"
+    },
+    "skill": "in-place read/write pointer",
+    "status": "new"
+  },
+  {
+    "order": 40,
+    "lc_num": 26,
+    "slug": "remove-duplicates-from-sorted-array",
+    "name": "Remove Duplicates from Sorted Array",
+    "url": "https://leetcode.com/problems/remove-duplicates-from-sorted-array/",
+    "section": "Arrays & Hashing",
+    "difficulty": "Easy",
+    "statement": "Collapse a sorted array so each distinct value appears once, in place, and return the new length.",
+    "details": "The same read/write pointer as Remove Element, but the keep-test is now \"differs from the last value I wrote\" rather than a fixed value. Sortedness is what makes duplicates adjacent — this does not work on unsorted input.",
+    "example": {
+      "input": "nums = [1,1,2,2,3]",
+      "output": "3  (nums starts [1,2,3,…])"
+    },
+    "skill": "in-place dedup on sorted data",
+    "status": "new"
+  },
+  {
+    "order": 50,
+    "lc_num": 88,
+    "slug": "merge-sorted-array",
+    "name": "Merge Sorted Array",
+    "url": "https://leetcode.com/problems/merge-sorted-array/",
+    "section": "Arrays & Hashing",
+    "difficulty": "Easy",
+    "statement": "Merge two sorted arrays into the first one, which has room at the end for both.",
+    "details": "Filling forwards overwrites values you still need. Fill from the back instead, taking the larger tail each step — the spare room is exactly where you want to write. This back-to-front trick shows up again and again.",
+    "example": {
+      "input": "nums1 = [1,2,3,0,0,0], m = 3, nums2 = [2,5,6], n = 3",
+      "output": "[1,2,2,3,5,6]"
+    },
+    "skill": "merging from the back",
+    "status": "new"
+  },
+  {
+    "order": 60,
+    "lc_num": 242,
+    "slug": "valid-anagram",
+    "name": "Valid Anagram",
+    "url": "https://leetcode.com/problems/valid-anagram/",
+    "section": "Arrays & Hashing",
+    "difficulty": "Easy",
+    "statement": "Decide whether two strings use exactly the same letters with the same multiplicities.",
+    "details": "Sorting both and comparing works and is O(n log n). Counting each letter into a map (or a 26-slot array) and comparing the counts is O(n) — this is the moment the hash-map habit should start. Different lengths are an instant no.",
+    "example": {
+      "input": "s = \"anagram\", t = \"nagaram\"",
+      "output": "true"
+    },
+    "skill": "frequency counting with a hash map",
+    "status": "new"
+  },
+  {
+    "order": 70,
+    "lc_num": 383,
+    "slug": "ransom-note",
+    "name": "Ransom Note",
+    "url": "https://leetcode.com/problems/ransom-note/",
+    "section": "Arrays & Hashing",
+    "difficulty": "Easy",
+    "statement": "Can the first string be built from the letters of the second, each letter used at most once?",
+    "details": "Valid Anagram with an inequality instead of an equality: count the magazine's letters, then spend them on the note. It is a containment check, not an equality check — the magazine is allowed leftovers.",
+    "example": {
+      "input": "ransomNote = \"aa\", magazine = \"aab\"",
+      "output": "true"
+    },
+    "skill": "frequency counting — containment",
+    "status": "new"
+  },
+  {
+    "order": 80,
+    "lc_num": 448,
+    "slug": "find-all-numbers-disappeared-in-an-array",
+    "name": "Find All Numbers Disappeared in an Array",
+    "url": "https://leetcode.com/problems/find-all-numbers-disappeared-in-an-array/",
+    "section": "Arrays & Hashing",
+    "difficulty": "Easy",
+    "statement": "In an array of n values drawn from 1..n, report every value from 1..n that never appears.",
+    "details": "A set gets you there immediately. The intended trick is better: because the values are exactly 1..n, the array can be its own hash table — visit index |v| − 1 for each value and mark it (negate it). Whatever is still positive at the end is missing.",
+    "example": {
+      "input": "nums = [4,3,2,7,8,2,3,1]",
+      "output": "[5,6]"
+    },
+    "skill": "the array as its own hash table",
+    "status": "new"
+  },
+  {
+    "order": 90,
+    "lc_num": 344,
+    "slug": "reverse-string",
+    "name": "Reverse String",
+    "url": "https://leetcode.com/problems/reverse-string/",
+    "section": "Strings",
+    "difficulty": "Easy",
+    "statement": "Reverse an array of characters in place, using no extra array.",
+    "details": "Two pointers walking toward each other, swapping as they go, stopping when they meet. This is the cleanest possible introduction to the two-pointer pattern — the loop runs n/2 times, not n.",
+    "example": {
+      "input": "s = ['h','e','l','l','o']",
+      "output": "['o','l','l','e','h']"
+    },
+    "skill": "two pointers converging",
+    "status": "new"
+  },
+  {
+    "order": 100,
+    "lc_num": 58,
+    "slug": "length-of-last-word",
+    "name": "Length of Last Word",
+    "url": "https://leetcode.com/problems/length-of-last-word/",
+    "section": "Strings",
+    "difficulty": "Easy",
+    "statement": "Return the length of the final word in a string, where words are separated by spaces.",
+    "details": "Splitting on spaces works, but scanning backwards is the real lesson: skip trailing spaces first, then count letters until the next space or the start. Trailing spaces are the whole test — \"hello   \" must still answer 5.",
+    "example": {
+      "input": "s = \"Hello World  \"",
+      "output": "5"
+    },
+    "skill": "scanning backwards past padding",
+    "status": "new"
+  },
+  {
+    "order": 110,
+    "lc_num": 14,
+    "slug": "longest-common-prefix",
+    "name": "Longest Common Prefix",
+    "url": "https://leetcode.com/problems/longest-common-prefix/",
+    "section": "Strings",
+    "difficulty": "Easy",
+    "statement": "Find the longest string that every one of the given strings begins with.",
+    "details": "Walk the columns: compare character i of every string, and stop at the first mismatch or the first string that runs out. Empty input and an empty string in the list both answer \"\" — get those before optimising.",
+    "example": {
+      "input": "strs = [\"flower\",\"flow\",\"flight\"]",
+      "output": "\"fl\""
+    },
+    "skill": "column-wise scanning",
+    "status": "new"
+  },
+  {
+    "order": 120,
+    "lc_num": 13,
+    "slug": "roman-to-integer",
+    "name": "Roman to Integer",
+    "url": "https://leetcode.com/problems/roman-to-integer/",
+    "section": "Strings",
+    "difficulty": "Easy",
+    "statement": "Convert a Roman numeral string to its integer value.",
+    "details": "The one rule that matters: a symbol worth less than the one after it is subtracted, not added (IV is 4, VI is 6). So compare each character to its right-hand neighbour and pick the sign — no special-casing the six subtractive pairs needed.",
+    "example": {
+      "input": "s = \"MCMXCIV\"",
+      "output": "1994"
+    },
+    "skill": "look-ahead by one character",
+    "status": "new"
+  },
+  {
+    "order": 130,
+    "lc_num": 977,
+    "slug": "squares-of-a-sorted-array",
+    "name": "Squares of a Sorted Array",
+    "url": "https://leetcode.com/problems/squares-of-a-sorted-array/",
+    "section": "Two Pointers & Sliding Window",
+    "difficulty": "Easy",
+    "statement": "Given a sorted array that may contain negatives, return the squares in sorted order.",
+    "details": "Squaring then sorting is O(n log n) and misses the point. The largest square is always at one end or the other, so run two pointers inward from both ends and fill the result from the back in O(n).",
+    "example": {
+      "input": "nums = [-4,-1,0,3,10]",
+      "output": "[0,1,9,16,100]"
+    },
+    "skill": "two pointers from both ends",
+    "status": "new"
+  },
+  {
+    "order": 140,
+    "lc_num": 643,
+    "slug": "maximum-average-subarray-i",
+    "name": "Maximum Average Subarray I",
+    "url": "https://leetcode.com/problems/maximum-average-subarray-i/",
+    "section": "Two Pointers & Sliding Window",
+    "difficulty": "Easy",
+    "statement": "Find the highest average over any contiguous block of exactly k elements.",
+    "details": "The fixed-size sliding window in its purest form: sum the first k, then for each step add the entering element and subtract the leaving one. Never re-sum the window. Compare sums, not averages — dividing every time just adds float error.",
+    "example": {
+      "input": "nums = [1,12,-5,-6,50,3], k = 4",
+      "output": "12.75"
+    },
+    "skill": "fixed-size sliding window",
+    "status": "new"
+  },
+  {
+    "order": 150,
+    "lc_num": 35,
+    "slug": "search-insert-position",
+    "name": "Search Insert Position",
+    "url": "https://leetcode.com/problems/search-insert-position/",
+    "section": "Binary Search",
+    "difficulty": "Easy",
+    "statement": "In a sorted array, return the index of a target — or where it would go if absent.",
+    "details": "Plain binary search with one twist: when the loop ends without a hit, the low pointer is already sitting exactly where the target belongs. Understanding *why* that is true is the real exercise, and it is the foundation of every lower-bound search you write later.",
+    "example": {
+      "input": "nums = [1,3,5,6], target = 2",
+      "output": "1"
+    },
+    "skill": "binary search — lower bound",
+    "status": "new"
+  },
+  {
+    "order": 160,
+    "lc_num": 374,
+    "slug": "guess-number-higher-or-lower",
+    "name": "Guess Number Higher or Lower",
+    "url": "https://leetcode.com/problems/guess-number-higher-or-lower/",
+    "section": "Binary Search",
+    "difficulty": "Easy",
+    "statement": "Find a hidden number in 1..n using an oracle that answers higher, lower, or correct.",
+    "details": "Binary search with the array taken away — all you have is a comparison. This is the same game as the Basics number-guessing drill, and it makes the point that binary search is about halving a search space, not about arrays.",
+    "example": {
+      "input": "n = 10, pick = 6",
+      "output": "6  (found in ≤ 4 guesses)"
+    },
+    "skill": "binary search on an answer space",
+    "status": "new"
+  },
+  {
+    "order": 170,
+    "lc_num": 278,
+    "slug": "first-bad-version",
+    "name": "First Bad Version",
+    "url": "https://leetcode.com/problems/first-bad-version/",
+    "section": "Binary Search",
+    "difficulty": "Easy",
+    "statement": "Versions are good then bad; find the first bad one with the fewest API calls.",
+    "details": "Binary search on a monotone predicate: once a version is bad, every later one is too. You are not hunting a value, you are hunting the boundary — keep the mid when it is bad rather than discarding it, or you will step past the answer. Also: (lo + hi) / 2 can overflow; use lo + (hi − lo) / 2.",
+    "example": {
+      "input": "n = 5, first bad = 4",
+      "output": "4"
+    },
+    "skill": "binary search on a predicate boundary",
+    "status": "new"
+  },
+  {
+    "order": 180,
+    "lc_num": 682,
+    "slug": "baseball-game",
+    "name": "Baseball Game",
+    "url": "https://leetcode.com/problems/baseball-game/",
+    "section": "Stack",
+    "difficulty": "Easy",
+    "statement": "Apply a list of scoring operations — a number, '+', 'D', or 'C' — and sum the final record.",
+    "details": "The operations only ever touch the most recent entries, which is precisely what a stack is for. 'C' pops, 'D' pushes double the top, '+' pushes the sum of the top two. A gentle way to meet the stack before the harder ones.",
+    "example": {
+      "input": "ops = [\"5\",\"2\",\"C\",\"D\",\"+\"]",
+      "output": "30"
+    },
+    "skill": "stack as an undo/history log",
+    "status": "new"
+  },
+  {
+    "order": 190,
+    "lc_num": 1047,
+    "slug": "remove-all-adjacent-duplicates-in-string",
+    "name": "Remove All Adjacent Duplicates in String",
+    "url": "https://leetcode.com/problems/remove-all-adjacent-duplicates-in-string/",
+    "section": "Stack",
+    "difficulty": "Easy",
+    "statement": "Repeatedly delete adjacent equal pairs until none remain, and return what is left.",
+    "details": "Deleting a pair can create a new pair behind it, so a single left-to-right pass with deletion is wrong. Push each character, and pop instead of pushing when it matches the top — one pass, and the stack handles the cascade for you. This is the same shape as Valid Parentheses.",
+    "example": {
+      "input": "s = \"abbaca\"",
+      "output": "\"ca\""
+    },
+    "skill": "stack for cancelling neighbours",
+    "status": "new"
+  },
+  {
+    "order": 200,
+    "lc_num": 876,
+    "slug": "middle-of-the-linked-list",
+    "name": "Middle of the Linked List",
+    "url": "https://leetcode.com/problems/middle-of-the-linked-list/",
+    "section": "Linked Lists",
+    "difficulty": "Easy",
+    "statement": "Return the middle node of a singly linked list — the second one if the length is even.",
+    "details": "Counting the length then walking half of it needs two passes. Instead run a slow pointer one step and a fast pointer two steps: when fast falls off the end, slow is at the middle. This slow/fast idea is the whole basis of cycle detection.",
+    "example": {
+      "input": "1 → 2 → 3 → 4 → 5",
+      "output": "3 → 4 → 5"
+    },
+    "skill": "slow/fast pointers",
+    "status": "new"
+  },
+  {
+    "order": 210,
+    "lc_num": 83,
+    "slug": "remove-duplicates-from-sorted-list",
+    "name": "Remove Duplicates from Sorted List",
+    "url": "https://leetcode.com/problems/remove-duplicates-from-sorted-list/",
+    "section": "Linked Lists",
+    "difficulty": "Easy",
+    "statement": "Delete duplicate nodes from a sorted linked list so each value appears once.",
+    "details": "Your first pointer surgery: when the next node holds the same value, splice it out by pointing past it — and do not advance, because the new next node may be a duplicate too. Advancing unconditionally is the classic bug.",
+    "example": {
+      "input": "1 → 1 → 2 → 3 → 3",
+      "output": "1 → 2 → 3"
+    },
+    "skill": "relinking nodes in place",
+    "status": "new"
+  },
+  {
+    "order": 220,
+    "lc_num": 100,
+    "slug": "same-tree",
+    "name": "Same Tree",
+    "url": "https://leetcode.com/problems/same-tree/",
+    "section": "Trees",
+    "difficulty": "Easy",
+    "statement": "Decide whether two binary trees have identical structure and identical values.",
+    "details": "The template for every tree problem you will ever write: handle the null cases, compare this node, then recurse left-with-left and right-with-right. Both null is true; one null is false. Get this shape into your fingers.",
+    "example": {
+      "input": "p = [1,2,3], q = [1,2,3]",
+      "output": "true"
+    },
+    "skill": "the recursive tree template",
+    "status": "new"
+  },
+  {
+    "order": 230,
+    "lc_num": 101,
+    "slug": "symmetric-tree",
+    "name": "Symmetric Tree",
+    "url": "https://leetcode.com/problems/symmetric-tree/",
+    "section": "Trees",
+    "difficulty": "Easy",
+    "statement": "Decide whether a binary tree is a mirror image of itself.",
+    "details": "Same Tree with the recursion crossed over: compare left-with-right and right-with-left. The insight is that you cannot answer this by looking at one node at a time — you must walk two nodes in step, which means a helper taking two arguments.",
+    "example": {
+      "input": "root = [1,2,2,3,4,4,3]",
+      "output": "true"
+    },
+    "skill": "mirrored two-node recursion",
+    "status": "new"
+  },
+  {
+    "order": 240,
+    "lc_num": 112,
+    "slug": "path-sum",
+    "name": "Path Sum",
+    "url": "https://leetcode.com/problems/path-sum/",
+    "section": "Trees",
+    "difficulty": "Easy",
+    "statement": "Is there a root-to-leaf path whose node values add up to a target?",
+    "details": "Carry the remaining target down the recursion, subtracting as you descend, and check it only at a leaf. Two traps: a leaf is a node with *no* children (not a node with one), and negative values mean you cannot prune early.",
+    "example": {
+      "input": "root = [5,4,8,11,null,13,4,7,2], targetSum = 22",
+      "output": "true  (5 → 4 → 11 → 2)"
+    },
+    "skill": "carrying state down a recursion",
+    "status": "new"
+  },
+  {
+    "order": 250,
+    "lc_num": 700,
+    "slug": "search-in-a-binary-search-tree",
+    "name": "Search in a Binary Search Tree",
+    "url": "https://leetcode.com/problems/search-in-a-binary-search-tree/",
+    "section": "Trees",
+    "difficulty": "Easy",
+    "statement": "Find the subtree rooted at a given value in a BST, or report that it is absent.",
+    "details": "The BST property earns its keep: compare with the node and go left or right — never both. That is binary search wearing a tree costume, O(height) instead of O(n). If you find yourself searching both subtrees, you have not used the ordering.",
+    "example": {
+      "input": "root = [4,2,7,1,3], val = 2",
+      "output": "[2,1,3]"
+    },
+    "skill": "exploiting the BST ordering",
+    "status": "new"
+  },
+  {
+    "order": 260,
+    "lc_num": 9,
+    "slug": "palindrome-number",
+    "name": "Palindrome Number",
+    "url": "https://leetcode.com/problems/palindrome-number/",
+    "section": "Math & Bits",
+    "difficulty": "Easy",
+    "statement": "Decide whether an integer reads the same forwards and backwards, without converting it to a string.",
+    "details": "The Basics digit-reversal drill, now with the string escape hatch closed. Negatives are never palindromes (the minus sign). The neat refinement: reverse only the back half and compare it with the front half, which cannot overflow.",
+    "example": {
+      "input": "x = 121",
+      "output": "true"
+    },
+    "skill": "digit extraction without strings",
+    "status": "new"
+  },
+  {
+    "order": 270,
+    "lc_num": 191,
+    "slug": "number-of-1-bits",
+    "name": "Number of 1 Bits",
+    "url": "https://leetcode.com/problems/number-of-1-bits/",
+    "section": "Math & Bits",
+    "difficulty": "Easy",
+    "statement": "Count the set bits in an unsigned integer.",
+    "details": "Shift-and-test all 32 bits is the honest answer. Then learn the trick: n & (n − 1) clears the lowest set bit, so the loop runs once per 1-bit instead of 32 times. That identity is worth memorising — it reappears constantly in bit problems.",
+    "example": {
+      "input": "n = 11  (1011₂)",
+      "output": "3"
+    },
+    "skill": "bit tricks — n & (n−1)",
+    "status": "new"
+  },
+  {
+    "order": 280,
+    "lc_num": 202,
+    "slug": "happy-number",
+    "name": "Happy Number",
+    "url": "https://leetcode.com/problems/happy-number/",
+    "section": "Math & Bits",
+    "difficulty": "Easy",
+    "statement": "Repeatedly replace a number by the sum of the squares of its digits; does it reach 1, or loop forever?",
+    "details": "The digit-squaring is easy — the question is how you detect the endless loop. A set of seen values works. The elegant answer is slow/fast pointers over the sequence, exactly as in linked-list cycle detection: the sequence *is* a linked list, with the successor function as the next pointer.",
+    "example": {
+      "input": "n = 19",
+      "output": "true  (19 → 82 → 68 → 100 → 1)"
+    },
+    "skill": "cycle detection on a sequence",
+    "status": "new"
+  },
+  {
+    "order": 290,
+    "lc_num": 509,
+    "slug": "fibonacci-number",
+    "name": "Fibonacci Number",
+    "url": "https://leetcode.com/problems/fibonacci-number/",
+    "section": "Dynamic Programming",
+    "difficulty": "Easy",
+    "statement": "Return the nth Fibonacci number.",
+    "details": "Write it three ways and watch the cost collapse: plain recursion (exponential — it recomputes the same subtrees), recursion with memoisation (linear), and a bottom-up loop keeping two variables (linear, constant space). That progression *is* dynamic programming, in one problem.",
+    "example": {
+      "input": "n = 10",
+      "output": "55"
+    },
+    "skill": "memoisation vs. bottom-up",
+    "status": "new"
+  },
+  {
+    "order": 300,
+    "lc_num": 746,
+    "slug": "min-cost-climbing-stairs",
+    "name": "Min Cost Climbing Stairs",
+    "url": "https://leetcode.com/problems/min-cost-climbing-stairs/",
+    "section": "Dynamic Programming",
+    "difficulty": "Easy",
+    "statement": "Climb stairs one or two steps at a time, paying each step's cost; find the cheapest way to the top.",
+    "details": "Your first real DP recurrence: the cheapest way to reach step i is its own cost plus the cheaper of the two steps you could have come from. You may start at step 0 or step 1, and the \"top\" is one past the last step — both of those edges are where the off-by-one lives.",
+    "example": {
+      "input": "cost = [10,15,20]",
+      "output": "15"
+    },
+    "skill": "a first DP recurrence",
+    "status": "new"
+  }
+]

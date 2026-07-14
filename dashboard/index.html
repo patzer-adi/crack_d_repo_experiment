@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>crack_d — DSA Intuition Lab</title>
+  <title>crack_IT — Intuition Lab</title>
+  <link rel="icon" type="image/png" href="img/favicon.png">
   <style>
     :root {
       --bg: #efede8; --bg2: #e5e2dc; --bg3: #dbd8d2;
@@ -34,11 +35,30 @@
       padding: 0 24px;
       display: flex; align-items: center;
       height: var(--topbar-h); position: sticky; top: 0; z-index: 110;
+      /* Six tabs plus the wordmark can exceed the viewport well before the 900px
+         breakpoint where the tablet rules used to introduce this. Scroll the
+         strip inside the bar at any width — when it fits, no scrollbar appears. */
+      overflow-x: auto;
     }
-    .topbar-logo { height: 42px; width: auto; margin-right: 24px; }
+    .topbar-logo { height: 34px; width: auto; margin-right: 24px; }
     .topbar-spacer { flex: 1; }
 
-    /* ── TABS (now inside topbar) ── */
+    /* ── TABS (now inside topbar) ──
+       PLAN-023: two labelled groups — Practice (solve) and Learn (read) —
+       separated by a hairline. The label sits above its buttons so the group
+       reads as one unit without stealing horizontal room from the tabs. */
+    .tab-nav { display: flex; align-items: stretch; align-self: stretch; min-width: 0; }
+    .tab-group { display: flex; flex-direction: column; justify-content: flex-end; }
+    .tab-group-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .09em; color: var(--text3); opacity: .7;
+      padding: 0 16px 1px; line-height: 1.4;
+    }
+    .tab-group-btns { display: flex; align-items: stretch; flex: 1; }
+    .tab-group-sep {
+      width: 1px; background: var(--border2);
+      margin: 14px 12px; align-self: stretch;
+    }
     .tab-btn {
       font-size: 16px; font-weight: 500; padding: 0 16px;
       border: none; background: none; color: var(--text3); cursor: pointer;
@@ -48,6 +68,52 @@
     }
     .tab-btn:hover { color: var(--text2); }
     .tab-btn.active { color: var(--text); border-bottom-color: var(--text); }
+    .tab-btn:focus-visible { outline: 2px solid var(--accent, #6ea8fe); outline-offset: -2px; }
+
+    /* ── INFO HOVER CARD (PLAN-023) ──
+       One popover element lives at the end of <body> and is re-anchored on
+       demand. It is deliberately NOT a child of the row: the table wrappers get
+       `overflow-x: auto` on phones, which would clip an absolutely-positioned
+       descendant. Opens on hover for mice, on click/tap for everything. */
+    .info-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 17px; height: 17px; margin-left: 7px; padding: 0;
+      border: 1px solid var(--border2); border-radius: 50%;
+      background: none; color: var(--text3);
+      font-size: 11px; font-weight: 700; font-style: italic;
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1; cursor: pointer; vertical-align: middle;
+      transition: color .12s, border-color .12s, background .12s;
+    }
+    .info-btn:hover, .info-btn[aria-expanded="true"] {
+      color: var(--text); border-color: var(--text3); background: var(--bg3, var(--bg2));
+    }
+    .info-btn:focus-visible { outline: 2px solid var(--accent, #6ea8fe); outline-offset: 2px; }
+
+    .info-card {
+      position: fixed; z-index: 200; display: none;
+      width: min(400px, calc(100vw - 24px));
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: 10px; padding: 13px 15px;
+      box-shadow: 0 10px 32px rgba(0, 0, 0, .38);
+    }
+    .info-card.open { display: block; }
+    .info-card-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .info-card-details { font-size: 13px; line-height: 1.55; color: var(--text2); }
+    .info-card-ex {
+      margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--border);
+      display: grid; grid-template-columns: auto 1fr; gap: 3px 10px;
+      font-size: 12.5px;
+    }
+    .info-card-ex dt {
+      color: var(--text3); font-weight: 600; text-transform: uppercase;
+      font-size: 10px; letter-spacing: .06em; padding-top: 3px;
+    }
+    .info-card-ex dd {
+      margin: 0; color: var(--text); white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px; line-height: 1.5; overflow-wrap: anywhere;
+    }
 
     /* ── STATS BAR ── */
     .stats-bar {
@@ -487,46 +553,163 @@
       .stats-bar, .filter-bar { padding: 8px 14px; }
       .filter-search { width: 140px; }
     }
+    /* ── BASICS (PLAN-022) & WARM-UP (PLAN-023) TABS ──
+       Both render the same row shape: name + statement + ⓘ, so they share the
+       styles below rather than duplicating them. */
+    .bas-name { font-size: 17px; font-weight: 500; color: var(--text); }
+    .bas-statement { color: var(--text3); font-size: 13.5px; line-height: 1.5; margin-top: 3px; max-width: 72ch; }
+    .bas-note { color: var(--text3); font-size: 12.5px; font-style: italic; margin-top: 4px; max-width: 72ch; }
+    .bas-skill {
+      display: inline-block; margin-top: 5px; padding: 1px 8px;
+      font-size: 11.5px; color: var(--text3);
+      border: 0.5px solid var(--border); border-radius: 20px; background: var(--bg2);
+    }
+
+    /* ── ROADMAP VIEW (PLAN-024) ──
+       The topic DAG, rendered as SVG rather than shipped as an image: counts are
+       derived from problems.json at render time, nodes are clickable, and it
+       inherits the theme. A PNG can do none of those. */
+    .stats-spacer { flex: 1; min-width: 8px; }
+    .view-toggle .pill { font-weight: 500; }
+
+    .roadmap-legend { margin: 0 0 16px; padding: 0 2px; }
+    .roadmap-legend p {
+      margin: 0; font-size: 13px; line-height: 1.6; color: var(--text3); max-width: 78ch;
+    }
+    .roadmap-legend em { color: var(--text2); font-style: normal; font-weight: 500; }
+    /* The keys get their own row — inlined into the sentence they wrapped mid-clause. */
+    .rm-keys { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 12.5px; color: var(--text3); }
+    .rm-key { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+    .rm-sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+    .rm-sw-done { background: var(--bg-success); border: 1px solid var(--border-success); }
+    .rm-sw-part { background: var(--bg-info);    border: 1px solid var(--border-info); }
+    .rm-sw-none { background: var(--bg2);        border: 1px solid var(--border2); }
+
+    /* The DAG is intrinsically wide (5 nodes across its widest rank). This is the
+       one honest use of a horizontal scroller — squeezing it to fit 360px would
+       make the labels unreadable. */
+    .roadmap-scroll { overflow-x: auto; padding-bottom: 8px; }
+    .roadmap-scroll svg { display: block; }
+
+    .rm-edge { fill: none; stroke: var(--border2); stroke-width: 1.5; }
+    .rm-arrow-head { fill: var(--border2); }
+    .rm-node { cursor: pointer; }
+    .rm-box {
+      fill: var(--bg2); stroke: var(--border2); stroke-width: 1;
+      rx: 8; transition: filter .12s;
+    }
+    .rm-node:hover .rm-box { filter: brightness(0.95); stroke: var(--text3); }
+    .rm-node:focus-visible { outline: none; }
+    .rm-node:focus-visible .rm-box { stroke: var(--text); stroke-width: 2; }
+    .rm-node-done .rm-box { fill: var(--bg-success); stroke: var(--border-success); }
+    .rm-node-part .rm-box { fill: var(--bg-info);    stroke: var(--border-info); }
+    .rm-title { font-size: 12.5px; font-weight: 600; fill: var(--text); }
+    .rm-count { font-size: 11px; fill: var(--text3); font-family: var(--mono); }
+    .rm-node-done .rm-count { fill: var(--text-success); }
+    .rm-node-part .rm-count { fill: var(--text-info); }
+    .rm-bar-bg { fill: var(--border); }
+    .rm-bar-fg { fill: var(--text3); }
+    .rm-node-done .rm-bar-fg { fill: var(--text-success); }
+    .rm-node-part .rm-bar-fg { fill: var(--text-info); }
+
+    /* A wide table must scroll inside its own section, never widen the page.
+       This used to be scoped to the <=480px block, which left tablet-width
+       viewports (a 768px iPad in portrait) scrolling the whole document
+       sideways on Problems and Algorithms. It is width-independent — at desktop
+       sizes nothing overflows, so no scrollbar appears. */
+    [data-section-body], [data-algo-section-body], [data-pat-section-body],
+    [data-pre-section-body], [data-bas-section-body], [data-wu-section-body] {
+      overflow-x: auto;
+    }
+
+    /* Tablet: the six-tab strip is the first thing to run out of room. Drop the
+       group labels here — the hairline separator still carries the grouping. */
+    @media (max-width: 900px) {
+      .topbar { padding: 0 14px; }
+      .topbar-spacer { display: none; }
+      .tab-group-label { display: none; }
+      .tab-group-sep { margin: 14px 6px; }
+      .tab-btn { padding: 0 11px; }
+    }
+
     /* Phone: shrink the topbar so logo + tabs fit one row, hide the least-useful
        columns, and let each table scroll inside its own wrapper so the page
        never scrolls sideways. */
     @media (max-width: 480px) {
-      /* Collapse the spacer and let the tab strip scroll inside the topbar, so a
-         4th tab (Prerequisites, PLAN-021) never widens the page. */
-      .topbar { padding: 0 12px; overflow-x: auto; }
-      .topbar-spacer { display: none; }
-      .topbar-logo { height: 30px; margin-right: 10px; }
+      /* Collapse the spacer and let the tab strip scroll inside the topbar, so
+         the 5th/6th tabs (PLAN-022/023) never widen the page. */
+      .topbar { padding: 0 12px; }
+      .topbar-logo { height: 22px; margin-right: 10px; }
       .tab-btn { padding: 0 8px; font-size: 14px; }
       .tab-btn span { display: none; }                     /* drop the count badges */
+      .tab-group-sep { margin: 16px 4px; }
       .col-check, .col-xlinks { display: none; }           /* Problems table */
       .col-kind { display: none; }                          /* Algorithms table */
-      [data-section-body], [data-algo-section-body] { overflow-x: auto; }
+      .col-lc { display: none; }                            /* Warm-Up table */
       .prob-table th, .prob-row td { padding: 5px 6px; }
       .filter-search { width: 100%; }
       .add-row { grid-template-columns: 1fr; }
       .action-bar { padding: 10px 14px; gap: 8px 10px; flex-wrap: wrap; }
       .action-bar-label { flex-basis: 100%; }
     }
+
+    /* Phone: anchoring a popover to a 17px target inside a scrolling table is
+       fiddly and easy to mis-tap. Dock it to the bottom of the screen instead —
+       a sheet is the standard touch idiom and always lands fully on-screen. */
+    @media (max-width: 560px) {
+      .info-card {
+        left: 10px !important; right: 10px !important;
+        top: auto !important; bottom: 10px !important;
+        width: auto !important;
+      }
+    }
   </style>
 </head>
 <body>
 
-<!-- ── TOPBAR ── -->
+<!-- ── TOPBAR ──
+     PLAN-023: six tabs, split into two labelled groups. PRACTICE holds the
+     things you solve, ordered by the ramp you actually walk (Basics →
+     Warm-Up → Problems); LEARN holds the reference material you read.
+     The group is the navigational unit — on a phone the strip scrolls, and
+     keeping related tabs adjacent means the one you want is never far. -->
 <div class="topbar">
-  <img class="topbar-logo" id="site-logo" alt="crack_d — DSA Intuition Lab">
+  <img class="topbar-logo" id="site-logo" src="img/crackIT_wordmark.png" alt="crack_IT — Intuition Lab">
   <div class="topbar-spacer"></div>
-  <button class="tab-btn active" id="tab-btn-problems" onclick="switchTab('problems')">
-    Problems <span id="tab-count-problems" style="color:var(--text3);font-weight:400"></span>
-  </button>
-  <button class="tab-btn" id="tab-btn-algorithms" onclick="switchTab('algorithms')">
-    Algorithms <span id="tab-count-algorithms" style="color:var(--text3);font-weight:400"></span>
-  </button>
-  <button class="tab-btn" id="tab-btn-patterns" onclick="switchTab('patterns')">
-    Patterns <span id="tab-count-patterns" style="color:var(--text3);font-weight:400"></span>
-  </button>
-  <button class="tab-btn" id="tab-btn-prerequisites" onclick="switchTab('prerequisites')">
-    Prerequisites <span id="tab-count-prerequisites" style="color:var(--text3);font-weight:400"></span>
-  </button>
+
+  <nav class="tab-nav" aria-label="Sections">
+    <div class="tab-group" role="tablist" aria-label="Practice">
+      <span class="tab-group-label">Practice</span>
+      <div class="tab-group-btns">
+        <button class="tab-btn" id="tab-btn-basics" role="tab" aria-controls="tab-panel-basics" onclick="switchTab('basics')">
+          Basics <span id="tab-count-basics" style="color:var(--text3);font-weight:400"></span>
+        </button>
+        <button class="tab-btn" id="tab-btn-warmup" role="tab" aria-controls="tab-panel-warmup" onclick="switchTab('warmup')">
+          Warm-Up <span id="tab-count-warmup" style="color:var(--text3);font-weight:400"></span>
+        </button>
+        <button class="tab-btn active" id="tab-btn-problems" role="tab" aria-controls="tab-panel-problems" onclick="switchTab('problems')">
+          Problems <span id="tab-count-problems" style="color:var(--text3);font-weight:400"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="tab-group-sep" aria-hidden="true"></div>
+
+    <div class="tab-group" role="tablist" aria-label="Learn">
+      <span class="tab-group-label">Learn</span>
+      <div class="tab-group-btns">
+        <button class="tab-btn" id="tab-btn-foundations" role="tab" aria-controls="tab-panel-foundations" onclick="switchTab('foundations')">
+          Foundations <span id="tab-count-foundations" style="color:var(--text3);font-weight:400"></span>
+        </button>
+        <button class="tab-btn" id="tab-btn-patterns" role="tab" aria-controls="tab-panel-patterns" onclick="switchTab('patterns')">
+          Patterns <span id="tab-count-patterns" style="color:var(--text3);font-weight:400"></span>
+        </button>
+        <button class="tab-btn" id="tab-btn-algorithms" role="tab" aria-controls="tab-panel-algorithms" onclick="switchTab('algorithms')">
+          Algorithms <span id="tab-count-algorithms" style="color:var(--text3);font-weight:400"></span>
+        </button>
+      </div>
+    </div>
+  </nav>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════
@@ -546,6 +729,15 @@
     <span class="stat-chip hard" id="st-hard">— Hard</span>
     <div class="stats-sep"></div>
     <span class="stat-chip gen"  id="st-gen">— lessons generated</span>
+
+    <!-- PLAN-024: Table | Roadmap are two views of the same 211 problems, so
+         this is a view switch on the Problems tab, not a 7th tab. It lives in
+         the stats bar because the filter bar is hidden in roadmap view. -->
+    <div class="stats-spacer"></div>
+    <div class="pill-group view-toggle" id="p-view">
+      <button class="pill active" data-val="table">Table</button>
+      <button class="pill" data-val="roadmap">Roadmap</button>
+    </div>
   </div>
 
   <!-- ── FILTER BAR ── -->
@@ -580,6 +772,25 @@
   <!-- ── CONTENT ── -->
   <div class="content" id="content">
     <div class="loading">Loading problems…</div>
+  </div>
+
+  <!-- ── ROADMAP VIEW (PLAN-024) ── -->
+  <div class="content" id="roadmap-content" style="display:none">
+    <div class="roadmap-legend">
+      <p>
+        Topic dependency map — an arrow means <em>learn this first</em>. Every count is
+        computed live from the problem set, so nothing here can go stale.
+        Click a topic to open it in the table.
+      </p>
+      <div class="rm-keys">
+        <span class="rm-key"><span class="rm-sw rm-sw-done"></span>complete</span>
+        <span class="rm-key"><span class="rm-sw rm-sw-part"></span>in progress</span>
+        <span class="rm-key"><span class="rm-sw rm-sw-none"></span>not started</span>
+      </div>
+    </div>
+    <div class="roadmap-scroll" id="roadmap-scroll">
+      <div class="loading">Loading roadmap…</div>
+    </div>
   </div>
 
 </div><!-- /tab-panel-problems -->
@@ -666,9 +877,11 @@
 </div><!-- /tab-panel-patterns -->
 
 <!-- ══════════════════════════════════════════════════════════════
-     PREREQUISITES TAB (PLAN-021)
+     FOUNDATIONS TAB (PLAN-021; renamed from "Prerequisites" by PLAN-023)
+     The internal pre-* ids are unchanged — only the user-facing name and the
+     route moved, and #prerequisites still redirects here.
      ══════════════════════════════════════════════════════════════ -->
-<div class="tab-panel" id="tab-panel-prerequisites">
+<div class="tab-panel" id="tab-panel-foundations">
 
   <!-- ── PREREQ STATS BAR ── -->
   <div class="stats-bar" id="pre-stats-bar">
@@ -691,10 +904,100 @@
 
   <!-- ── PREREQ CONTENT ── -->
   <div class="content" id="pre-content">
-    <div class="loading">Loading prerequisites…</div>
+    <div class="loading">Loading foundations…</div>
   </div>
 
-</div><!-- /tab-panel-prerequisites -->
+</div><!-- /tab-panel-foundations -->
+
+<!-- ══════════════════════════════════════════════════════════════
+     BASICS TAB (PLAN-022)
+     ══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-panel-basics">
+
+  <!-- ── BASICS STATS BAR ── -->
+  <div class="stats-bar" id="bas-stats-bar">
+    <span class="stat-chip" id="bst-total">— problems</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip done" id="bst-done">— done</span>
+    <span class="stat-chip new"  id="bst-new">— new</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip easy" id="bst-easy">— Easy</span>
+    <span class="stat-chip med"  id="bst-med">— Medium</span>
+    <span class="stat-chip hard" id="bst-hard">— Hard</span>
+  </div>
+
+  <!-- ── BASICS FILTER BAR ── -->
+  <div class="filter-bar">
+    <input class="filter-search" id="bf-search" type="search" placeholder="Search basics…" oninput="applyBasicsFilters()">
+    <div class="filter-sep"></div>
+    <select class="filter-select" id="bf-section" onchange="applyBasicsFilters()">
+      <option value="">All Sections</option>
+    </select>
+    <div class="filter-sep"></div>
+    <div class="pill-group" id="bf-diff">
+      <button class="pill active" data-val="">All</button>
+      <button class="pill diff-easy" data-val="Easy">Easy</button>
+      <button class="pill diff-med"  data-val="Medium">Medium</button>
+      <button class="pill diff-hard" data-val="Hard">Hard</button>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="pill-group" id="bf-status">
+      <button class="pill active" data-val="">All</button>
+      <button class="pill status-done" data-val="done">Done</button>
+      <button class="pill" data-val="new">New</button>
+    </div>
+  </div>
+
+  <!-- ── BASICS CONTENT ── -->
+  <div class="content" id="bas-content">
+    <div class="loading">Loading basics…</div>
+  </div>
+
+</div><!-- /tab-panel-basics -->
+
+<!-- ══════════════════════════════════════════════════════════════
+     WARM-UP TAB (PLAN-023)
+     30 easy LeetCode problems bridging Basics (no data structures) and
+     Problems (the 211-problem DSA set). Same row shape as Basics, plus the
+     LC number and a link out.
+     ══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-panel-warmup">
+
+  <!-- ── WARM-UP STATS BAR ── -->
+  <div class="stats-bar" id="wu-stats-bar">
+    <span class="stat-chip" id="wst-total">— problems</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip done" id="wst-done">— done</span>
+    <span class="stat-chip new"  id="wst-new">— new</span>
+    <div class="stats-sep"></div>
+    <span class="stat-chip easy" id="wst-easy">— Easy</span>
+  </div>
+
+  <!-- ── WARM-UP FILTER BAR ── -->
+  <div class="filter-bar">
+    <input class="filter-search" id="wf-search" type="search" placeholder="Search warm-up…" oninput="applyWarmupFilters()">
+    <div class="filter-sep"></div>
+    <select class="filter-select" id="wf-section" onchange="applyWarmupFilters()">
+      <option value="">All Sections</option>
+    </select>
+    <div class="filter-sep"></div>
+    <div class="pill-group" id="wf-status">
+      <button class="pill active" data-val="">All</button>
+      <button class="pill status-done" data-val="done">Done</button>
+      <button class="pill" data-val="new">New</button>
+    </div>
+  </div>
+
+  <!-- ── WARM-UP CONTENT ── -->
+  <div class="content" id="wu-content">
+    <div class="loading">Loading warm-up…</div>
+  </div>
+
+</div><!-- /tab-panel-warmup -->
+
+<!-- Shared ⓘ hover card (PLAN-023). Lives at body level so the table wrappers'
+     overflow-x can never clip it. Filled and re-anchored on demand. -->
+<div class="info-card" id="info-card" role="tooltip" aria-hidden="true"></div>
 
 <div id="toast"></div>
 
@@ -765,7 +1068,6 @@
 <!-- Prerequisites tab hero animations (PLAN-021) — defines mountPrereqAnim() -->
 <script src="prereq-anims.js"></script>
 <script>
-document.getElementById('site-logo').src = `img/logo_${Math.floor(Math.random() * 3) + 1}.png`;
 
 // ══════════════════════════════════════════════════════════════
 // DATA
@@ -774,12 +1076,18 @@ let ALL      = [];   // LC problems
 let ALGOS    = [];   // algorithm entries
 let PATTERNS = [];   // problem-solving patterns / topics
 let PREREQS  = [];   // foundational knowledge units (PLAN-021)
+let BASICS   = [];   // language-agnostic programming drills (PLAN-022)
+let WARMUP   = [];   // 30 easy LeetCode problems, the on-ramp (PLAN-023)
+let ROADMAP  = [];   // topic dependency DAG — edges + layout only (PLAN-024)
+let probView = 'table';   // Problems tab: 'table' | 'roadmap'
 
 // Cross-link indices (built after both datasets load)
 let slugToAlgos  = {};  // slug → algo[]
 let algoIdToLCPS = {};  // algoId → problem[]
 
 let filters        = { search: '', topic: '', diff: '', status: '', lesson: '' };
+let basFilters     = { search: '', section: '', diff: '', status: '' };
+let wuFilters      = { search: '', section: '', status: '' };
 let algoFilters    = { search: '', cat: '', kind: '', rel: [] };
 let patternFilters = { search: '', group: '' };
 let prereqFilters  = { search: '', group: '' };
@@ -833,16 +1141,25 @@ const TOPIC_SKILL_MAP = {
 // ══════════════════════════════════════════════════════════════
 // TAB ROUTING
 // ══════════════════════════════════════════════════════════════
-const TABS = ['problems', 'algorithms', 'patterns', 'prerequisites'];
+// Declared in topbar order: the Practice group (the ramp you walk), then Learn.
+const TABS = ['basics', 'warmup', 'problems', 'foundations', 'patterns', 'algorithms'];
+
+// PLAN-023 renamed Prerequisites → Foundations. Old links and bookmarks keep
+// working; nothing that ever shipped a #hash should 404 on a rename.
+const TAB_ALIASES = { prerequisites: 'foundations' };
 
 function switchTab(tab) {
+  tab = TAB_ALIASES[tab] || tab;
   if (!TABS.includes(tab)) tab = 'problems';
   TABS.forEach(t => {
     document.getElementById(`tab-panel-${t}`).classList.toggle('active', t === tab);
-    document.getElementById(`tab-btn-${t}`).classList.toggle('active', t === tab);
+    const btn = document.getElementById(`tab-btn-${t}`);
+    btn.classList.toggle('active', t === tab);
+    btn.setAttribute('aria-selected', t === tab);
   });
   // Action bar (problem selection) only makes sense on the problems tab
   if (tab !== 'problems') document.getElementById('action-bar').classList.remove('visible');
+  closeInfoCard();
   history.replaceState(null, '', `#${tab}`);
 }
 
@@ -858,8 +1175,12 @@ window.addEventListener('hashchange', () => {
 // DATA LOAD
 // ══════════════════════════════════════════════════════════════
 async function init() {
-  const [probsOk, algosOk] = await Promise.all([loadProblems(), loadAlgorithms(), loadPatterns(), loadPrerequisites()]);
+  const [probsOk, algosOk] = await Promise.all([
+    loadProblems(), loadAlgorithms(), loadPatterns(),
+    loadPrerequisites(), loadBasics(), loadWarmup(), loadRoadmap(),
+  ]);
   if (probsOk && algosOk) buildCrossLinkIndices();
+  initInfoCard();
   initTabFromHash();
 }
 
@@ -922,13 +1243,60 @@ async function loadPrerequisites() {
     PREREQS = await r.json();
     PREREQS.sort((a, b) =>
       (a.group_order - b.group_order) || (a.order - b.order));
-    document.getElementById('tab-count-prerequisites').textContent = `(${PREREQS.length})`;
+    document.getElementById('tab-count-foundations').textContent = `(${PREREQS.length})`;
     populatePrereqGroups();
     applyPrereqFilters();
     return true;
   } catch (e) {
     document.getElementById('pre-content').innerHTML =
       `<div class="empty-state">Could not load prerequisites.json.</div>`;
+    return false;
+  }
+}
+
+async function loadBasics() {
+  try {
+    const r = await fetch('../data/basics.json');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    BASICS = await r.json();
+    BASICS.sort((a, b) => a.order - b.order);
+    document.getElementById('tab-count-basics').textContent = `(${BASICS.length})`;
+    populateBasicsSections();
+    applyBasicsFilters();
+    return true;
+  } catch (e) {
+    document.getElementById('bas-content').innerHTML =
+      `<div class="empty-state">Could not load basics.json.</div>`;
+    return false;
+  }
+}
+
+async function loadRoadmap() {
+  try {
+    const r = await fetch('../data/roadmap.json');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    ROADMAP = await r.json();
+    return true;
+  } catch (e) {
+    document.getElementById('roadmap-scroll').innerHTML =
+      `<div class="empty-state">Could not load roadmap.json.</div>`;
+    return false;
+  }
+}
+
+async function loadWarmup() {
+  try {
+    const r = await fetch('../data/warmup.json');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    WARMUP = await r.json();
+    WARMUP.sort((a, b) => a.order - b.order);
+    document.getElementById('tab-count-warmup').textContent = `(${WARMUP.length})`;
+    populateWarmupSections();
+    applyWarmupFilters();
+    return true;
+  } catch (e) {
+    document.getElementById('wu-content').innerHTML =
+      `<div class="empty-state">Could not load warmup.json.</div>`;
     return false;
   }
 }
@@ -1490,11 +1858,10 @@ function buildPatternCard(p) {
 
 // Jump to the Problems tab filtered to a topic (from a pattern's count chip).
 function goToTopic(topic) {
-  const sel = document.getElementById('f-topic');
-  if (sel && [...sel.options].some(o => o.value === topic)) sel.value = topic;
-  applyFilters();
   switchTab('problems');
-  window.scrollTo({ top: 0 });
+  // Force the table view — landing on Problems with the roadmap showing would
+  // hide the very rows this jump exists to reveal.
+  openTopicInTable(topic);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1683,19 +2050,592 @@ function buildPrereqCard(p) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// BASICS — FILTERING & RENDERING (PLAN-022)
+// ══════════════════════════════════════════════════════════════
+function populateBasicsSections() {
+  const sel = document.getElementById('bf-section');
+  [...new Set(BASICS.map(p => p.section))].forEach(s => {
+    const o = document.createElement('option');
+    o.value = s; o.textContent = s;
+    sel.appendChild(o);
+  });
+}
+
+function applyBasicsFilters() {
+  basFilters.search  = document.getElementById('bf-search').value.toLowerCase().trim();
+  basFilters.section = document.getElementById('bf-section').value;
+  basFilters.diff    = activePill('bf-diff');
+  basFilters.status  = activePill('bf-status');
+
+  const visible = BASICS.filter(matchBasic);
+  updateBasicsStats(visible);
+  renderBasicsTable(visible);
+}
+
+function matchBasic(p) {
+  if (basFilters.search &&
+      !p.name.toLowerCase().includes(basFilters.search) &&
+      !p.statement.toLowerCase().includes(basFilters.search)) return false;
+  if (basFilters.section && p.section !== basFilters.section)  return false;
+  if (basFilters.diff    && p.difficulty !== basFilters.diff)  return false;
+  if (basFilters.status  && p.status !== basFilters.status)    return false;
+  return true;
+}
+
+function updateBasicsStats(visible) {
+  const total = visible.length;
+  const done  = visible.filter(p => p.status === 'done').length;
+  const nw    = visible.filter(p => p.status === 'new').length;
+  const easy  = visible.filter(p => p.difficulty === 'Easy').length;
+  const med   = visible.filter(p => p.difficulty === 'Medium').length;
+  const hard  = visible.filter(p => p.difficulty === 'Hard').length;
+  const suffix = (basFilters.search || basFilters.section ||
+                  basFilters.diff || basFilters.status) ? ' (filtered)' : '';
+
+  document.getElementById('bst-total').textContent = `${total} problem${total !== 1 ? 's' : ''}${suffix}`;
+  document.getElementById('bst-done').textContent  = `${done} done`;
+  document.getElementById('bst-new').textContent   = `${nw} new`;
+  document.getElementById('bst-easy').textContent  = `${easy} Easy`;
+  document.getElementById('bst-med').textContent   = `${med} Medium`;
+  document.getElementById('bst-hard').textContent  = `${hard} Hard`;
+}
+
+function renderBasicsTable(visible) {
+  const content = document.getElementById('bas-content');
+  if (!visible.length) {
+    content.innerHTML = '<div class="empty-state">No problems match the current filters.</div>';
+    return;
+  }
+
+  const sectionOrder = [];
+  const bySection = {};
+  for (const p of visible) {
+    if (!bySection[p.section]) { bySection[p.section] = []; sectionOrder.push(p.section); }
+    bySection[p.section].push(p);
+  }
+
+  const frag = document.createDocumentFragment();
+
+  for (const sec of sectionOrder) {
+    const rows = bySection[sec];
+
+    const hdr = document.createElement('div');
+    hdr.className = 'section-hdr';
+    hdr.dataset.section = sec;
+    hdr.innerHTML = `
+      <span class="section-hdr-text">${sec}</span>
+      <span class="section-hdr-count">${rows.length}</span>
+      <span class="section-hdr-line"></span>
+      <span class="section-hdr-arrow">▾</span>`;
+    hdr.addEventListener('click', () => toggleSection(hdr, 'bas-section'));
+    frag.appendChild(hdr);
+
+    const wrap = document.createElement('div');
+    wrap.dataset.basSectionBody = sec;
+
+    const tbl = document.createElement('table');
+    tbl.className = 'prob-table';
+    tbl.innerHTML = `<thead><tr>
+      <th class="col-order">#</th>
+      <th class="col-name">Problem</th>
+      <th class="col-diff">Difficulty</th>
+      <th class="col-status">Status</th>
+    </tr></thead>`;
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(p => tbody.appendChild(buildBasicsRow(p)));
+    tbl.appendChild(tbody);
+    wrap.appendChild(tbl);
+    frag.appendChild(wrap);
+  }
+
+  content.innerHTML = '';
+  content.appendChild(frag);
+}
+
+function buildBasicsRow(p) {
+  const tr = document.createElement('tr');
+  tr.className = 'prob-row' + (p.status === 'done' ? ' done-row' : '');
+  tr.dataset.slug = p.slug;
+
+  const diffClass = { Easy: 'badge-easy', Medium: 'badge-medium', Hard: 'badge-hard' }[p.difficulty] || '';
+  const note = p.note ? `<div class="bas-note">${escHtml(p.note)}</div>` : '';
+
+  tr.innerHTML = `
+    <td class="col-order">${p.order / 10}</td>
+    <td class="col-name">
+      <span class="bas-name">${escHtml(p.name)}</span>${infoBtn('basics', p.slug)}
+      <div class="bas-statement">${escHtml(p.statement)}</div>${note}
+    </td>
+    <td class="col-diff"><span class="badge ${diffClass}">${p.difficulty}</span></td>
+    <td class="col-status"></td>`;
+
+  const btn = document.createElement('button');
+  btn.className = 'status-toggle ' + (p.status === 'done' ? 'is-done' : 'is-new');
+  btn.textContent = p.status === 'done' ? '✓ Done' : 'New';
+  btn.addEventListener('click', () => toggleStatus(p, tr, btn, 'basics'));
+  tr.querySelector('.col-status').appendChild(btn);
+
+  return tr;
+}
+
+// ══════════════════════════════════════════════════════════════
+// WARM-UP — FILTERING & RENDERING (PLAN-023)
+// Mirrors Basics, plus the LC number and an outbound link.
+// ══════════════════════════════════════════════════════════════
+function populateWarmupSections() {
+  const sel = document.getElementById('wf-section');
+  [...new Set(WARMUP.map(p => p.section))].forEach(s => {
+    const o = document.createElement('option');
+    o.value = s; o.textContent = s;
+    sel.appendChild(o);
+  });
+}
+
+function applyWarmupFilters() {
+  wuFilters.search  = document.getElementById('wf-search').value.toLowerCase().trim();
+  wuFilters.section = document.getElementById('wf-section').value;
+  wuFilters.status  = activePill('wf-status');
+
+  const visible = WARMUP.filter(matchWarmup);
+  updateWarmupStats(visible);
+  renderWarmupTable(visible);
+}
+
+function matchWarmup(p) {
+  const q = wuFilters.search;
+  if (q &&
+      !p.name.toLowerCase().includes(q) &&
+      !p.statement.toLowerCase().includes(q) &&
+      !p.skill.toLowerCase().includes(q) &&
+      String(p.lc_num) !== q) return false;
+  if (wuFilters.section && p.section !== wuFilters.section) return false;
+  if (wuFilters.status  && p.status !== wuFilters.status)   return false;
+  return true;
+}
+
+function updateWarmupStats(visible) {
+  const total = visible.length;
+  const done  = visible.filter(p => p.status === 'done').length;
+  const nw    = visible.filter(p => p.status === 'new').length;
+  const suffix = (wuFilters.search || wuFilters.section || wuFilters.status) ? ' (filtered)' : '';
+
+  document.getElementById('wst-total').textContent = `${total} problem${total !== 1 ? 's' : ''}${suffix}`;
+  document.getElementById('wst-done').textContent  = `${done} done`;
+  document.getElementById('wst-new').textContent   = `${nw} new`;
+  document.getElementById('wst-easy').textContent  = `${total} Easy`;
+}
+
+function renderWarmupTable(visible) {
+  const content = document.getElementById('wu-content');
+  if (!visible.length) {
+    content.innerHTML = '<div class="empty-state">No problems match the current filters.</div>';
+    return;
+  }
+
+  const sectionOrder = [];
+  const bySection = {};
+  for (const p of visible) {
+    if (!bySection[p.section]) { bySection[p.section] = []; sectionOrder.push(p.section); }
+    bySection[p.section].push(p);
+  }
+
+  const frag = document.createDocumentFragment();
+
+  for (const sec of sectionOrder) {
+    const rows = bySection[sec];
+
+    const hdr = document.createElement('div');
+    hdr.className = 'section-hdr';
+    hdr.dataset.section = sec;
+    hdr.innerHTML = `
+      <span class="section-hdr-text">${sec}</span>
+      <span class="section-hdr-count">${rows.length}</span>
+      <span class="section-hdr-line"></span>
+      <span class="section-hdr-arrow">▾</span>`;
+    hdr.addEventListener('click', () => toggleSection(hdr, 'wu-section'));
+    frag.appendChild(hdr);
+
+    const wrap = document.createElement('div');
+    wrap.dataset.wuSectionBody = sec;
+
+    const tbl = document.createElement('table');
+    tbl.className = 'prob-table';
+    tbl.innerHTML = `<thead><tr>
+      <th class="col-order">#</th>
+      <th class="col-lc">LC</th>
+      <th class="col-name">Problem</th>
+      <th class="col-status">Status</th>
+    </tr></thead>`;
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(p => tbody.appendChild(buildWarmupRow(p)));
+    tbl.appendChild(tbody);
+    wrap.appendChild(tbl);
+    frag.appendChild(wrap);
+  }
+
+  content.innerHTML = '';
+  content.appendChild(frag);
+}
+
+function buildWarmupRow(p) {
+  const tr = document.createElement('tr');
+  tr.className = 'prob-row' + (p.status === 'done' ? ' done-row' : '');
+  tr.dataset.slug = p.slug;
+
+  tr.innerHTML = `
+    <td class="col-order">${p.order / 10}</td>
+    <td class="col-lc">${p.lc_num}</td>
+    <td class="col-name">
+      <a class="bas-name prob-link" href="${escAttr(p.url)}" target="_blank" rel="noopener">${escHtml(p.name)}</a>${infoBtn('warmup', p.slug)}
+      <div class="bas-statement">${escHtml(p.statement)}</div>
+      <span class="bas-skill">${escHtml(p.skill)}</span>
+    </td>
+    <td class="col-status"></td>`;
+
+  const btn = document.createElement('button');
+  btn.className = 'status-toggle ' + (p.status === 'done' ? 'is-done' : 'is-new');
+  btn.textContent = p.status === 'done' ? '✓ Done' : 'New';
+  btn.addEventListener('click', () => toggleStatus(p, tr, btn, 'warmup'));
+  tr.querySelector('.col-status').appendChild(btn);
+
+  return tr;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ⓘ HOVER CARD (PLAN-023)
+// One popover, re-anchored per trigger. Hover opens it for mice; click/tap
+// opens it for everyone (touch has no hover, and a hover-only affordance
+// would strand every phone user).
+// ══════════════════════════════════════════════════════════════
+const INFO_SOURCES = { basics: () => BASICS, warmup: () => WARMUP };
+let _infoTrigger = null;
+let _infoHideTimer = null;
+
+function infoBtn(dataset, slug) {
+  return `<button class="info-btn" type="button" aria-expanded="false"
+    aria-label="More detail and a sample input/output"
+    data-info-ds="${escAttr(dataset)}" data-info-slug="${escAttr(slug)}">i</button>`;
+}
+
+function openInfoCard(btn) {
+  const src = INFO_SOURCES[btn.dataset.infoDs];
+  const p = src && src().find(e => e.slug === btn.dataset.infoSlug);
+  if (!p) return;
+
+  const card = document.getElementById('info-card');
+  const ex = p.example || {};
+  card.innerHTML = `
+    <div class="info-card-title">${escHtml(p.name)}</div>
+    <div class="info-card-details">${escHtml(p.details)}</div>
+    ${(ex.input || ex.output) ? `<dl class="info-card-ex">
+      ${ex.input  ? `<dt>In</dt><dd>${escHtml(ex.input)}</dd>`   : ''}
+      ${ex.output ? `<dt>Out</dt><dd>${escHtml(ex.output)}</dd>` : ''}
+    </dl>` : ''}`;
+
+  if (_infoTrigger && _infoTrigger !== btn) _infoTrigger.setAttribute('aria-expanded', 'false');
+  _infoTrigger = btn;
+  btn.setAttribute('aria-expanded', 'true');
+  card.classList.add('open');
+  card.setAttribute('aria-hidden', 'false');
+  positionInfoCard(btn, card);
+}
+
+// Anchor below the trigger, flipping above when there is no room, and clamp
+// horizontally so the card never hangs off either edge. (The <=560px sheet
+// layout overrides all of this in CSS.)
+function positionInfoCard(btn, card) {
+  const r = btn.getBoundingClientRect();
+  const cw = card.offsetWidth, ch = card.offsetHeight;
+  const M = 10;
+
+  let top = r.bottom + 8;
+  if (top + ch > window.innerHeight - M) {
+    const above = r.top - ch - 8;
+    top = above >= M ? above : Math.max(M, window.innerHeight - ch - M);
+  }
+  let left = r.left + r.width / 2 - cw / 2;
+  left = Math.max(M, Math.min(left, window.innerWidth - cw - M));
+
+  card.style.top = `${top}px`;
+  card.style.left = `${left}px`;
+}
+
+function closeInfoCard() {
+  const card = document.getElementById('info-card');
+  if (!card) return;
+  card.classList.remove('open');
+  card.setAttribute('aria-hidden', 'true');
+  if (_infoTrigger) _infoTrigger.setAttribute('aria-expanded', 'false');
+  _infoTrigger = null;
+}
+
+function initInfoCard() {
+  const card = document.getElementById('info-card');
+  const cancelHide = () => clearTimeout(_infoHideTimer);
+  // Small grace period so the pointer can travel from the ⓘ into the card
+  // without it vanishing en route.
+  const scheduleHide = () => {
+    cancelHide();
+    _infoHideTimer = setTimeout(closeInfoCard, 180);
+  };
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.info-btn');
+    if (btn) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (_infoTrigger === btn) closeInfoCard(); else openInfoCard(btn);
+      return;
+    }
+    if (!e.target.closest('#info-card')) closeInfoCard();
+  });
+
+  // Hover-to-open, but only for an actual mouse. Branching on pointerType is
+  // per-event and so beats a `(hover: hover)` media query: it gets hybrid
+  // laptops right (mouse hovers, finger taps) instead of picking one for the
+  // whole device. A touch tap reports 'touch' here and falls through to click,
+  // which is what opens the card on a phone.
+  document.addEventListener('pointerover', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const btn = e.target.closest('.info-btn');
+    if (btn) { cancelHide(); openInfoCard(btn); }
+  });
+  document.addEventListener('pointerout', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    if (e.target.closest('.info-btn') || e.target.closest('#info-card')) scheduleHide();
+  });
+  card.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') cancelHide(); });
+  card.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') scheduleHide(); });
+
+  // Keyboard parity: the ⓘ is a real button, so focus must open it too.
+  document.addEventListener('focusin', (e) => {
+    const btn = e.target.closest('.info-btn');
+    if (btn) { cancelHide(); openInfoCard(btn); }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeInfoCard(); });
+  // A card anchored to a scrolled-away row is worse than no card.
+  window.addEventListener('scroll', closeInfoCard, true);
+  window.addEventListener('resize', closeInfoCard);
+}
+
+// ══════════════════════════════════════════════════════════════
+// ROADMAP — the topic dependency DAG (PLAN-024)
+//
+// Table and Roadmap are two views of the same 211 problems, so this is a view
+// switch on the Problems tab rather than a 7th tab. The SVG is laid out from
+// `layer` (which check_roadmap.py guarantees is monotone along every edge, so
+// there are no back-edges to route around) and every count is derived from ALL
+// at render time — roadmap.json stores edges only, never a number.
+// ══════════════════════════════════════════════════════════════
+const RM = { w: 172, h: 60, gapX: 22, gapY: 74, pad: 16, bar: 4 };
+
+function setProblemsView(view) {
+  probView = view;
+  document.getElementById('content').style.display          = view === 'table' ? '' : 'none';
+  document.getElementById('roadmap-content').style.display  = view === 'roadmap' ? '' : 'none';
+  // The filter bar drives the table; in roadmap view it controls nothing.
+  document.querySelector('#tab-panel-problems .filter-bar').style.display =
+    view === 'table' ? '' : 'none';
+  document.getElementById('action-bar').classList.remove('visible');
+  if (view === 'roadmap') renderRoadmap();
+}
+
+// Progress is over the WHOLE topic, not the current filter — the roadmap is a
+// map of the problem set, not a view of the search box.
+function topicProgress(topic) {
+  const all  = ALL.filter(p => p.topic === topic);
+  const done = all.filter(p => p.status === 'done').length;
+  return { done, total: all.length, pct: all.length ? done / all.length : 0 };
+}
+
+// Two lines max, broken on word boundaries. SVG <text> has no wrapping, and
+// foreignObject is inconsistent enough across engines that it isn't worth it
+// for 20 short labels.
+function wrapLabel(text, maxChars = 22) {
+  const words = text.split(' ');
+  const lines = [''];
+  for (const word of words) {
+    const line = lines[lines.length - 1];
+    if (!line) { lines[lines.length - 1] = word; continue; }
+    if ((line + ' ' + word).length <= maxChars) lines[lines.length - 1] = line + ' ' + word;
+    else lines.push(word);
+  }
+  if (lines.length <= 2) return lines;
+  return [lines[0], lines.slice(1).join(' ')];   // overflow collapses into line 2
+}
+
+function layoutRoadmap() {
+  const byLayer = new Map();
+  ROADMAP.forEach(n => {
+    if (!byLayer.has(n.layer)) byLayer.set(n.layer, []);
+    byLayer.get(n.layer).push(n);
+  });
+  const layers = [...byLayer.keys()].sort((a, b) => a - b);
+
+  const rowW = L => byLayer.get(L).length * RM.w + (byLayer.get(L).length - 1) * RM.gapX;
+  const canvasW = Math.max(...layers.map(rowW)) + RM.pad * 2;
+  const canvasH = layers.length * RM.h + (layers.length - 1) * RM.gapY + RM.pad * 2;
+
+  const pos = new Map();
+  for (const L of layers) {
+    const row = byLayer.get(L);
+    const startX = (canvasW - rowW(L)) / 2;
+    row.forEach((n, i) => pos.set(n.topic, {
+      x: startX + i * (RM.w + RM.gapX),
+      y: RM.pad + L * (RM.h + RM.gapY),
+    }));
+  }
+  return { pos, canvasW, canvasH };
+}
+
+function renderRoadmap() {
+  const host = document.getElementById('roadmap-scroll');
+  if (!ROADMAP.length || !ALL.length) return;
+
+  const { pos, canvasW, canvasH } = layoutRoadmap();
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('width', canvasW);
+  svg.setAttribute('height', canvasH);
+  svg.setAttribute('viewBox', `0 0 ${canvasW} ${canvasH}`);
+  svg.setAttribute('role', 'group');
+  svg.setAttribute('aria-label', 'Topic dependency roadmap');
+
+  // One arrowhead marker, referenced by every edge. Direction carries the whole
+  // meaning of the map (prerequisite → dependent), so the edges must actually be
+  // arrows and not bare curves.
+  const defs = document.createElementNS(NS, 'defs');
+  const marker = document.createElementNS(NS, 'marker');
+  marker.setAttribute('id', 'rm-arrow');
+  marker.setAttribute('viewBox', '0 0 10 10');
+  marker.setAttribute('refX', '9'); marker.setAttribute('refY', '5');
+  marker.setAttribute('markerWidth', '5'); marker.setAttribute('markerHeight', '5');
+  marker.setAttribute('orient', 'auto');
+  const head = document.createElementNS(NS, 'path');
+  head.setAttribute('class', 'rm-arrow-head');
+  head.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+  marker.appendChild(head);
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+
+  // Edges first, so nodes paint over them.
+  for (const n of ROADMAP) {
+    const to = pos.get(n.topic);
+    for (const pre of n.prereqs) {
+      const from = pos.get(pre);
+      if (!from || !to) continue;
+      const x1 = from.x + RM.w / 2, y1 = from.y + RM.h;
+      // Stop a few px short of the box so the arrowhead sits against it, not on it.
+      const x2 = to.x + RM.w / 2,   y2 = to.y - 3;
+      const dy = (y2 - y1) / 2;
+      const path = document.createElementNS(NS, 'path');
+      path.setAttribute('class', 'rm-edge');
+      path.setAttribute('marker-end', 'url(#rm-arrow)');
+      path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`);
+      svg.appendChild(path);
+    }
+  }
+
+  for (const n of ROADMAP) {
+    const { x, y } = pos.get(n.topic);
+    const { done, total, pct } = topicProgress(n.topic);
+    const state = total && done === total ? 'done' : done > 0 ? 'part' : 'none';
+
+    const g = document.createElementNS(NS, 'g');
+    g.setAttribute('class', `rm-node rm-node-${state}`);
+    g.setAttribute('tabindex', '0');
+    g.setAttribute('role', 'button');
+    g.setAttribute('aria-label', `${n.topic}: ${done} of ${total} done. ${n.why}`);
+    g.dataset.topic = n.topic;
+
+    const box = document.createElementNS(NS, 'rect');
+    box.setAttribute('class', 'rm-box');
+    box.setAttribute('x', x); box.setAttribute('y', y);
+    box.setAttribute('width', RM.w); box.setAttribute('height', RM.h);
+    g.appendChild(box);
+
+    // Native SVG tooltip — free, accessible, and enough for a one-line "why".
+    const tip = document.createElementNS(NS, 'title');
+    tip.textContent = n.why;
+    g.appendChild(tip);
+
+    const lines = wrapLabel(n.topic);
+    lines.forEach((line, i) => {
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('class', 'rm-title');
+      t.setAttribute('x', x + RM.w / 2);
+      t.setAttribute('y', y + (lines.length === 1 ? 24 : 19 + i * 15));
+      t.setAttribute('text-anchor', 'middle');
+      t.textContent = line;
+      g.appendChild(t);
+    });
+
+    const c = document.createElementNS(NS, 'text');
+    c.setAttribute('class', 'rm-count');
+    c.setAttribute('x', x + RM.w / 2);
+    c.setAttribute('y', y + RM.h - 15);
+    c.setAttribute('text-anchor', 'middle');
+    c.textContent = `${done}/${total}`;
+    g.appendChild(c);
+
+    const bx = x + 14, bw = RM.w - 28, by = y + RM.h - 9;
+    const bg = document.createElementNS(NS, 'rect');
+    bg.setAttribute('class', 'rm-bar-bg');
+    bg.setAttribute('x', bx); bg.setAttribute('y', by);
+    bg.setAttribute('width', bw); bg.setAttribute('height', RM.bar);
+    bg.setAttribute('rx', RM.bar / 2);
+    g.appendChild(bg);
+
+    if (pct > 0) {
+      const fg = document.createElementNS(NS, 'rect');
+      fg.setAttribute('class', 'rm-bar-fg');
+      fg.setAttribute('x', bx); fg.setAttribute('y', by);
+      fg.setAttribute('width', Math.max(RM.bar, bw * pct));
+      fg.setAttribute('height', RM.bar);
+      fg.setAttribute('rx', RM.bar / 2);
+      g.appendChild(fg);
+    }
+
+    const open = () => openTopicInTable(n.topic);
+    g.addEventListener('click', open);
+    g.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+    });
+    svg.appendChild(g);
+  }
+
+  host.innerHTML = '';
+  host.appendChild(svg);
+}
+
+// A node is a way into the table, not a dead end.
+function openTopicInTable(topic) {
+  const sel = document.getElementById('f-topic');
+  if (sel && [...sel.options].some(o => o.value === topic)) sel.value = topic;
+  document.querySelectorAll('#p-view .pill').forEach(p =>
+    p.classList.toggle('active', p.dataset.val === 'table'));
+  setProblemsView('table');
+  applyFilters();
+  window.scrollTo({ top: 0 });
+}
+
+// ══════════════════════════════════════════════════════════════
 // STATUS TOGGLE
 // ══════════════════════════════════════════════════════════════
-async function toggleStatus(p, tr, btn) {
+async function toggleStatus(p, tr, btn, dataset = 'problems') {
   const newStatus = p.status === 'done' ? 'new' : 'done';
   btn.disabled = true;
   try {
-    const data = await apiCall('PATCH', '/api/status', { slug: p.slug, status: newStatus });
+    const data = await apiCall('PATCH', '/api/status', { slug: p.slug, status: newStatus, dataset });
     if (!data.ok) throw new Error(data.error || 'unknown error');
     p.status = newStatus;
     btn.textContent = newStatus === 'done' ? '✓ Done' : 'New';
     btn.className = 'status-toggle ' + (newStatus === 'done' ? 'is-done' : 'is-new');
     tr.classList.toggle('done-row', newStatus === 'done');
-    applyFilters();
+    ({ basics: applyBasicsFilters, warmup: applyWarmupFilters }[dataset] || applyFilters)();
+    // Marking a problem done moves a bar on the roadmap — keep the map honest.
+    if (dataset === 'problems' && probView === 'roadmap') renderRoadmap();
     showToast(newStatus === 'done' ? '✓ Marked done' : '↩ Marked new');
   } catch (e) {
     showToast(`Error: ${e.message}`, true);
@@ -1713,6 +2653,8 @@ function toggleSection(hdr, bodyAttr) {
     'algo-section': 'data-algo-section-body',
     'pat-section':  'data-pat-section-body',
     'pre-section':  'data-pre-section-body',
+    'bas-section':  'data-bas-section-body',
+    'wu-section':   'data-wu-section-body',
   }[bodyAttr] || 'data-section-body';
   const body = document.querySelector(`[${attr}="${CSS.escape(sec)}"]`);
   if (!body) return;
@@ -2033,8 +2975,13 @@ document.querySelectorAll('.pill-group').forEach(group => {
       group.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
       pill.classList.add('active');
     }
+    // The view toggle is not a filter — it swaps which view of Problems is shown.
+    if (group.id === 'p-view') { setProblemsView(pill.dataset.val); return; }
+
     // Trigger correct filter
     if (group.closest('#tab-panel-algorithms')) applyAlgoFilters();
+    else if (group.closest('#tab-panel-basics')) applyBasicsFilters();
+    else if (group.closest('#tab-panel-warmup')) applyWarmupFilters();
     else applyFilters();
   });
 });

@@ -1,0 +1,122 @@
+[
+  {
+    "topic": "Arrays & Hashing",
+    "layer": 0,
+    "prereqs": [],
+    "why": "The root. Indexing, iteration, and the hash map — the container every later topic reaches for when it needs O(1) lookup."
+  },
+  {
+    "topic": "Two Pointers",
+    "layer": 1,
+    "prereqs": ["Arrays & Hashing"],
+    "why": "Once you can walk an array, walk it with two indices. The first technique that beats a nested loop without extra memory."
+  },
+  {
+    "topic": "Stack & Monotonic Stack",
+    "layer": 1,
+    "prereqs": ["Arrays & Hashing"],
+    "why": "A second way to hold state while scanning: keep what you might still need, discard what you never will."
+  },
+  {
+    "topic": "Prefix Sum",
+    "layer": 1,
+    "prereqs": ["Arrays & Hashing"],
+    "why": "Precompute once, answer range queries in O(1). The idea that trading memory for time is a choice you get to make."
+  },
+  {
+    "topic": "Math",
+    "layer": 1,
+    "prereqs": ["Arrays & Hashing"],
+    "why": "Digits, divisors, overflow, and modular arithmetic — needs no data structure, so it can be picked up early."
+  },
+  {
+    "topic": "Bit Manipulation",
+    "layer": 1,
+    "prereqs": ["Arrays & Hashing"],
+    "why": "Independent of everything else: masks, shifts, and n & (n-1). Cheap to learn, and it turns up inside DP and Tries later."
+  },
+  {
+    "topic": "Binary Search",
+    "layer": 2,
+    "prereqs": ["Two Pointers"],
+    "why": "Two converging pointers with a decision in the middle. Generalises from 'find a value' to 'find a boundary' to 'search an answer space'."
+  },
+  {
+    "topic": "Sliding Window",
+    "layer": 2,
+    "prereqs": ["Two Pointers", "Prefix Sum"],
+    "why": "Two pointers moving the same direction, plus a running aggregate. Where the two ideas below it meet."
+  },
+  {
+    "topic": "Linked Lists",
+    "layer": 2,
+    "prereqs": ["Two Pointers"],
+    "why": "Pointers without random access. Slow/fast is two-pointers again, and relinking nodes is the first taste of mutating a structure."
+  },
+  {
+    "topic": "String Matching",
+    "layer": 2,
+    "prereqs": ["Two Pointers"],
+    "why": "Scanning with an index and a fallback. KMP's failure function is the payoff for understanding the naive scan first."
+  },
+  {
+    "topic": "Trees",
+    "layer": 3,
+    "prereqs": ["Binary Search", "Linked Lists"],
+    "why": "The hinge of the whole map. A linked structure (from Linked Lists) that branches, searched by halving (from Binary Search). Everything below depends on it."
+  },
+  {
+    "topic": "BST",
+    "layer": 4,
+    "prereqs": ["Trees", "Binary Search"],
+    "why": "Binary search wearing a tree costume — the ordering invariant is what makes it O(height) instead of O(n)."
+  },
+  {
+    "topic": "Tries",
+    "layer": 4,
+    "prereqs": ["Trees"],
+    "why": "A tree keyed by character rather than value. The structure follows the shape of the data, not the data's order."
+  },
+  {
+    "topic": "Heaps / Priority Queue",
+    "layer": 4,
+    "prereqs": ["Trees"],
+    "why": "A tree with a weaker promise — only the top is sorted — and that weaker promise is exactly what makes it fast."
+  },
+  {
+    "topic": "Backtracking",
+    "layer": 4,
+    "prereqs": ["Trees"],
+    "why": "Tree recursion where you build the tree as you walk it. Choose, recurse, un-choose — the template behind every search below."
+  },
+  {
+    "topic": "Graphs — BFS / DFS",
+    "layer": 5,
+    "prereqs": ["Trees", "Backtracking"],
+    "why": "A tree that is allowed cycles. Same traversals, one new obligation: remember where you have already been."
+  },
+  {
+    "topic": "Dynamic Programming",
+    "layer": 5,
+    "prereqs": ["Backtracking"],
+    "why": "Backtracking that stops recomputing itself. Write the brute-force recursion first, then memoise it — DP is the second step, never the first."
+  },
+  {
+    "topic": "Greedy / Intervals",
+    "layer": 5,
+    "prereqs": ["Heaps / Priority Queue", "Stack & Monotonic Stack"],
+    "why": "Commit to the locally best choice and prove you never regret it. Sorting plus a heap is the usual machinery."
+  },
+  {
+    "topic": "Design",
+    "layer": 5,
+    "prereqs": ["Linked Lists", "Heaps / Priority Queue"],
+    "why": "Compose the structures instead of using one: an LRU cache is a hash map plus a linked list. Nothing new, everything combined."
+  },
+  {
+    "topic": "Graphs — Advanced",
+    "layer": 6,
+    "prereqs": ["Graphs — BFS / DFS", "Heaps / Priority Queue", "Dynamic Programming"],
+    "why": "The deepest node on the map, and it earns it: Dijkstra is BFS with a heap, and Floyd–Warshall is DP on a graph."
+  }
+]
