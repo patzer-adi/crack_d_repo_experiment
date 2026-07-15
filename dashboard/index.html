@@ -44,20 +44,14 @@
     .topbar-spacer { flex: 1; }
 
     /* ── TABS (now inside topbar) ──
-       PLAN-023: two labelled groups — Practice (solve) and Learn (read) —
-       separated by a hairline. The label sits above its buttons so the group
-       reads as one unit without stealing horizontal room from the tabs. */
+       PLAN-023: two groups — Practice (solve) and Learn (read) — separated by a
+       hairline. PLAN-025 dropped the group *labels* and per-tab counts; the
+       separator alone now carries the grouping. */
     .tab-nav { display: flex; align-items: stretch; align-self: stretch; min-width: 0; }
-    .tab-group { display: flex; flex-direction: column; justify-content: flex-end; }
-    .tab-group-label {
-      font-size: 10px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: .09em; color: var(--text3); opacity: .7;
-      padding: 0 16px 1px; line-height: 1.4;
-    }
-    .tab-group-btns { display: flex; align-items: stretch; flex: 1; }
+    .tab-group { display: flex; align-items: stretch; }
     .tab-group-sep {
       width: 1px; background: var(--border2);
-      margin: 14px 12px; align-self: stretch;
+      margin: 18px 12px; align-self: stretch;
     }
     .tab-btn {
       font-size: 16px; font-weight: 500; padding: 0 16px;
@@ -572,15 +566,14 @@
     .stats-spacer { flex: 1; min-width: 8px; }
     .view-toggle .pill { font-weight: 500; }
 
-    .roadmap-legend { margin: 0 0 16px; padding: 0 2px; }
-    .roadmap-legend p {
-      margin: 0; font-size: 13px; line-height: 1.6; color: var(--text3); max-width: 78ch;
-    }
-    .roadmap-legend em { color: var(--text2); font-style: normal; font-weight: 500; }
-    /* The keys get their own row — inlined into the sentence they wrapped mid-clause. */
-    .rm-keys { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 12.5px; color: var(--text3); }
+    .roadmap-legend { margin: 0 0 14px; padding: 0 2px; }
+    .rm-keys { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--text3); }
     .rm-key { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
     .rm-sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+    .rm-sw-arrow {
+      width: auto; height: auto; border-radius: 0;
+      color: var(--text3); font-weight: 700; line-height: 1;
+    }
     .rm-sw-done { background: var(--bg-success); border: 1px solid var(--border-success); }
     .rm-sw-part { background: var(--bg-info);    border: 1px solid var(--border-info); }
     .rm-sw-none { background: var(--bg2);        border: 1px solid var(--border2); }
@@ -589,7 +582,12 @@
        one honest use of a horizontal scroller — squeezing it to fit 360px would
        make the labels unreadable. */
     .roadmap-scroll { overflow-x: auto; padding-bottom: 8px; }
-    .roadmap-scroll svg { display: block; }
+    /* The DAG scales to fill the content width (capped at 1400px by .content), so
+       on a wide screen it fills the space and needs no horizontal scroll. The
+       min-width is a legibility floor — below it the labels would shrink too far,
+       so the container scrolls instead. viewBox does the scaling; no fixed px
+       width/height on the <svg>. */
+    .roadmap-scroll svg { display: block; width: 100%; min-width: 920px; height: auto; }
 
     .rm-edge { fill: none; stroke: var(--border2); stroke-width: 1.5; }
     .rm-arrow-head { fill: var(--border2); }
@@ -622,13 +620,11 @@
       overflow-x: auto;
     }
 
-    /* Tablet: the six-tab strip is the first thing to run out of room. Drop the
-       group labels here — the hairline separator still carries the grouping. */
+    /* Tablet: the six-tab strip is the first thing to run out of room. */
     @media (max-width: 900px) {
       .topbar { padding: 0 14px; }
       .topbar-spacer { display: none; }
-      .tab-group-label { display: none; }
-      .tab-group-sep { margin: 14px 6px; }
+      .tab-group-sep { margin: 18px 6px; }
       .tab-btn { padding: 0 11px; }
     }
 
@@ -641,7 +637,6 @@
       .topbar { padding: 0 12px; }
       .topbar-logo { height: 22px; margin-right: 10px; }
       .tab-btn { padding: 0 8px; font-size: 14px; }
-      .tab-btn span { display: none; }                     /* drop the count badges */
       .tab-group-sep { margin: 16px 4px; }
       .col-check, .col-xlinks { display: none; }           /* Problems table */
       .col-kind { display: none; }                          /* Algorithms table */
@@ -677,37 +672,22 @@
   <img class="topbar-logo" id="site-logo" src="img/crackIT_wordmark.png" alt="crack_IT — Intuition Lab">
   <div class="topbar-spacer"></div>
 
+  <!-- The Practice/Learn split is still there — the hairline separator keeps it
+       legible — but the group *labels* and the per-tab counts were dropped as
+       clutter (the counts now live on each page as "X of Y completed"). -->
   <nav class="tab-nav" aria-label="Sections">
     <div class="tab-group" role="tablist" aria-label="Practice">
-      <span class="tab-group-label">Practice</span>
-      <div class="tab-group-btns">
-        <button class="tab-btn" id="tab-btn-basics" role="tab" aria-controls="tab-panel-basics" onclick="switchTab('basics')">
-          Basics <span id="tab-count-basics" style="color:var(--text3);font-weight:400"></span>
-        </button>
-        <button class="tab-btn" id="tab-btn-warmup" role="tab" aria-controls="tab-panel-warmup" onclick="switchTab('warmup')">
-          Warm-Up <span id="tab-count-warmup" style="color:var(--text3);font-weight:400"></span>
-        </button>
-        <button class="tab-btn active" id="tab-btn-problems" role="tab" aria-controls="tab-panel-problems" onclick="switchTab('problems')">
-          Problems <span id="tab-count-problems" style="color:var(--text3);font-weight:400"></span>
-        </button>
-      </div>
+      <button class="tab-btn" id="tab-btn-basics" role="tab" aria-controls="tab-panel-basics" onclick="switchTab('basics')">Basics</button>
+      <button class="tab-btn" id="tab-btn-warmup" role="tab" aria-controls="tab-panel-warmup" onclick="switchTab('warmup')">Warm-Up</button>
+      <button class="tab-btn active" id="tab-btn-problems" role="tab" aria-controls="tab-panel-problems" onclick="switchTab('problems')">Problems</button>
     </div>
 
     <div class="tab-group-sep" aria-hidden="true"></div>
 
     <div class="tab-group" role="tablist" aria-label="Learn">
-      <span class="tab-group-label">Learn</span>
-      <div class="tab-group-btns">
-        <button class="tab-btn" id="tab-btn-foundations" role="tab" aria-controls="tab-panel-foundations" onclick="switchTab('foundations')">
-          Foundations <span id="tab-count-foundations" style="color:var(--text3);font-weight:400"></span>
-        </button>
-        <button class="tab-btn" id="tab-btn-patterns" role="tab" aria-controls="tab-panel-patterns" onclick="switchTab('patterns')">
-          Patterns <span id="tab-count-patterns" style="color:var(--text3);font-weight:400"></span>
-        </button>
-        <button class="tab-btn" id="tab-btn-algorithms" role="tab" aria-controls="tab-panel-algorithms" onclick="switchTab('algorithms')">
-          Algorithms <span id="tab-count-algorithms" style="color:var(--text3);font-weight:400"></span>
-        </button>
-      </div>
+      <button class="tab-btn" id="tab-btn-foundations" role="tab" aria-controls="tab-panel-foundations" onclick="switchTab('foundations')">Foundations</button>
+      <button class="tab-btn" id="tab-btn-patterns" role="tab" aria-controls="tab-panel-patterns" onclick="switchTab('patterns')">Patterns</button>
+      <button class="tab-btn" id="tab-btn-algorithms" role="tab" aria-controls="tab-panel-algorithms" onclick="switchTab('algorithms')">Algorithms</button>
     </div>
   </nav>
 </div>
@@ -777,12 +757,8 @@
   <!-- ── ROADMAP VIEW (PLAN-024) ── -->
   <div class="content" id="roadmap-content" style="display:none">
     <div class="roadmap-legend">
-      <p>
-        Topic dependency map — an arrow means <em>learn this first</em>. Every count is
-        computed live from the problem set, so nothing here can go stale.
-        Click a topic to open it in the table.
-      </p>
       <div class="rm-keys">
+        <span class="rm-key"><span class="rm-sw rm-sw-arrow">→</span>learn first</span>
         <span class="rm-key"><span class="rm-sw rm-sw-done"></span>complete</span>
         <span class="rm-key"><span class="rm-sw rm-sw-part"></span>in progress</span>
         <span class="rm-key"><span class="rm-sw rm-sw-none"></span>not started</span>
@@ -1189,7 +1165,6 @@ async function loadProblems() {
     const r = await fetch('../data/problems.json');
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     ALL = await r.json();
-    document.getElementById('tab-count-problems').textContent = `(${ALL.length})`;
     populateTopics();
     applyFilters();
     return true;
@@ -1207,7 +1182,6 @@ async function loadAlgorithms() {
     const r = await fetch('../data/algorithms.json');
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     ALGOS = await r.json();
-    document.getElementById('tab-count-algorithms').textContent = `(${ALGOS.length})`;
     populateAlgoCats();
     applyAlgoFilters();
     return true;
@@ -1225,7 +1199,6 @@ async function loadPatterns() {
     PATTERNS = await r.json();
     PATTERNS.sort((a, b) =>
       (a.group_order - b.group_order) || (a.order - b.order));
-    document.getElementById('tab-count-patterns').textContent = `(${PATTERNS.length})`;
     populatePatternGroups();
     applyPatternFilters();
     return true;
@@ -1243,7 +1216,6 @@ async function loadPrerequisites() {
     PREREQS = await r.json();
     PREREQS.sort((a, b) =>
       (a.group_order - b.group_order) || (a.order - b.order));
-    document.getElementById('tab-count-foundations').textContent = `(${PREREQS.length})`;
     populatePrereqGroups();
     applyPrereqFilters();
     return true;
@@ -1260,7 +1232,6 @@ async function loadBasics() {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     BASICS = await r.json();
     BASICS.sort((a, b) => a.order - b.order);
-    document.getElementById('tab-count-basics').textContent = `(${BASICS.length})`;
     populateBasicsSections();
     applyBasicsFilters();
     return true;
@@ -1290,7 +1261,6 @@ async function loadWarmup() {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     WARMUP = await r.json();
     WARMUP.sort((a, b) => a.order - b.order);
-    document.getElementById('tab-count-warmup').textContent = `(${WARMUP.length})`;
     populateWarmupSections();
     applyWarmupFilters();
     return true;
@@ -1378,8 +1348,10 @@ function updateStats(visible) {
   const suffix = (filters.search || filters.topic || filters.diff ||
                   filters.status || filters.lesson) ? ' (filtered)' : '';
 
+  // Completion is a page-level fact, so it counts the whole set, not the filter.
+  const allDone = ALL.filter(p => p.status === 'done').length;
   document.getElementById('st-total').textContent = `${total} problem${total !== 1 ? 's' : ''}${suffix}`;
-  document.getElementById('st-done').textContent  = `${done} done`;
+  document.getElementById('st-done').textContent  = `${allDone} of ${ALL.length} completed`;
   document.getElementById('st-new').textContent   = `${nw} new`;
   document.getElementById('st-easy').textContent  = `${easy} Easy`;
   document.getElementById('st-med').textContent   = `${med} Medium`;
@@ -2092,8 +2064,9 @@ function updateBasicsStats(visible) {
   const suffix = (basFilters.search || basFilters.section ||
                   basFilters.diff || basFilters.status) ? ' (filtered)' : '';
 
+  const allDone = BASICS.filter(p => p.status === 'done').length;
   document.getElementById('bst-total').textContent = `${total} problem${total !== 1 ? 's' : ''}${suffix}`;
-  document.getElementById('bst-done').textContent  = `${done} done`;
+  document.getElementById('bst-done').textContent  = `${allDone} of ${BASICS.length} completed`;
   document.getElementById('bst-new').textContent   = `${nw} new`;
   document.getElementById('bst-easy').textContent  = `${easy} Easy`;
   document.getElementById('bst-med').textContent   = `${med} Medium`;
@@ -2220,8 +2193,9 @@ function updateWarmupStats(visible) {
   const nw    = visible.filter(p => p.status === 'new').length;
   const suffix = (wuFilters.search || wuFilters.section || wuFilters.status) ? ' (filtered)' : '';
 
+  const allDone = WARMUP.filter(p => p.status === 'done').length;
   document.getElementById('wst-total').textContent = `${total} problem${total !== 1 ? 's' : ''}${suffix}`;
-  document.getElementById('wst-done').textContent  = `${done} done`;
+  document.getElementById('wst-done').textContent  = `${allDone} of ${WARMUP.length} completed`;
   document.getElementById('wst-new').textContent   = `${nw} new`;
   document.getElementById('wst-easy').textContent  = `${total} Easy`;
 }
@@ -2496,9 +2470,11 @@ function renderRoadmap() {
   const { pos, canvasW, canvasH } = layoutRoadmap();
   const NS = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('width', canvasW);
-  svg.setAttribute('height', canvasH);
+  // Size is controlled by CSS (width:100% + viewBox); no fixed px width/height,
+  // so the map scales to fill the content column instead of sitting small and
+  // left-aligned in it.
   svg.setAttribute('viewBox', `0 0 ${canvasW} ${canvasH}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMin meet');
   svg.setAttribute('role', 'group');
   svg.setAttribute('aria-label', 'Topic dependency roadmap');
 

@@ -401,7 +401,9 @@ Implementation work is tracked under `AGENT_MD/plan/`:
 - `current_state_report.md` — living snapshot of project state.
 - `rules.md` — authoring conventions for plan and report documents.
 
-The latest plan: [PLAN-024](AGENT_MD/plan/plans/PLAN-024_topic_roadmap_and_branding.md) — the **topic roadmap** (a live, clickable 20-node dependency DAG behind a `Table | Roadmap` switch on the Problems tab, with every count derived from the problem set rather than stored) and the **crack_IT** identity (pinned logo + favicon, replacing a topbar that picked a random logo on every page load), landed 2026-07-14 ([REPORT-024](AGENT_MD/plan/reports/REPORT-024_topic_roadmap_and_branding.md)).
+The latest plan: [PLAN-025](AGENT_MD/plan/plans/PLAN-025_nav_declutter_and_roadmap_polish.md) — a presentation-only polish pass: the roadmap now scales to fill the content column (no horizontal scroll on large screens) with a legend-only header, and the nav dropped its `Practice`/`Learn` group labels and per-tab counts, the counts recast on each Practice page as **X of Y completed**, landed 2026-07-15 ([REPORT-025](AGENT_MD/plan/reports/REPORT-025_nav_declutter_and_roadmap_polish.md)).
+
+It builds on [PLAN-024](AGENT_MD/plan/plans/PLAN-024_topic_roadmap_and_branding.md) — the **topic roadmap** (a live, clickable 20-node dependency DAG behind a `Table | Roadmap` switch on the Problems tab, with every count derived from the problem set rather than stored) and the **crack_IT** identity (pinned logo + favicon, replacing a topbar that picked a random logo on every page load), landed 2026-07-14 ([REPORT-024](AGENT_MD/plan/reports/REPORT-024_topic_roadmap_and_branding.md)).
 
 It builds on [PLAN-023](AGENT_MD/plan/plans/PLAN-023_tab_architecture_and_warmup.md) — regrouped the dashboard into six tabs across two groups (**Practice** ‖ **Learn**), renamed Prerequisites → **Foundations**, gave every Basics problem a fuller `details` blurb and a worked example behind an ⓘ hover card, and added the **Warm-Up** tab (30 easy LeetCode problems bridging Basics and the 211), landed 2026-07-14 ([REPORT-023](AGENT_MD/plan/reports/REPORT-023_tab_architecture_and_warmup.md)).
 
