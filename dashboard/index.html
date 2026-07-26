@@ -566,6 +566,9 @@
     .stats-spacer { flex: 1; min-width: 8px; }
     .view-toggle .pill { font-weight: 500; }
 
+    /* PLAN-026: DP Ladder view intro blurb inside the Warm-Up tab. */
+    .dpl-intro { max-width: 72ch; margin: 14px 2px 18px; color: var(--text2); font-size: 13.5px; line-height: 1.6; }
+
     .roadmap-legend { margin: 0 0 14px; padding: 0 2px; }
     .rm-keys { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--text3); }
     .rm-key { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
@@ -939,6 +942,20 @@
      ══════════════════════════════════════════════════════════════ -->
 <div class="tab-panel" id="tab-panel-warmup">
 
+  <!-- ── VIEW SWITCH (PLAN-026): General on-ramps ‖ DP Ladder gradient ──
+       Two views of "warm up before the 211", so this is a switch here rather
+       than a 7th tab. It sits above both views so it stays visible in either. -->
+  <div class="stats-bar" id="wu-viewbar">
+    <span class="stat-chip">Warm-Up</span>
+    <div class="stats-spacer"></div>
+    <div class="pill-group view-toggle" id="wu-view">
+      <button class="pill active" data-val="general">General</button>
+      <button class="pill" data-val="dpladder">DP Ladder</button>
+    </div>
+  </div>
+
+  <div id="wu-view-general">
+
   <!-- ── WARM-UP STATS BAR ── -->
   <div class="stats-bar" id="wu-stats-bar">
     <span class="stat-chip" id="wst-total">— problems</span>
@@ -968,6 +985,36 @@
   <div class="content" id="wu-content">
     <div class="loading">Loading warm-up…</div>
   </div>
+
+  </div><!-- /wu-view-general -->
+
+  <!-- ══ DP LADDER VIEW (PLAN-026) ══
+       15 problems from a bare recurrence up into gentle grid/counting DP, its
+       own dataset (data/dp_ladder.json). The gradient someone struggling with
+       DP climbs before the Medium/Hard DP problems in the Problems tab. -->
+  <div id="wu-view-dpladder" style="display:none">
+
+    <div class="stats-bar" id="dpl-stats-bar">
+      <span class="stat-chip" id="dpl-total">— problems</span>
+      <div class="stats-sep"></div>
+      <span class="stat-chip done" id="dpl-done">— completed</span>
+      <div class="stats-sep"></div>
+      <span class="stat-chip easy" id="dpl-easy">— Easy</span>
+      <span class="stat-chip med"  id="dpl-med">— Medium</span>
+    </div>
+
+    <p class="dpl-intro">
+      Struggling with DP? Climb this first. Fifteen problems that start at a bare
+      recurrence and ramp — stage by stage — into gentle grid and counting DP, so
+      the jump to the Medium and Hard set in <b>Problems</b> feels natural. Work
+      them top to bottom.
+    </p>
+
+    <div class="content" id="dpl-content">
+      <div class="loading">Loading DP ladder…</div>
+    </div>
+
+  </div><!-- /wu-view-dpladder -->
 
 </div><!-- /tab-panel-warmup -->
 
@@ -1054,8 +1101,10 @@ let PATTERNS = [];   // problem-solving patterns / topics
 let PREREQS  = [];   // foundational knowledge units (PLAN-021)
 let BASICS   = [];   // language-agnostic programming drills (PLAN-022)
 let WARMUP   = [];   // 30 easy LeetCode problems, the on-ramp (PLAN-023)
+let DPLADDER = [];   // 15 easy→gentle-Medium DP problems, the DP on-ramp (PLAN-026)
 let ROADMAP  = [];   // topic dependency DAG — edges + layout only (PLAN-024)
 let probView = 'table';   // Problems tab: 'table' | 'roadmap'
+let warmupView = 'general';  // Warm-Up tab: 'general' | 'dpladder' (PLAN-026)
 
 // Cross-link indices (built after both datasets load)
 let slugToAlgos  = {};  // slug → algo[]
@@ -1153,7 +1202,7 @@ window.addEventListener('hashchange', () => {
 async function init() {
   const [probsOk, algosOk] = await Promise.all([
     loadProblems(), loadAlgorithms(), loadPatterns(),
-    loadPrerequisites(), loadBasics(), loadWarmup(), loadRoadmap(),
+    loadPrerequisites(), loadBasics(), loadWarmup(), loadDpLadder(), loadRoadmap(),
   ]);
   if (probsOk && algosOk) buildCrossLinkIndices();
   initInfoCard();
@@ -1267,6 +1316,21 @@ async function loadWarmup() {
   } catch (e) {
     document.getElementById('wu-content').innerHTML =
       `<div class="empty-state">Could not load warmup.json.</div>`;
+    return false;
+  }
+}
+
+async function loadDpLadder() {
+  try {
+    const r = await fetch('../data/dp_ladder.json');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    DPLADDER = await r.json();
+    DPLADDER.sort((a, b) => a.order - b.order);
+    renderDpLadder();
+    return true;
+  } catch (e) {
+    document.getElementById('dpl-content').innerHTML =
+      `<div class="empty-state">Could not load dp_ladder.json.</div>`;
     return false;
   }
 }
@@ -2278,12 +2342,120 @@ function buildWarmupRow(p) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// DP LADDER — RENDERING (PLAN-026)
+// A second view inside the Warm-Up tab: 15 problems that ramp from a bare
+// recurrence into gentle grid/counting DP. Grouped by ramp *stage* (`section`),
+// ordered top-to-bottom, mixed Easy/Medium so each row carries a difficulty
+// badge. Reuses the Warm-Up row shape, the ⓘ hover card, and toggleStatus.
+// ══════════════════════════════════════════════════════════════
+function setWarmupView(view) {
+  warmupView = view;
+  document.getElementById('wu-view-general').style.display  = view === 'general'  ? '' : 'none';
+  document.getElementById('wu-view-dpladder').style.display = view === 'dpladder' ? '' : 'none';
+  closeInfoCard();
+}
+
+function updateDpLadderStats() {
+  const total = DPLADDER.length;
+  const done  = DPLADDER.filter(p => p.status === 'done').length;
+  const easy  = DPLADDER.filter(p => p.difficulty === 'Easy').length;
+  const med   = DPLADDER.filter(p => p.difficulty === 'Medium').length;
+  document.getElementById('dpl-total').textContent = `${total} problem${total !== 1 ? 's' : ''}`;
+  document.getElementById('dpl-done').textContent  = `${done} of ${total} completed`;
+  document.getElementById('dpl-easy').textContent  = `${easy} Easy`;
+  document.getElementById('dpl-med').textContent   = `${med} Medium`;
+}
+
+function renderDpLadder() {
+  updateDpLadderStats();
+
+  const content = document.getElementById('dpl-content');
+  if (!DPLADDER.length) {
+    content.innerHTML = '<div class="empty-state">No problems to show.</div>';
+    return;
+  }
+
+  const sectionOrder = [];
+  const bySection = {};
+  for (const p of DPLADDER) {
+    if (!bySection[p.section]) { bySection[p.section] = []; sectionOrder.push(p.section); }
+    bySection[p.section].push(p);
+  }
+
+  const frag = document.createDocumentFragment();
+
+  for (const sec of sectionOrder) {
+    const rows = bySection[sec];
+
+    const hdr = document.createElement('div');
+    hdr.className = 'section-hdr';
+    hdr.dataset.section = sec;
+    hdr.innerHTML = `
+      <span class="section-hdr-text">${escHtml(sec)}</span>
+      <span class="section-hdr-count">${rows.length}</span>
+      <span class="section-hdr-line"></span>
+      <span class="section-hdr-arrow">▾</span>`;
+    hdr.addEventListener('click', () => toggleSection(hdr, 'dpl-section'));
+    frag.appendChild(hdr);
+
+    const wrap = document.createElement('div');
+    wrap.dataset.dplSectionBody = sec;
+
+    const tbl = document.createElement('table');
+    tbl.className = 'prob-table';
+    tbl.innerHTML = `<thead><tr>
+      <th class="col-order">#</th>
+      <th class="col-lc">LC</th>
+      <th class="col-name">Problem</th>
+      <th class="col-diff">Difficulty</th>
+      <th class="col-status">Status</th>
+    </tr></thead>`;
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(p => tbody.appendChild(buildDpLadderRow(p)));
+    tbl.appendChild(tbody);
+    wrap.appendChild(tbl);
+    frag.appendChild(wrap);
+  }
+
+  content.innerHTML = '';
+  content.appendChild(frag);
+}
+
+function buildDpLadderRow(p) {
+  const tr = document.createElement('tr');
+  tr.className = 'prob-row' + (p.status === 'done' ? ' done-row' : '');
+  tr.dataset.slug = p.slug;
+
+  const diffClass = { Easy: 'badge-easy', Medium: 'badge-medium' }[p.difficulty] || '';
+
+  tr.innerHTML = `
+    <td class="col-order">${p.order / 10}</td>
+    <td class="col-lc">${p.lc_num}</td>
+    <td class="col-name">
+      <a class="bas-name prob-link" href="${escAttr(p.url)}" target="_blank" rel="noopener">${escHtml(p.name)}</a>${infoBtn('dpladder', p.slug)}
+      <div class="bas-statement">${escHtml(p.statement)}</div>
+      <span class="bas-skill">${escHtml(p.skill)}</span>
+    </td>
+    <td class="col-diff"><span class="badge ${diffClass}">${p.difficulty}</span></td>
+    <td class="col-status"></td>`;
+
+  const btn = document.createElement('button');
+  btn.className = 'status-toggle ' + (p.status === 'done' ? 'is-done' : 'is-new');
+  btn.textContent = p.status === 'done' ? '✓ Done' : 'New';
+  btn.addEventListener('click', () => toggleStatus(p, tr, btn, 'dpladder'));
+  tr.querySelector('.col-status').appendChild(btn);
+
+  return tr;
+}
+
+// ══════════════════════════════════════════════════════════════
 // ⓘ HOVER CARD (PLAN-023)
 // One popover, re-anchored per trigger. Hover opens it for mice; click/tap
 // opens it for everyone (touch has no hover, and a hover-only affordance
 // would strand every phone user).
 // ══════════════════════════════════════════════════════════════
-const INFO_SOURCES = { basics: () => BASICS, warmup: () => WARMUP };
+const INFO_SOURCES = { basics: () => BASICS, warmup: () => WARMUP, dpladder: () => DPLADDER };
 let _infoTrigger = null;
 let _infoHideTimer = null;
 
@@ -2609,7 +2781,7 @@ async function toggleStatus(p, tr, btn, dataset = 'problems') {
     btn.textContent = newStatus === 'done' ? '✓ Done' : 'New';
     btn.className = 'status-toggle ' + (newStatus === 'done' ? 'is-done' : 'is-new');
     tr.classList.toggle('done-row', newStatus === 'done');
-    ({ basics: applyBasicsFilters, warmup: applyWarmupFilters }[dataset] || applyFilters)();
+    ({ basics: applyBasicsFilters, warmup: applyWarmupFilters, dpladder: updateDpLadderStats }[dataset] || applyFilters)();
     // Marking a problem done moves a bar on the roadmap — keep the map honest.
     if (dataset === 'problems' && probView === 'roadmap') renderRoadmap();
     showToast(newStatus === 'done' ? '✓ Marked done' : '↩ Marked new');
@@ -2631,6 +2803,7 @@ function toggleSection(hdr, bodyAttr) {
     'pre-section':  'data-pre-section-body',
     'bas-section':  'data-bas-section-body',
     'wu-section':   'data-wu-section-body',
+    'dpl-section':  'data-dpl-section-body',
   }[bodyAttr] || 'data-section-body';
   const body = document.querySelector(`[${attr}="${CSS.escape(sec)}"]`);
   if (!body) return;
@@ -2953,6 +3126,7 @@ document.querySelectorAll('.pill-group').forEach(group => {
     }
     // The view toggle is not a filter — it swaps which view of Problems is shown.
     if (group.id === 'p-view') { setProblemsView(pill.dataset.val); return; }
+    if (group.id === 'wu-view') { setWarmupView(pill.dataset.val); return; }
 
     // Trigger correct filter
     if (group.closest('#tab-panel-algorithms')) applyAlgoFilters();

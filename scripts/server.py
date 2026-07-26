@@ -19,6 +19,7 @@ STATUS_DATASETS = {
     "problems": PROBLEMS_JSON,
     "basics": PROJECT_ROOT / "data" / "basics.json",
     "warmup": PROJECT_ROOT / "data" / "warmup.json",
+    "dpladder": PROJECT_ROOT / "data" / "dp_ladder.json",
 }
 
 _lock = threading.Lock()
