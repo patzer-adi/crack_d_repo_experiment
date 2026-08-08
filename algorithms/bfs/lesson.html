@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Breadth-First Search (BFS) — Algorithm Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<link rel="stylesheet" href="../../static/algo.css">
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Algorithm Lesson</p>
+  <h1>Breadth-First Search (BFS)</h1>
+  <div class="header-meta">
+    <span class="badge badge-arr">Graph Algorithms</span>
+    <span class="badge badge-med">Tier 1 · primer</span>
+    <span class="badge badge-arr">O(V + E) time · O(V) space</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer decides whether BFS is even the right tool.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Do the edges have weights?</div>
+      <div class="acard-a">No — every edge costs 1 step.</div>
+      <div class="acard-u">→ BFS gives shortest paths. With real weights you need Dijkstra.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Is the graph directed or undirected?</div>
+      <div class="acard-a">Undirected here — an edge can be walked both ways.</div>
+      <div class="acard-u">→ each edge goes into two adjacency lists, not one</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Is every node reachable from the start?</div>
+      <div class="acard-a">No. The graph can come in separate pieces.</div>
+      <div class="acard-u">→ unreachable nodes keep distance -1; never assume all are visited</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Do we need the route, or only how far?</div>
+      <div class="acard-a">Only the distance.</div>
+      <div class="acard-u">→ one dist array is enough. Add a parent array to rebuild the route.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">A queue turns the search into rings, and the ring is the answer</p>
+
+  <p class="body">Finding the shortest route feels like it needs comparing routes. It does not. A queue hands nodes back in the order they were reached, so you leave the start, then touch everything one step away, then everything two steps away — never skipping ahead. The first time you touch a node, you are already there by the shortest route.</p>
+
+  <div style="margin:1.25rem 0">
+    <div class="gv-legend">
+      <span><span class="leg-dot" style="background:var(--bg2);border:1px solid var(--border2)"></span>not reached yet</span>
+      <span><span class="leg-dot" style="background:var(--bg-warn)"></span>this ring</span>
+      <span><span class="leg-dot" style="background:var(--bg-success)"></span>distance fixed</span>
+    </div>
+    <div id="si-graph" class="gv-wrap" style="margin:.5rem 0"></div>
+    <div id="si-cap" class="gv-cap"></div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="ctrl-btn"     onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn"     onclick="siNext()">Next →</button>
+      <button class="ctrl-btn"     onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <div style="margin:1.25rem 0;font-size:13px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:.5rem;color:var(--text)">Why the ring number is already the shortest distance:</div>
+    <div class="skeleton">
+      <div class="wt-item">
+        <div class="wt-num">1</div>
+        <div class="wt-body">
+          <div class="wt-name">The queue never lets you jump a ring</div>
+          <div class="wt-desc">Nodes go in at the back and come out at the front. Everything at distance 1 was queued before anything at distance 2, so it all comes out first. The order out is sorted by distance without ever sorting anything.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">2</div>
+        <div class="wt-body">
+          <div class="wt-name">First arrival wins, permanently</div>
+          <div class="wt-desc">Suppose a node is first reached in ring 3. A shorter route would have reached it in ring 1 or 2 — but those rings are already empty. No shorter route exists, so there is nothing to compare and nothing to update later.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">3</div>
+        <div class="wt-body">
+          <div class="wt-name">One array does two jobs</div>
+          <div class="wt-desc">Because distances are final on first touch, "has a distance" and "already visited" are the same question. The dist array is also the visited set, so there is no second structure to keep in sync.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Push the source with distance 0. Repeatedly pop a node and give every unlabelled neighbour a distance one greater, pushing it to the back. The queue guarantees nodes come out in non-decreasing distance order, so the label written on first contact is already the shortest distance and never changes.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">If you did not know the ring trick you would do the obvious thing: walk every route out of the source, and for each node remember the shortest walk that ever reached it. It is correct, because the shortest route never repeats a node. It is also hopeless — the number of routes grows like the factorial of the node count. Watch the "routes walked" counter on a graph with six nodes.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">6 nodes</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">split graph</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">4-cycle</button>
+  </div>
+  <div id="bf-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-counter">
+    <span>routes walked: <b id="bf-routes">0</b></span>
+    <span>current route: <b id="bf-path">—</b></span>
+  </div>
+  <div id="bf-dist" class="gv-strip"></div>
+  <div id="bf-narr" class="gv-cap"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(V!) time in the worst case</p>
+    <p class="infobox-d">Every node is re-entered once per route that reaches it. The same short prefix is re-walked over and over, and the answer for a node is only trusted after every route has finished. BFS throws all of that away.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="cm">// Walk every simple route out of src; keep the shortest length per node.</span>
+<span class="kw">void</span> <span class="fn">walk</span>(<span class="kw">int</span> u, <span class="kw">int</span> len, <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; best,
+          <span class="kw">vector</span>&lt;<span class="kw">bool</span>&gt;&amp; onPath, <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; adj) {
+    onPath[u] = <span class="kw">true</span>;
+    <span class="kw">if</span> (len &lt; best[u]) { best[u] = len; }
+    <span class="kw">for</span> (<span class="kw">int</span> v : adj[u]) {
+        <span class="kw">if</span> (onPath[v]) { <span class="kw">continue</span>; }   <span class="cm">// no repeats on one route</span>
+        <span class="fn">walk</span>(v, len + 1, best, onPath, adj);
+    }
+    onPath[u] = <span class="kw">false</span>;             <span class="cm">// back out and try another route</span>
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three swaps take the route walk from factorial down to linear.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Walk every route → expand one ring at a time</div>
+        <div class="wt-desc">Stop following routes to the end. Grow the reached set outwards by one edge per round, so each node is entered once instead of once per route through it.</div>
+        <div class="wt-gain">O(V!) → O(V + E)</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Compare route lengths → trust the first arrival</div>
+        <div class="wt-desc">The queue hands nodes back in distance order, so the first route that reaches a node is already the shortest. No minimum to track, no value to revise.</div>
+        <div class="wt-gain">removes the per-node comparison entirely</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">Separate visited set → the distance array itself</div>
+        <div class="wt-desc">Since a distance is written exactly once, "dist[v] is still -1" means "never reached". One array answers both questions and they cannot fall out of sync.</div>
+        <div class="wt-gain">one array instead of two</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Set up.</b> Give every node distance <code>-1</code>, meaning "not reached". Set the source to <code>0</code> and push it into the queue.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Take the front node</b> <code>u</code> off the queue. Its distance is already final — nothing later can improve it.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Look at each neighbour</b> <code>v</code>. If <code>dist[v]</code> is not <code>-1</code> it already has a shorter or equal distance, so skip it.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Claim the new ones.</b> Set <code>dist[v] = dist[u] + 1</code> and push <code>v</code> to the <i>back</i> of the queue, so it is handled after everything in the current ring.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>Stop when the queue empties</b> and return <code>dist</code>. Any node still holding <code>-1</code> cannot be reached from the source.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <p class="body">C++ first — that is the version the walkthrough below animates. The Python version is the same algorithm with the noise removed; read it if the C++ obscures the shape.</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; <span class="fn">bfs</span>(<span class="kw">int</span> n, <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; adj, <span class="kw">int</span> src) {
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; dist(n, -1);        <span class="cm">// -1 = not reached</span>
+    <span class="kw">queue</span>&lt;<span class="kw">int</span>&gt; q;
+    dist[src] = 0;
+    q.<span class="fn">push</span>(src);
+    <span class="kw">while</span> (!q.<span class="fn">empty</span>()) {
+        <span class="kw">int</span> u = q.<span class="fn">front</span>(); q.<span class="fn">pop</span>();
+        <span class="kw">for</span> (<span class="kw">int</span> v : adj[u]) {
+            <span class="kw">if</span> (dist[v] != -1) { <span class="kw">continue</span>; }   <span class="cm">// already final</span>
+            dist[v] = dist[u] + 1;
+            q.<span class="fn">push</span>(v);
+        }
+    }
+    <span class="kw">return</span> dist;
+}</pre>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-py',this)" style="margin-top:.5rem">▶ Reveal the same thing in Python</button>
+  <div id="code-py" class="code-block">
+    <pre class="cb"><span class="kw">from</span> collections <span class="kw">import</span> deque
+
+<span class="kw">def</span> <span class="fn">bfs</span>(n, adj, src):
+    dist = [-<span class="nu">1</span>] * n
+    dist[src] = <span class="nu">0</span>
+    q = <span class="fn">deque</span>([src])
+    <span class="kw">while</span> q:
+        u = q.<span class="fn">popleft</span>()
+        <span class="kw">for</span> v <span class="kw">in</span> adj[u]:
+            <span class="kw">if</span> dist[v] != -<span class="nu">1</span>:
+                <span class="kw">continue</span>
+            dist[v] = dist[u] + <span class="nu">1</span>
+            q.<span class="fn">append</span>(v)
+    <span class="kw">return</span> dist</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Each step runs one line of the C++ above. The cards on the right hold the live values; the graph below shows which node is being popped and which edge is being followed. Switch examples to see the unreachable case and the cycle.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-u"><span class="cv-var-name">u</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-v"><span class="cv-var-name">v</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-q"><span class="cv-var-name">queue</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-dist"><span class="cv-var-name">dist</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-graph" class="gv-wrap" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">6 nodes</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">split graph</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">4-cycle</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick a graph and step the queue by hand. Before pressing Next, say out loud which node comes off the front and what distance its new neighbours get.</p>
+
+  <div id="dr-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-legend">
+    <span><span class="leg-dot" style="background:var(--bg-info)"></span>popped now</span>
+    <span><span class="leg-dot" style="background:var(--bg-warn)"></span>waiting in queue</span>
+    <span><span class="leg-dot" style="background:var(--bg-success)"></span>distance fixed</span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">queue (front → back)</div>
+          <div class="fitem-val" id="dr-f-q">—</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">nodes labelled</div>
+          <div class="fitem-val" id="dr-f-done">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">result</div>
+          <div class="fitem-val" id="dr-f-res">…</div>
+        </div>
+      </div>
+      <div class="formula-eq" id="dr-f-dist"></div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">6 nodes → [0,1,1,2,3,4]</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">split → [0,1,2,-1,-1]</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">4-cycle → [0,1,2,1]</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">The graph is in pieces</div>
+    <div class="corner-body">One BFS only covers the source's own component. Nodes elsewhere keep <code>-1</code>. If the task is "visit everything", wrap the BFS in a loop that starts a fresh one from each node still holding <code>-1</code>.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">Cycles</div>
+    <div class="corner-body">A cycle is harmless because a node is labelled once. Without the <code>dist[v] != -1</code> guard the queue would refill forever. In the 4-cycle example node 3 gets distance 1 directly, not 3 the long way round.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Mark on push, not on pop</div>
+    <div class="corner-body">The most common bug. If you only set <code>dist</code> when a node comes <i>off</i> the queue, the same node can be pushed several times before its first pop, and the queue blows up to O(E). Label it the moment you push it.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Self-loops and repeated edges</div>
+    <div class="corner-body">Both are absorbed by the same guard: the node already has a distance, so it is skipped. No special handling needed.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">A weighted graph</div>
+    <div class="corner-body">BFS is simply wrong here — it counts edges, not weight. If all weights are 0 or 1 use 0-1 BFS with a deque; otherwise use Dijkstra.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Label on push.</b> Set <code>dist[v]</code> at the moment you enqueue <code>v</code>, so a node can never sit in the queue twice.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Use a real queue.</b> <code>std::queue</code> or a two-index ring buffer. Popping from the front of a <code>vector</code> is O(V) per pop and turns the whole thing quadratic.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Build the adjacency list once</b> before the search, in O(V + E). Scanning an edge list inside the loop is the usual accidental O(V·E).</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Return -1, not infinity,</b> for unreachable nodes — and say so at the call site. Silent 0 for "unreachable" is a bug waiting to happen.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Iterative, never recursive.</b> BFS has no recursive form, which is exactly why it is safe on graphs deep enough to blow a call stack.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Multi-source is free.</b> Push every source at distance 0 before the loop and the answer becomes "distance to the nearest source" — no other change.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Queue BFS</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Level-by-level BFS</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">DFS</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(V + E)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">The version above. One flat queue, one distance array, no notion of a "round". Use it whenever you want the distance number itself. This is the default and the one to write in an interview.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(V + E)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">Same cost, but the outer loop snapshots <code>q.size()</code> and drains exactly that many nodes, so each iteration is exactly one ring. Use it when the ring boundary matters and the distance number does not — printing a tree level by level, or counting minutes in a grid simulation.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-level',this)">▶ Reveal sketch</button>
+    <div id="code-level" class="code-block">
+      <pre class="cb"><span class="kw">while</span> (!q.<span class="fn">empty</span>()) {
+    <span class="kw">int</span> sz = q.<span class="fn">size</span>();        <span class="cm">// this whole ring, and no more</span>
+    <span class="kw">while</span> (sz--) {
+        <span class="kw">int</span> u = q.<span class="fn">front</span>(); q.<span class="fn">pop</span>();
+        <span class="cm">// ... push unlabelled neighbours ...</span>
+    }
+    depth++;                 <span class="cm">// one ring finished</span>
+}</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O(V + E)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">Swap the queue for a stack and you get DFS — same cost, but it dives down one branch before spreading. It answers reachability, cycles, and topological order well. It does <b>not</b> give shortest distances: the first route DFS finds to a node is usually not the shortest, so a distance written on first contact would be wrong.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(V + E)</div>
+      <div class="ccard-n">The guard lets each node be pushed at most once, so there are V pops. Each pop scans that node's list, and across the run every edge is scanned from both ends — 2E work in total.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(V)</div>
+      <div class="ccard-n">The distance array is V entries and the queue holds at most V nodes at once, since no node is ever enqueued twice.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">LeetCode problems that are this algorithm</p>
+  <div class="takehome">
+    <p><b>LC 102 — Binary Tree Level Order Traversal:</b> the level-by-level variant, on a tree. Snapshot <code>q.size()</code> to cut the rings apart.</p>
+    <p><b>LC 994 — Rotting Oranges:</b> BFS on a grid with many sources at once. Every rotten cell starts at distance 0, and the ring number is the minute.</p>
+    <p><b>LC 542 — 01 Matrix:</b> multi-source BFS from every zero. The distance array is the answer grid.</p>
+    <p><b>LC 127 — Word Ladder:</b> the graph is implicit — nodes are words, edges are one-letter changes. Same BFS, built on the fly.</p>
+    <p><b>The trick to carry:</b> the moment a problem says "fewest steps" or "shortest" and every step costs the same, it is BFS. Your only real job is deciding what a node is.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script src="../../static/algo.js"></script>
+<script>
+  /* Fixed node coordinates per example, so the same graph always looks the same.
+     One viewBox for all three keeps the panels the same height. */
+  const LAYOUT = [
+    { vb: '0 0 515 210', pos: [[50,105],[150,48],[150,162],[255,105],[360,105],[465,105]] },
+    { vb: '0 0 515 210', pos: [[90,65],[230,65],[370,65],[150,155],[300,155]] },
+    { vb: '0 0 515 210', pos: [[160,58],[355,58],[355,152],[160,152]] },
+  ];
+
+  /* Map one animation step onto the shared painter's node/edge classes.
+     DOM only — the pure *GenSteps generators never call this. */
+  function gDraw(conId, exIdx, st) {
+    const edges = EX[exIdx].edges;
+    const key = (a, b) => Math.min(a, b) + '-' + Math.max(a, b);
+    const hot = st.hi ? key(st.hi[0], st.hi[1]) : null;
+    const onPath = new Set();
+    for (let i = 0; i + 1 < (st.path || []).length; i++) { onPath.add(key(st.path[i], st.path[i + 1])); }
+    const queued = new Set(st.queue || []);
+    const has = d => d !== null && d !== undefined;
+    gvPaint(conId, { vb: LAYOUT[exIdx].vb, pos: LAYOUT[exIdx].pos, edges }, {
+      nodeCls: LAYOUT[exIdx].pos.map((_, i) =>
+        i === st.cur ? 'cur' : queued.has(i) ? 'queue' : has((st.dist || [])[i]) ? 'seen' : ''),
+      edgeCls: edges.map(e => {
+        const k = key(e[0], e[1]);
+        return k === hot ? 'hot' : onPath.has(k) ? 'tree' : '';
+      }),
+      labels:  LAYOUT[exIdx].pos.map((_, i) => has((st.dist || [])[i]) ? 'd=' + st.dist[i] : 'd=?'),
+      labelOn: LAYOUT[exIdx].pos.map((_, i) => has((st.dist || [])[i])),
+    });
+  }
+
+  /* ── answer-bearing examples (drive bf / cv / dr panels AND the verifier) ── */
+  const EX = [
+    { n: 6, edges: [[0,1],[0,2],[1,3],[2,3],[3,4],[4,5]], src: 0, answer: [0,1,1,2,3,4]  },
+    { n: 5, edges: [[0,1],[1,2],[3,4]],                   src: 0, answer: [0,1,2,-1,-1] },
+    { n: 4, edges: [[0,1],[1,2],[2,3],[3,0]],             src: 0, answer: [0,1,2,1]     },
+  ];
+
+  const CV_LINES = [
+    { n:1,  c:'vector<int> bfs(int n, vector<vector<int>>& adj, int src) {' },
+    { n:2,  c:'    vector<int> dist(n, -1);' },
+    { n:3,  c:'    queue<int> q;' },
+    { n:4,  c:'    dist[src] = 0;' },
+    { n:5,  c:'    q.push(src);' },
+    { n:6,  c:'    while (!q.empty()) {' },
+    { n:7,  c:'        int u = q.front(); q.pop();' },
+    { n:8,  c:'        for (int v : adj[u]) {' },
+    { n:9,  c:'            if (dist[v] != -1) continue;' },
+    { n:10, c:'            dist[v] = dist[u] + 1;' },
+    { n:11, c:'            q.push(v);' },
+    { n:12, c:'        }' },
+    { n:13, c:'    }' },
+    { n:14, c:'    return dist;' },
+    { n:15, c:'}' },
+  ];
+
+  /* ════════════════ SEC 1 INSIGHT — rings ════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+
+  function siGenSteps(n, edges, src) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const e of edges) { adj[e[0]].push(e[1]); adj[e[1]].push(e[0]); }
+    const dist = new Array(n).fill(null);
+    dist[src] = 0;
+    let ring = [src], d = 0;
+    const steps = [];
+    steps.push({ dist: dist.slice(), queue: ring.slice(), cur: -1, hi: null,
+      cap: `Ring 0 holds only the start node ${src}. Every other distance is still unknown.` });
+    while (ring.length) {
+      const next = [];
+      for (const u of ring) {
+        for (const v of adj[u]) {
+          if (dist[v] !== null) { continue; }
+          dist[v] = d + 1;
+          next.push(v);
+        }
+      }
+      if (next.length === 0) { break; }
+      d++;
+      steps.push({ dist: dist.slice(), queue: next.slice(), cur: -1, hi: null,
+        cap: `Ring ${d} — node(s) ${next.join(', ')} sit exactly ${d} edge(s) from ${src}. Their distance is now fixed.` });
+      ring = next;
+    }
+    steps.push({ dist: dist.slice(), queue: [], cur: -1, hi: null,
+      cap: `No ring left to grow. The ring a node landed in IS its shortest distance — nothing was ever compared.` });
+    return steps;
+  }
+
+  function siRender(st) {
+    gDraw('si-graph', 0, st);
+    document.getElementById('si-cap').textContent = st.cap;
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+
+  /* ════════════════ SEC 2 BRUTE FORCE — walk every route ════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null;
+
+  function bfGenSteps(n, edges, src) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const e of edges) { adj[e[0]].push(e[1]); adj[e[1]].push(e[0]); }
+    const best = new Array(n).fill(null);
+    const onPath = new Array(n).fill(false);
+    const path = [];
+    const steps = [];
+    let routes = 0;
+    steps.push({ dist: best.slice(), best: best.slice(), path: [], routes, cur: -1, queue: [], hi: null,
+      narr: `Start at node ${src}. We will follow every route that never repeats a node, and remember the shortest one reaching each node.` });
+    const walk = (u) => {
+      onPath[u] = true;
+      path.push(u);
+      routes++;
+      const len = path.length - 1;
+      if (best[u] === null || len < best[u]) { best[u] = len; }
+      steps.push({ dist: best.slice(), best: best.slice(), path: path.slice(), routes, cur: u, queue: [], hi: null,
+        narr: `Route ${path.join('→')} reaches node ${u} in ${len} step(s). Routes walked so far: ${routes}.` });
+      for (const v of adj[u]) {
+        if (onPath[v]) { continue; }
+        walk(v);
+      }
+      onPath[u] = false;
+      path.pop();
+    };
+    walk(src);
+    const result = best.map(d => (d === null ? -1 : d));
+    steps.push({ dist: best.slice(), best: best.slice(), path: [], routes, cur: -1, queue: [], hi: null,
+      narr: `Every route walked: ${routes} of them, for a graph with only ${n} nodes. Answer ${JSON.stringify(result)} — correct, but the work explodes with size.`,
+      result });
+    return steps;
+  }
+
+  function bfRender(st) {
+    gDraw('bf-graph', bfEx, st);
+    stripPaint('bf-dist', st.best.map((d, i) =>
+      ({ text: 'best[' + i + '] = ' + (d === null ? '\u221e' : d), cls: d === null ? '' : 'set' })));
+    document.getElementById('bf-routes').textContent = st.routes;
+    document.getElementById('bf-path').textContent = st.path.length ? st.path.join('→') : '—';
+    document.getElementById('bf-narr').textContent = st.narr;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+  let bfEx = 0;
+  function bfLoadEx(idx) {
+    bfStopPlay(); bfCur = 0; bfEx = idx;
+    [0,1,2].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+    bfSteps = bfGenSteps(EX[idx].n, EX[idx].edges, EX[idx].src);
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ════════════════ SEC 6 CODE VIZ — one C++ line per step ════════════════ */
+  let cvCur = 0, cvSteps = [], cvTimer = null, cvEx = 0;
+
+  function cvGenSteps(n, edges, src) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const e of edges) { adj[e[0]].push(e[1]); adj[e[1]].push(e[0]); }
+    let dist = new Array(n).fill(null);
+    let q = [];
+    let u = null, v = null;
+    const steps = [];
+    const snap = (o) => Object.assign({
+      dist: dist.slice(), queue: q.slice(), u, v, cur: (u === null ? -1 : u), hi: null, changed: [],
+    }, o);
+    steps.push(snap({ line: 1, narr: `Called with ${n} nodes and source ${src}.` }));
+    steps.push(snap({ line: 2, changed: ['dist'], narr: 'Every distance starts at -1, meaning "not reached".' }));
+    steps.push(snap({ line: 3, changed: ['q'], narr: 'The queue starts empty.' }));
+    dist[src] = 0;
+    steps.push(snap({ line: 4, changed: ['dist'], narr: `The source is 0 steps from itself, so dist[${src}] = 0.` }));
+    q.push(src);
+    steps.push(snap({ line: 5, changed: ['q'], narr: `Push ${src}. It is the only thing waiting.` }));
+    while (q.length) {
+      steps.push(snap({ line: 6, narr: `The queue holds ${q.length} node(s), so keep going.` }));
+      u = q.shift();
+      v = null;
+      steps.push(snap({ line: 7, changed: ['u', 'q'], narr: `Pop node ${u} off the front. Its distance ${dist[u]} is final.` }));
+      for (const w of adj[u]) {
+        v = w;
+        steps.push(snap({ line: 8, changed: ['v'], hi: [u, w], narr: `Look at neighbour ${w} of node ${u}.` }));
+        if (dist[w] !== null) {
+          steps.push(snap({ line: 9, hi: [u, w], narr: `Node ${w} already has distance ${dist[w]} — skip it. This is what stops cycles.` }));
+          continue;
+        }
+        dist[w] = dist[u] + 1;
+        steps.push(snap({ line: 10, changed: ['dist'], hi: [u, w], narr: `Node ${w} is new: dist[${w}] = dist[${u}] + 1 = ${dist[w]}.` }));
+        q.push(w);
+        steps.push(snap({ line: 11, changed: ['q'], hi: [u, w], narr: `Push ${w} to the back, behind everything already waiting.` }));
+      }
+      v = null;
+    }
+    u = null;
+    steps.push(snap({ line: 6, narr: 'The queue is empty — every reachable node has been labelled.' }));
+    const result = dist.map(d => (d === null ? -1 : d));
+    steps.push(snap({ line: 14, phase: 'done', narr: `Return ${JSON.stringify(result)}. A -1 means that node was never reached.`, result }));
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const ln = document.getElementById('cvL' + st.line);
+    if (ln) ln.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    const fmt = a => '[' + a.map(x => (x === null ? '-1' : x)).join(',') + ']';
+    setCard('cv-v-u', st.u === null ? '—' : st.u, ch.includes('u'));
+    setCard('cv-v-v', st.v === null ? '—' : st.v, ch.includes('v'));
+    setCard('cv-v-q', st.queue.length ? st.queue.join(' ') : 'empty', ch.includes('q'));
+    setCard('cv-v-dist', fmt(st.dist), ch.includes('dist'));
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : ' is-active');
+    gDraw('cv-graph', cvEx, st);
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+  function cvLoadEx(idx) {
+    cvStopPlay(); cvCur = 0; cvEx = idx;
+    [0,1,2].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(EX[idx].n, EX[idx].edges, EX[idx].src);
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ════════════════ SEC 7 DRY RUN — the oracle ════════════════ */
+  let drCur = 0, drSteps = [], drTimer = null, drEx = 0;
+
+  function drGenSteps(n, edges, src) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const e of edges) { adj[e[0]].push(e[1]); adj[e[1]].push(e[0]); }
+    const dist = new Array(n).fill(null);
+    const q = [];
+    const steps = [];
+    const labelled = () => dist.reduce((k, d) => k + (d === null ? 0 : 1), 0);
+    const snap = (o) => Object.assign({
+      dist: dist.slice(), queue: q.slice(), cur: -1, hi: null, done: labelled(),
+    }, o);
+    dist[src] = 0;
+    q.push(src);
+    steps.push(snap({ what: `Start from node ${src}`, why: `Its distance to itself is 0, and it is the only node waiting in the queue.` }));
+    while (q.length) {
+      const u = q.shift();
+      steps.push(snap({ cur: u, what: `Pop node ${u}`, why: `It was at the front, so nothing left in the queue is closer than its distance of ${dist[u]}. That number is now final.` }));
+      let added = 0;
+      for (const v of adj[u]) {
+        if (dist[v] !== null) { continue; }
+        dist[v] = dist[u] + 1;
+        q.push(v);
+        added++;
+        steps.push(snap({ cur: u, hi: [u, v],
+          what: `Label node ${v} with ${dist[v]}`,
+          why: `Reached for the first time, from node ${u}: ${dist[u]} + 1 = ${dist[v]}. It joins the back of the queue.` }));
+      }
+      if (added === 0) {
+        steps.push(snap({ cur: u, what: `Node ${u} adds nothing`, why: `All of its neighbours already carry a distance, so there is nothing new to queue.` }));
+      }
+    }
+    const result = dist.map(d => (d === null ? -1 : d));
+    const missing = result.filter(d => d === -1).length;
+    steps.push(snap({
+      what: 'Queue empty — finished',
+      why: missing
+        ? `${missing} node(s) were never reached; they stay at -1. Final distances: ${JSON.stringify(result)}.`
+        : `Every node has a final distance: ${JSON.stringify(result)}.`,
+      result }));
+    return steps;
+  }
+
+  function drRender(st) {
+    gDraw('dr-graph', drEx, st);
+    document.getElementById('dr-f-q').textContent = st.queue.length ? st.queue.join(' → ') : 'empty';
+    document.getElementById('dr-f-done').textContent = st.done + ' / ' + st.dist.length;
+    document.getElementById('dr-f-dist').textContent =
+      'dist = [' + st.dist.map(d => (d === null ? '-1' : d)).join(', ') + ']';
+    const res = document.getElementById('dr-f-res');
+    if ('result' in st) {
+      res.textContent = JSON.stringify(st.result);
+      res.style.color = 'var(--text-success)';
+    } else {
+      res.textContent = '…';
+      res.style.color = 'var(--text2)';
+    }
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.what;
+    if (whyEl) whyEl.textContent = st.why;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+  function drLoadEx(idx) {
+    drStopPlay(); drCur = 0; drEx = idx;
+    [0,1,2].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+    drSteps = drGenSteps(EX[idx].n, EX[idx].edges, EX[idx].src);
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ── init ── */
+  siSteps = siGenSteps(EX[0].n, EX[0].edges, EX[0].src);
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>

@@ -101,12 +101,15 @@ pre.cb{font-family:var(--mono);font-size:18px;background:var(--bg2);border:0.5px
 .cv-line-code{white-space:pre;color:var(--text2);}
 .cv-state-panel{display:flex;flex-direction:column;gap:10px;}
 .cv-var-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
-.cv-var-card{background:var(--bg2);border-radius:6px;padding:6px 8px;border:0.5px solid var(--border2);text-align:center;transition:background .2s,border-color .2s;}
+/* min-width:0 lets a 1fr track shrink below its content's min-content width, so
+   overflow-wrap below can actually break a long value (an array, a DP row).
+   Without it the grid track grows instead and pushes the page sideways. */
+.cv-var-card{background:var(--bg2);border-radius:6px;padding:6px 8px;border:0.5px solid var(--border2);text-align:center;transition:background .2s,border-color .2s;min-width:0;}
 .cv-var-card.hl{background:var(--bg-info);border-color:var(--border-info);}
 .cv-var-card.hl-match{background:var(--bg-success);border-color:var(--border-success);}
 .cv-var-card.dim{opacity:.32;}
 .cv-var-name{font-size:15px;color:var(--text3);font-family:var(--mono);margin-bottom:1px;}
-.cv-var-val{font-size:19px;font-weight:600;font-family:var(--mono);color:var(--text);}
+.cv-var-val{font-size:19px;font-weight:600;font-family:var(--mono);color:var(--text);overflow-wrap:anywhere;}
 .cv-narration{background:var(--bg2);border-radius:6px;padding:8px 10px;border:0.5px solid var(--border2);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:18px;color:var(--text2);line-height:1.55;min-height:48px;transition:background .2s,border-color .2s;}
 .cv-narration.is-match{background:var(--bg-success);border-color:var(--border-success);}
 .cv-narration.is-active{background:var(--bg-info);border-color:var(--border-info);}
@@ -127,8 +130,12 @@ pre.cb{font-family:var(--mono);font-size:18px;background:var(--bg2);border:0.5px
 .formula-panel.is-match{background:var(--bg-success);border-color:var(--border-success);}
 .formula-panel.is-squeeze{background:var(--bg-info);border-color:var(--border-info);}
 .formula-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:.875rem;}
+/* Same reason as .cv-var-card: a 1fr track defaults to min-width:auto, so a long
+   unbreakable value (an array, a long expression) widens the track and the page
+   instead of wrapping. Let the track shrink, then let the value break. */
+.formula-grid>*{min-width:0;}
 .fitem-label{font-family:var(--mono);font-size:16px;color:var(--text3);margin-bottom:4px;}
-.fitem-val{font-size:25px;font-weight:600;font-family:var(--mono);color:var(--text);}
+.fitem-val{font-size:25px;font-weight:600;font-family:var(--mono);color:var(--text);overflow-wrap:anywhere;}
 .fitem-sub{font-size:16px;color:var(--text3);font-family:var(--mono);margin-top:2px;}
 .formula-eq{border-top:0.5px solid var(--border);padding-top:.75rem;font-size:19px;font-family:var(--mono);color:var(--text2);line-height:1.9;}
 .eq-hl{color:var(--text-success);font-weight:600;}

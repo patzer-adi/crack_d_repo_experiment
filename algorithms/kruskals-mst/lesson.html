@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kruskal's Algorithm — Algorithm Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<link rel="stylesheet" href="../../static/algo.css">
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Algorithm Lesson</p>
+  <h1>Kruskal's Algorithm</h1>
+  <div class="header-meta">
+    <span class="badge badge-arr">Graph Algorithms</span>
+    <span class="badge badge-med">Tier 2 · core</span>
+    <span class="badge badge-arr">O(E log E) time · O(V) space</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. The first one decides whether an answer exists.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Is the graph connected?</div>
+      <div class="acard-a">Not necessarily.</div>
+      <div class="acard-u">→ then no spanning tree exists. Say so, rather than returning the weight of a forest.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Undirected?</div>
+      <div class="acard-a">Yes.</div>
+      <div class="acard-u">→ a minimum spanning tree is only defined on undirected graphs. The directed analogue is a different algorithm entirely.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Can two edges share a weight?</div>
+      <div class="acard-a">Yes.</div>
+      <div class="acard-u">→ the tree is then not unique, but its total weight is — so the answer is still well defined</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Total weight, or the edges themselves?</div>
+      <div class="acard-a">The total.</div>
+      <div class="acard-u">→ the edge list falls out of the same loop if a caller wants it</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Take the cheapest edge that joins two things not yet joined</p>
+
+  <p class="body">Sort the edges and walk them cheapest first. Accept an edge unless both its ends already sit in the same group — that one would close a cycle, and the priciest edge of any cycle is always removable. So the only question per edge is "are these two already connected?", and the answer builds itself.</p>
+
+  <div style="margin:1.25rem 0">
+    <div class="gv-legend">
+      <span><span class="leg-dot" style="background:var(--bg2);border:1px solid var(--border2)"></span>node (label = its group)</span>
+      <span><span class="leg-dot" style="background:var(--text-info)"></span>edge under consideration</span>
+      <span><span class="leg-dot" style="background:var(--text-success)"></span>accepted into the tree</span>
+      <span><span class="leg-dot" style="background:var(--text-danger)"></span>rejected — would close a cycle</span>
+    </div>
+    <div id="si-graph" class="gv-wrap" style="margin:.5rem 0"></div>
+    <div id="si-cap" class="gv-cap"></div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="ctrl-btn"     onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn"     onclick="siNext()">Next →</button>
+      <button class="ctrl-btn"     onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <div style="margin:1.25rem 0;font-size:13px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:.5rem;color:var(--text)">Why greed is safe here:</div>
+    <div class="skeleton">
+      <div class="wt-item">
+        <div class="wt-num">1</div>
+        <div class="wt-body">
+          <div class="wt-name">Split the nodes any way you like</div>
+          <div class="wt-desc">Take any way of cutting the nodes into two halves. A spanning tree has to connect them, so at least one of its edges crosses that cut.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">2</div>
+        <div class="wt-body">
+          <div class="wt-name">The cheapest edge across the cut is always safe</div>
+          <div class="wt-desc">Suppose a minimum tree uses a dearer crossing edge instead. Swap it for the cheapest one: the result still spans, and it costs no more. So some minimum tree contains the cheapest crossing edge.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">3</div>
+        <div class="wt-body">
+          <div class="wt-name">Every edge Kruskal accepts is such an edge</div>
+          <div class="wt-desc">When an edge joins two different groups, cut the nodes along that group's boundary. Every cheaper edge was already examined and either accepted or found to be inside a group, so this is the cheapest one crossing. Safe, every time.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Sort the edges and accept each one whose endpoints are in different groups, merging the groups as you go. Every accepted edge is the cheapest crossing some cut, which the exchange argument shows belongs to a minimum tree. After V-1 acceptances the tree is complete; fewer means the graph was never connected.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">Without the greedy argument you would have to check candidates: pick every set of V-1 edges, test whether it connects everything without a cycle, and keep the cheapest that does. It is correct and completely impractical — the number of subsets explodes. Watch the counter.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">5 nodes → 16</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">disconnected</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">cycle + chord</button>
+  </div>
+  <div id="bf-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-counter">
+    <span>subsets tried: <b id="bf-tried">0</b></span>
+    <span>valid trees found: <b id="bf-valid">0</b></span>
+    <span>best so far: <b id="bf-best">—</b></span>
+  </div>
+  <div id="bf-narr" class="gv-cap"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: C(E, V-1) subsets — exponential</p>
+    <p class="infobox-d">Seven edges and five nodes already means 35 subsets, and it grows fast from there. Worse, nearly all of them are invalid, so almost all the work is wasted on candidates that were never trees.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="cm">// Try every subset of V-1 edges; keep the cheapest that spans acyclically.</span>
+<span class="kw">long long</span> best = INF;
+<span class="kw">for</span> (<span class="kw">int</span> mask = 0; mask &lt; (1 &lt;&lt; E); mask++) {
+    <span class="kw">if</span> (<span class="fn">popcount</span>(mask) != n - 1) { <span class="kw">continue</span>; }
+    <span class="kw">if</span> (!<span class="fn">spansWithoutCycle</span>(mask)) { <span class="kw">continue</span>; }   <span class="cm">// a full check, each time</span>
+    best = <span class="fn">min</span>(best, <span class="fn">weightOf</span>(mask));
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three swaps take subset search down to one sort and one sweep.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Search all subsets → sort once and be greedy</div>
+        <div class="wt-desc">The cut property says the cheapest edge across any split is safe, so no search is needed. Look at each edge once, in weight order, and decide on the spot.</div>
+        <div class="wt-gain">exponential → O(E log E)</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Detect cycles by traversal → union-find</div>
+        <div class="wt-desc">"Would this edge close a cycle?" is just "are these two already in the same group?". Union-find answers it in near-constant time instead of a fresh O(V) search per edge.</div>
+        <div class="wt-gain">O(V) per edge → O(α(V)) per edge</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">Separate connectivity test → count acceptances</div>
+        <div class="wt-desc">A spanning tree has exactly V-1 edges. If the sweep ends with fewer, the graph was in pieces — no extra pass needed to find that out.</div>
+        <div class="wt-gain">the disconnected case for free</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Sort every edge by weight,</b> cheapest first. This is the only ordering the algorithm ever needs.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Put each node in its own group.</b> At the start nothing is connected to anything.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Walk the edges in order.</b> Ask whether the two ends are already in the same group.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Same group → skip it.</b> Both ends are already connected, so this edge would only close a cycle.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>Different groups → take it.</b> Merge the two groups and add the weight. Stop at <code>n-1</code> accepted edges; ending with fewer means the graph was disconnected.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <p class="body">C++ first — that is the version the walkthrough below animates. The union-find is the whole trick; without it this is O(V·E).</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">int</span> <span class="fn">find</span>(<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&amp; p, <span class="kw">int</span> x) {
+    <span class="kw">while</span> (p[x] != x) { p[x] = p[p[x]]; x = p[x]; }   <span class="cm">// path compression</span>
+    <span class="kw">return</span> x;
+}
+
+<span class="kw">long long</span> <span class="fn">kruskal</span>(<span class="kw">int</span> n, <span class="kw">vector</span>&lt;<span class="kw">array</span>&lt;<span class="kw">int</span>,3&gt;&gt; edges) {
+    <span class="fn">sort</span>(edges.<span class="fn">begin</span>(), edges.<span class="fn">end</span>(),
+         [](<span class="kw">auto</span>&amp; a, <span class="kw">auto</span>&amp; b) { <span class="kw">return</span> a[2] &lt; b[2]; });
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; p(n);
+    <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; n; i++) { p[i] = i; }
+    <span class="kw">long long</span> total = 0;
+    <span class="kw">int</span> used = 0;
+    <span class="kw">for</span> (<span class="kw">auto</span>&amp; [u, v, w] : edges) {
+        <span class="kw">int</span> ru = <span class="fn">find</span>(p, u), rv = <span class="fn">find</span>(p, v);
+        <span class="kw">if</span> (ru == rv) { <span class="kw">continue</span>; }              <span class="cm">// would close a cycle</span>
+        p[ru] = rv;
+        total += w;
+        <span class="kw">if</span> (++used == n - 1) { <span class="kw">break</span>; }
+    }
+    <span class="kw">return</span> used == n - 1 ? total : -1;            <span class="cm">// -1 = disconnected</span>
+}</pre>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-py',this)" style="margin-top:.5rem">▶ Reveal the same thing in Python</button>
+  <div id="code-py" class="code-block">
+    <pre class="cb"><span class="kw">def</span> <span class="fn">kruskal</span>(n, edges):
+    p = <span class="fn">list</span>(<span class="fn">range</span>(n))
+
+    <span class="kw">def</span> <span class="fn">find</span>(x):
+        <span class="kw">while</span> p[x] != x:
+            p[x] = p[p[x]]
+            x = p[x]
+        <span class="kw">return</span> x
+
+    total, used = <span class="nu">0</span>, <span class="nu">0</span>
+    <span class="kw">for</span> u, v, w <span class="kw">in</span> <span class="fn">sorted</span>(edges, key=<span class="kw">lambda</span> e: e[<span class="nu">2</span>]):
+        ru, rv = <span class="fn">find</span>(u), <span class="fn">find</span>(v)
+        <span class="kw">if</span> ru == rv:
+            <span class="kw">continue</span>
+        p[ru] = rv
+        total += w
+        used += <span class="nu">1</span>
+        <span class="kw">if</span> used == n - <span class="nu">1</span>:
+            <span class="kw">break</span>
+    <span class="kw">return</span> total <span class="kw">if</span> used == n - <span class="nu">1</span> <span class="kw">else</span> <span class="kw">None</span></pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Each step runs one line of the C++ above. Watch the <code>parent</code> array collapse as groups merge, and watch an edge get rejected the moment both roots come back equal.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-edge"><span class="cv-var-name">edge</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-roots"><span class="cv-var-name">ru, rv</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-total"><span class="cv-var-name">total</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-used"><span class="cv-var-name">used</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-graph" class="gv-wrap" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">5 nodes → 16</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">disconnected</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">cycle + chord</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick a graph and sweep the sorted edges by hand. Before pressing Next, say whether the edge joins two different groups or closes a cycle.</p>
+
+  <div id="dr-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-legend">
+    <span><span class="leg-dot" style="background:var(--text-info)"></span>looking at it</span>
+    <span><span class="leg-dot" style="background:var(--text-success)"></span>accepted</span>
+    <span><span class="leg-dot" style="background:var(--text-danger)"></span>rejected (cycle)</span>
+  </div>
+  <div id="dr-strip" class="gv-strip"></div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">edges accepted</div>
+          <div class="fitem-val" id="dr-f-used">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">total weight</div>
+          <div class="fitem-val" id="dr-f-total">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">result</div>
+          <div class="fitem-val" id="dr-f-res">…</div>
+        </div>
+      </div>
+      <div class="formula-eq" id="dr-f-groups"></div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">5 nodes → 16</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">disconnected → none</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">cycle + chord → 11</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">A disconnected graph</div>
+    <div class="corner-body">The sweep finishes with fewer than V-1 accepted edges. Returning the total anyway silently reports the weight of a spanning <i>forest</i>, which is a different object. Check the count and say so.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">Comparing nodes instead of roots</div>
+    <div class="corner-body">The classic bug: writing <code>if (u == v)</code> instead of <code>if (find(u) == find(v))</code>. It only catches self-loops, so cycles slip in and the "tree" ends up with too many edges.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Union-find without compression or union by size</div>
+    <div class="corner-body">Still correct, but the chains can grow to length V and each <code>find</code> becomes O(V) — turning the sweep into O(V·E) and quietly undoing the whole point.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Equal weights</div>
+    <div class="corner-body">Ties change which tree comes out but never its total. If a test pins the exact edge list it will be flaky; pin the weight instead.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">A single node</div>
+    <div class="corner-body">V-1 is 0, so zero edges are needed and the answer is 0. The loop never accepts anything and the count check passes — but only if you write <code>used == n - 1</code> rather than <code>used &gt; 0</code>.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Check <code>used == n - 1</code></b> before returning. This is the disconnected-graph guard and it costs nothing.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Compare roots, never node ids.</b> <code>find(u) == find(v)</code> is the cycle test; anything else lets cycles through.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Use path compression and union by size.</b> Both are two lines and together they make <code>find</code> effectively constant.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Accumulate into 64-bit.</b> V-1 edges of large weight overflow a 32-bit total well before the graph gets big.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Break at n-1 acceptances.</b> Once the tree is complete the remaining edges cannot change anything.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Sort by weight only.</b> Sorting the whole triple compares node ids on ties, which is harmless but obscures that the tie-break is arbitrary.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Kruskal</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Prim</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Borůvka</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(E log E)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">The version above. Best on sparse graphs and when the edges arrive as a list — which is how most problems hand them to you. It also tells you the graph is disconnected for free, and the union-find it needs is reusable elsewhere in the same problem.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(E log V)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">Grow one blob instead of merging many: repeatedly absorb the cheapest edge leaving the tree, using a heap. Better on dense graphs — with an adjacency matrix and a plain scan it runs in O(V²), beating a sort of V² edges. Also the natural choice when you already hold an adjacency list.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-prim',this)">▶ Reveal sketch</button>
+    <div id="code-prim" class="code-block">
+      <pre class="cb">pq.<span class="fn">push</span>({0, 0});                       <span class="cm">// (weight, node)</span>
+<span class="kw">while</span> (!pq.<span class="fn">empty</span>() &amp;&amp; used &lt; n) {
+    <span class="kw">auto</span> [w, u] = pq.<span class="fn">top</span>(); pq.<span class="fn">pop</span>();
+    <span class="kw">if</span> (inTree[u]) { <span class="kw">continue</span>; }
+    inTree[u] = <span class="kw">true</span>; total += w; used++;
+    <span class="kw">for</span> (<span class="kw">auto</span>&amp; [v, wt] : adj[u]) {
+        <span class="kw">if</span> (!inTree[v]) { pq.<span class="fn">push</span>({wt, v}); }
+    }
+}</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O(E log V)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">Every component picks its own cheapest outgoing edge, all at once, and they all merge. The component count at least halves each round, so O(log V) rounds suffice. Rarely the best choice on one machine, but it is the one that parallelises — each component's choice is independent.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(E log E)</div>
+      <div class="ccard-n">The sort dominates. The sweep itself does two find calls per edge at O(α(V)) each — effectively constant — so it contributes only O(E). Since log E ≤ 2 log V, this is often written O(E log V).</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(V)</div>
+      <div class="ccard-n">The parent and size arrays, one entry per node. The edge list is the input; sorting it in place adds nothing.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">LeetCode problems that are this algorithm</p>
+  <div class="takehome">
+    <p><b>LC 1584 — Min Cost to Connect All Points:</b> build the complete edge list from the Manhattan distances, then run this code unchanged. The only decision is Kruskal on V² edges versus dense Prim.</p>
+    <p><b>LC 1135 — Connecting Cities With Minimum Cost:</b> Kruskal plus the disconnected check, which is the entire point of the problem.</p>
+    <p><b>LC 1489 — Critical and Pseudo-Critical Edges in MST:</b> run Kruskal repeatedly — once forcing an edge in, once banning it — and compare totals. Only tractable because one run is cheap.</p>
+    <p><b>LC 1697 — Checking Existence of Edge Length Limited Paths:</b> not an MST, but the same idea: sort edges and queries together, and union as you sweep.</p>
+    <p><b>The trick to carry:</b> "connect everything as cheaply as possible" is Kruskal. And any time you sort edges and sweep, union-find is the structure that makes the sweep cheap.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script src="../../static/algo.js"></script>
+<script>
+  const LAYOUT = [
+    { vb: '0 0 515 210', pos: [[70,55],[240,55],[410,55],[70,165],[300,165]] },
+    { vb: '0 0 515 210', pos: [[100,70],[240,70],[330,155],[460,155]] },
+    { vb: '0 0 515 210', pos: [[120,55],[350,55],[350,160],[120,160]] },
+  ];
+
+  /* Map one animation step onto the shared painter. DOM only. */
+  function gDraw(conId, exIdx, st) {
+    const raw = EX[exIdx].edges, pos = LAYOUT[exIdx].pos;
+    const edges = raw.map(e => [e[0], e[1]]);
+    const accepted = new Set(st.accepted || []);   // indices into the ORIGINAL edge list
+    const rejected = new Set(st.rejected || []);
+    gvPaint(conId, { vb: LAYOUT[exIdx].vb, pos, edges, weights: raw.map(e => e[2]) }, {
+      nodeCls: pos.map((_, i) => (st.touched && st.touched.indexOf(i) >= 0) ? 'cur' : (st.grouped && st.grouped.indexOf(i) >= 0) ? 'seen' : ''),
+      edgeCls: edges.map((_, i) =>
+        i === st.hiIdx ? 'hot' : accepted.has(i) ? 'tree' : rejected.has(i) ? 'bad' : 'dim'),
+      labels:  pos.map((_, i) => (st.root ? 'g' + st.root[i] : '')),
+      labelOn: pos.map((_, i) => (st.grouped && st.grouped.indexOf(i) >= 0)),
+    });
+  }
+
+  /* ── answer-bearing examples (drive bf / cv / dr panels AND the verifier) ── */
+  const EX = [
+    { n: 5, edges: [[0,1,2],[0,3,6],[1,2,3],[1,3,8],[1,4,5],[2,4,7],[3,4,9]],
+      answer: 16 },
+    { n: 4, edges: [[0,1,1],[2,3,1]],
+      answer: null },
+    { n: 4, edges: [[0,1,5],[1,2,5],[2,3,5],[3,0,5],[0,2,1]],
+      answer: 11 },
+  ];
+
+  const CV_LINES = [
+    { n:1,  c:'long long kruskal(int n, vector<array<int,3>> edges) {' },
+    { n:2,  c:'    sort(edges.begin(), edges.end(), byWeight);' },
+    { n:3,  c:'    vector<int> p(n);' },
+    { n:4,  c:'    for (int i = 0; i < n; i++) p[i] = i;' },
+    { n:5,  c:'    long long total = 0;  int used = 0;' },
+    { n:6,  c:'    for (auto& [u, v, w] : edges) {' },
+    { n:7,  c:'        int ru = find(p, u), rv = find(p, v);' },
+    { n:8,  c:'        if (ru == rv) continue;        // would close a cycle' },
+    { n:9,  c:'        p[ru] = rv;' },
+    { n:10, c:'        total += w;' },
+    { n:11, c:'        if (++used == n - 1) break;' },
+    { n:12, c:'    }' },
+    { n:13, c:'    return used == n - 1 ? total : -1;' },
+    { n:14, c:'}' },
+  ];
+
+  /* ════════════════ SEC 1 INSIGHT — groups merging ════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+
+  function siGenSteps(n, edges) {
+    const p = [];
+    for (let i = 0; i < n; i++) { p.push(i); }
+    const find = (x) => { while (p[x] !== x) { p[x] = p[p[x]]; x = p[x]; } return x; };
+    const order = edges.map((e, i) => i).sort((a, b) => edges[a][2] - edges[b][2]);
+    const accepted = [], rejected = [];
+    const steps = [];
+    const roots = () => { const r = []; for (let i = 0; i < n; i++) { r.push(find(i)); } return r; };
+    steps.push({ accepted: [], rejected: [], hiIdx: -1, touched: [], grouped: [], root: roots(),
+      cap: `${n} nodes, ${n} separate groups. Edges will be tried cheapest first.` });
+    for (const i of order) {
+      const e = edges[i];
+      const ru = find(e[0]), rv = find(e[1]);
+      if (ru === rv) {
+        rejected.push(i);
+        steps.push({ accepted: accepted.slice(), rejected: rejected.slice(), hiIdx: i,
+          touched: [e[0], e[1]], grouped: [], root: roots(),
+          cap: `Edge ${e[0]}–${e[1]} (weight ${e[2]}): both ends are already in group ${ru}, so it would close a cycle. Reject.` });
+        continue;
+      }
+      p[ru] = rv;
+      accepted.push(i);
+      const grouped = [];
+      for (let x = 0; x < n; x++) { if (find(x) === find(e[1])) { grouped.push(x); } }
+      steps.push({ accepted: accepted.slice(), rejected: rejected.slice(), hiIdx: i,
+        touched: [], grouped, root: roots(),
+        cap: `Edge ${e[0]}–${e[1]} (weight ${e[2]}): different groups, so accept it. The two groups merge into { ${grouped.join(', ')} }.` });
+    }
+    steps.push({ accepted: accepted.slice(), rejected: rejected.slice(), hiIdx: -1,
+      touched: [], grouped: [], root: roots(),
+      cap: `${accepted.length} edge(s) accepted. Every one was the cheapest link between two groups at the moment it was taken.` });
+    return steps;
+  }
+
+  function siRender(st) {
+    gDraw('si-graph', 0, st);
+    document.getElementById('si-cap').textContent = st.cap;
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+
+  /* ════════════════ SEC 2 BRUTE FORCE — every subset of n-1 edges ════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null, bfEx = 0;
+
+  function bfGenSteps(n, edges) {
+    const E = edges.length;
+    const steps = [];
+    let tried = 0, valid = 0, best = null, bestMask = -1;
+    steps.push({ accepted: [], rejected: [], hiIdx: -1, touched: [], grouped: [], root: null,
+      tried, valid, best,
+      narr: `Try every subset of exactly ${n - 1} edge(s) out of ${E}, and keep the cheapest that connects everything without a cycle.` });
+    for (let mask = 0; mask < (1 << E); mask++) {
+      let bits = 0;
+      for (let i = 0; i < E; i++) { if (mask & (1 << i)) { bits++; } }
+      if (bits !== n - 1) { continue; }
+      tried++;
+      // does this subset span acyclically? union-find, rebuilt from scratch each time
+      const p = [];
+      for (let i = 0; i < n; i++) { p.push(i); }
+      const find = (x) => { while (p[x] !== x) { p[x] = p[p[x]]; x = p[x]; } return x; };
+      let ok = true, w = 0;
+      const chosen = [];
+      for (let i = 0; i < E; i++) {
+        if (!(mask & (1 << i))) { continue; }
+        chosen.push(i);
+        const ru = find(edges[i][0]), rv = find(edges[i][1]);
+        if (ru === rv) { ok = false; break; }
+        p[ru] = rv;
+        w += edges[i][2];
+      }
+      if (ok) {
+        valid++;
+        if (best === null || w < best) { best = w; bestMask = mask; }
+      }
+      steps.push({ accepted: ok ? chosen.slice() : [], rejected: ok ? [] : chosen.slice(),
+        hiIdx: -1, touched: [], grouped: [], root: null, tried, valid, best,
+        narr: ok
+          ? `Subset ${tried}: a valid tree of weight ${w}. Best so far ${best}.`
+          : `Subset ${tried}: contains a cycle, so it is not a tree. Discarded.` });
+    }
+    const chosenBest = [];
+    for (let i = 0; i < E; i++) { if (bestMask >= 0 && (bestMask & (1 << i))) { chosenBest.push(i); } }
+    steps.push({ accepted: chosenBest, rejected: [], hiIdx: -1, touched: [], grouped: [], root: null,
+      tried, valid, best,
+      narr: best === null
+        ? `${tried} subset(s) tried and not one spans the graph — it is disconnected. All that work to learn something Kruskal reports for free.`
+        : `${tried} subset(s) tried, only ${valid} were trees, best weight ${best}. Kruskal reaches the same number in one sorted sweep.` });
+    return steps;
+  }
+
+  function bfRender(st) {
+    gDraw('bf-graph', bfEx, st);
+    document.getElementById('bf-tried').textContent = st.tried;
+    document.getElementById('bf-valid').textContent = st.valid;
+    document.getElementById('bf-best').textContent = st.best === null ? '—' : st.best;
+    document.getElementById('bf-narr').textContent = st.narr;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+  function bfLoadEx(idx) {
+    bfStopPlay(); bfCur = 0; bfEx = idx;
+    [0,1,2].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+    bfSteps = bfGenSteps(EX[idx].n, EX[idx].edges);
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ════════════════ SEC 6 CODE VIZ — one C++ line per step ════════════════ */
+  let cvCur = 0, cvSteps = [], cvTimer = null, cvEx = 0;
+
+  function cvGenSteps(n, edges) {
+    const p = [];
+    for (let i = 0; i < n; i++) { p.push(i); }
+    const find = (x) => { while (p[x] !== x) { p[x] = p[p[x]]; x = p[x]; } return x; };
+    const order = edges.map((e, i) => i).sort((a, b) => edges[a][2] - edges[b][2]);
+    const accepted = [], rejected = [];
+    let total = 0, used = 0, edgeTxt = null, rootsTxt = null;
+    const steps = [];
+    const roots = () => { const r = []; for (let i = 0; i < n; i++) { r.push(find(i)); } return r; };
+    const snap = (o) => Object.assign({
+      accepted: accepted.slice(), rejected: rejected.slice(), hiIdx: -1,
+      touched: [], grouped: [], root: roots(), changed: [],
+      edgeTxt, rootsTxt, total, used,
+    }, o);
+    steps.push(snap({ line: 1, narr: `${n} nodes and ${edges.length} edge(s).` }));
+    steps.push(snap({ line: 2, narr: 'Sort the edges by weight. This is the only ordering the algorithm needs.' }));
+    steps.push(snap({ line: 4, changed: ['root'], narr: 'Every node starts as its own group.' }));
+    steps.push(snap({ line: 5, changed: ['total', 'used'], narr: 'Nothing accepted yet.' }));
+    let broke = false;
+    for (const i of order) {
+      if (broke) { break; }
+      const e = edges[i];
+      edgeTxt = e[0] + '–' + e[1] + ' (' + e[2] + ')';
+      steps.push(snap({ line: 6, changed: ['edgeTxt'], hiIdx: i, touched: [e[0], e[1]],
+        narr: `Next cheapest edge: ${e[0]}–${e[1]} with weight ${e[2]}.` }));
+      const ru = find(e[0]), rv = find(e[1]);
+      rootsTxt = ru + ', ' + rv;
+      steps.push(snap({ line: 7, changed: ['rootsTxt'], hiIdx: i, touched: [e[0], e[1]],
+        narr: `find(${e[0]}) = ${ru}, find(${e[1]}) = ${rv}.` }));
+      if (ru === rv) {
+        rejected.push(i);
+        steps.push(snap({ line: 8, hiIdx: i, touched: [e[0], e[1]],
+          narr: `Same root, so both ends are already connected — this edge would close a cycle. Skip it.` }));
+        continue;
+      }
+      p[ru] = rv;
+      accepted.push(i);
+      steps.push(snap({ line: 9, changed: ['root'], hiIdx: i,
+        narr: `Different roots, so merge the two groups.` }));
+      total += e[2];
+      steps.push(snap({ line: 10, changed: ['total'], hiIdx: i,
+        narr: `Add ${e[2]} to the total, now ${total}.` }));
+      used++;
+      if (used === n - 1) {
+        broke = true;
+        steps.push(snap({ line: 11, changed: ['used'], hiIdx: i,
+          narr: `${used} accepted edge(s) — that is n-1, so the tree is complete. Stop.` }));
+      } else {
+        steps.push(snap({ line: 11, changed: ['used'], hiIdx: i,
+          narr: `${used} accepted so far; ${n - 1} are needed.` }));
+      }
+    }
+    edgeTxt = null; rootsTxt = null;
+    const ok = used === n - 1;
+    steps.push(snap({ line: 13, phase: 'done',
+      narr: ok
+        ? `Exactly n-1 = ${n - 1} edge(s) accepted, so return the total ${total}.`
+        : `Only ${used} of the ${n - 1} needed edges could be accepted — the graph is disconnected, so there is no spanning tree.`,
+      result: ok ? total : null }));
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const ln = document.getElementById('cvL' + st.line);
+    if (ln) ln.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    setCard('cv-v-edge', st.edgeTxt === null ? '—' : st.edgeTxt, ch.includes('edgeTxt'));
+    setCard('cv-v-roots', st.rootsTxt === null ? '—' : st.rootsTxt, ch.includes('rootsTxt'));
+    setCard('cv-v-total', st.total, ch.includes('total'));
+    setCard('cv-v-used', st.used, ch.includes('used'));
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : ' is-active');
+    gDraw('cv-graph', cvEx, st);
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+  function cvLoadEx(idx) {
+    cvStopPlay(); cvCur = 0; cvEx = idx;
+    [0,1,2].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(EX[idx].n, EX[idx].edges);
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ════════════════ SEC 7 DRY RUN — the oracle ════════════════ */
+  let drCur = 0, drSteps = [], drTimer = null, drEx = 0;
+
+  function drGenSteps(n, edges) {
+    const p = [];
+    for (let i = 0; i < n; i++) { p.push(i); }
+    const find = (x) => { while (p[x] !== x) { p[x] = p[p[x]]; x = p[x]; } return x; };
+    const order = edges.map((e, i) => i).sort((a, b) => edges[a][2] - edges[b][2]);
+    const accepted = [], rejected = [];
+    let total = 0, used = 0;
+    const steps = [];
+    const roots = () => { const r = []; for (let i = 0; i < n; i++) { r.push(find(i)); } return r; };
+    const groupsTxt = () => {
+      const m = {};
+      for (let i = 0; i < n; i++) {
+        const r = find(i);
+        if (!m[r]) { m[r] = []; }
+        m[r].push(i);
+      }
+      return Object.keys(m).map(k => '{' + m[k].join(',') + '}').join(' ');
+    };
+    const snap = (o) => Object.assign({
+      accepted: accepted.slice(), rejected: rejected.slice(), hiIdx: -1,
+      touched: [], grouped: [], root: roots(), total, used, groups: groupsTxt(),
+    }, o);
+    steps.push(snap({ what: `Sort the ${edges.length} edge(s) by weight`,
+      why: `Every node starts alone: ${groupsTxt()}. We need ${n - 1} accepted edge(s) for a spanning tree.` }));
+    let broke = false;
+    for (const i of order) {
+      if (broke) { break; }
+      const e = edges[i];
+      const ru = find(e[0]), rv = find(e[1]);
+      if (ru === rv) {
+        rejected.push(i);
+        steps.push(snap({ hiIdx: i, touched: [e[0], e[1]],
+          what: `Reject ${e[0]}–${e[1]} (weight ${e[2]})`,
+          why: `Both ends are already in the same group, so adding it would close a cycle. Every cycle's dearest edge is removable, so nothing is lost.` }));
+        continue;
+      }
+      p[ru] = rv;
+      accepted.push(i);
+      total += e[2];
+      used++;
+      steps.push(snap({ hiIdx: i,
+        what: `Accept ${e[0]}–${e[1]} (weight ${e[2]})`,
+        why: `It joins two different groups, so it is the cheapest edge crossing that boundary — safe by the cut property. Groups now ${groupsTxt()}; total ${total}.` }));
+      if (used === n - 1) { broke = true; }
+    }
+    const ok = used === n - 1;
+    steps.push(snap({
+      what: ok ? `Spanning tree complete: weight ${total}` : `No spanning tree exists`,
+      why: ok
+        ? `${used} edge(s) connect all ${n} nodes, and each was safe when taken. No cheaper tree exists.`
+        : `Only ${used} of the ${n - 1} needed edges could be accepted, so the graph comes in separate pieces.`,
+      result: ok ? total : null }));
+    return steps;
+  }
+
+  function drRender(st) {
+    gDraw('dr-graph', drEx, st);
+    stripPaint('dr-strip', EX[drEx].edges.map((e, i) => ({
+      text: e[0] + '–' + e[1] + ':' + e[2],
+      cls: st.accepted.indexOf(i) >= 0 ? 'set' : st.hiIdx === i ? 'cur' : '',
+    })));
+    const usedEl = document.getElementById('dr-f-used');
+    usedEl.textContent = st.used + ' / ' + (EX[drEx].n - 1);
+    // warn tier = still in progress; success once the tree is complete
+    usedEl.style.color = st.used === EX[drEx].n - 1 ? 'var(--text-success)' : 'var(--text-warn)';
+    document.getElementById('dr-f-total').textContent = st.total;
+    document.getElementById('dr-f-groups').textContent = 'groups = ' + st.groups;
+    const res = document.getElementById('dr-f-res');
+    if ('result' in st) {
+      res.textContent = st.result === null ? 'none' : st.result;
+      res.style.color = st.result === null ? 'var(--text-danger)' : 'var(--text-success)';
+    } else {
+      res.textContent = '…';
+      res.style.color = 'var(--text2)';
+    }
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.what;
+    if (whyEl) whyEl.textContent = st.why;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+  function drLoadEx(idx) {
+    drStopPlay(); drCur = 0; drEx = idx;
+    [0,1,2].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+    drSteps = drGenSteps(EX[idx].n, EX[idx].edges);
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ── init ── */
+  siSteps = siGenSteps(EX[0].n, EX[0].edges);
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>

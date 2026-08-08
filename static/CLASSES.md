@@ -113,6 +113,21 @@ Feed this file to the lesson generator instead of the full CSS. Every class a le
 
 - `.legend` / `.leg-item` / `.leg-dot` / `.leg-label` — colour-key strip
 
+## Algorithm lessons only — `static/algo.css` (PLAN-027)
+
+Loaded **in addition to** `lesson.css` by `algorithms/<id>/lesson.html`. LC lessons
+under `lessons/` never load it. Painted by `gvPaint` / `dpPaint` / `stripPaint` in
+[`static/algo.js`](./algo.js) — do not hand-roll the SVG in a lesson.
+
+- `.gv-wrap` / `.gv-svg` — scroll guard + the viewBox SVG that scales to any width
+- `.gv-edge` / `.hot` / `.tree` / `.bad` / `.dim` — edge states (looking at it / kept / rejected / faded)
+- `.gv-node` / `.cur` / `.queue` / `.seen` / `.bad` — node states (current / waiting / settled / failed)
+- `.gv-id` / `.gv-lbl` / `.gv-lbl.on` / `.gv-w` / `.gv-w.hot` — node id, node caption, edge weight
+- `.gv-legend` / `.gv-cap` / `.gv-counter` — colour key, mono caption line, live cost counters
+- `.gv-strip` / `span.set` / `span.cur` — chip row for a per-node array (dist[], parent[], …)
+- `.dp-wrap` / `.dp-table` — DP table with row/column headers, scrolls inside its own wrapper
+- `.dp-table td` states: `.set` / `.cur` / `.src` / `.best` / `.bad` / `.dim`
+
 ## Layout & mobile
 
 - `body` is capped at 1100px (do not override; see `design/layout.md`).

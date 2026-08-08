@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dijkstra's Algorithm — Algorithm Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<link rel="stylesheet" href="../../static/algo.css">
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Algorithm Lesson</p>
+  <h1>Dijkstra's Algorithm</h1>
+  <div class="header-meta">
+    <span class="badge badge-arr">Graph Algorithms</span>
+    <span class="badge badge-med">Tier 1 · primer</span>
+    <span class="badge badge-arr">O((V + E) log V) time · O(V) space</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. The first one decides whether Dijkstra is allowed at all.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Can any weight be negative?</div>
+      <div class="acard-a">No — all weights are zero or more.</div>
+      <div class="acard-u">→ this is the precondition the whole algorithm rests on. One negative edge and you need Bellman-Ford.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Directed or undirected?</div>
+      <div class="acard-a">Undirected here.</div>
+      <div class="acard-u">→ every edge is relaxed from both ends</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Is every node reachable?</div>
+      <div class="acard-a">Not necessarily.</div>
+      <div class="acard-u">→ unreachable nodes stay at infinity; report -1 rather than 0</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Cost only, or the actual route?</div>
+      <div class="acard-a">Cost only.</div>
+      <div class="acard-u">→ one dist array. A parent array would rebuild the route for free.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">The cheapest node on the frontier is already finished</p>
+
+  <p class="body">BFS works because every edge costs 1, so arrival order is cost order. Weights break that — two cheap edges can beat one expensive edge. Dijkstra repairs it by taking the <em>cheapest</em> unsettled node instead of the earliest. Since no edge ever lowers a running total, nothing found later can undercut it.</p>
+
+  <div style="margin:1.25rem 0">
+    <div class="gv-legend">
+      <span><span class="leg-dot" style="background:var(--bg2);border:1px solid var(--border2)"></span>unreached (cost ∞)</span>
+      <span><span class="leg-dot" style="background:var(--bg-warn)"></span>on the frontier — cost is a guess</span>
+      <span><span class="leg-dot" style="background:var(--bg-info)"></span>cheapest guess → settle it now</span>
+      <span><span class="leg-dot" style="background:var(--bg-success)"></span>settled, cost final</span>
+    </div>
+    <div id="si-graph" class="gv-wrap" style="margin:.5rem 0"></div>
+    <div id="si-cap" class="gv-cap"></div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="ctrl-btn"     onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn"     onclick="siNext()">Next →</button>
+      <button class="ctrl-btn"     onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <div style="margin:1.25rem 0;font-size:13px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:.5rem;color:var(--text)">Why the cheapest guess can be trusted:</div>
+    <div class="skeleton">
+      <div class="wt-item">
+        <div class="wt-num">1</div>
+        <div class="wt-body">
+          <div class="wt-name">Any other route must leave through the frontier</div>
+          <div class="wt-desc">To reach node u by some route we have not considered, that route has to step outside the settled set at some point — and the first such step lands on a frontier node.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">2</div>
+        <div class="wt-body">
+          <div class="wt-name">That detour already costs at least as much</div>
+          <div class="wt-desc">We picked u because its guess is the smallest on the frontier. So the alternative route has already spent at least as much just getting to its own frontier node, before going any further.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">3</div>
+        <div class="wt-body">
+          <div class="wt-name">And the rest of the detour cannot refund it</div>
+          <div class="wt-desc">This is where non-negative weights earn their keep. Extra edges can only add. With a negative edge the tail of a detour could pay the difference back, the argument collapses, and Dijkstra returns wrong answers.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Keep a best-known cost per node and always settle the cheapest unsettled one. Any competing route must exit through the frontier, where it has already spent at least as much, and non-negative weights mean the rest of that route can only add. So the cheapest guess is final the moment it is chosen.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">The obvious method is to walk every route that never repeats a node and keep the cheapest total that reaches each one. It is correct — a cheapest route never revisits a node when weights are non-negative — but the route count grows factorially. Watch the counter on a five-node graph.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">5 nodes</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">unreachable</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">detour wins</button>
+  </div>
+  <div id="bf-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-counter">
+    <span>routes walked: <b id="bf-routes">0</b></span>
+    <span>current route: <b id="bf-path">—</b></span>
+    <span>cost: <b id="bf-cost">0</b></span>
+  </div>
+  <div id="bf-strip" class="gv-strip"></div>
+  <div id="bf-narr" class="gv-cap"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(V!) time in the worst case</p>
+    <p class="infobox-d">Every route through a node is walked separately, and each one re-pays for the prefix it shares with all the others. Dijkstra settles each node once and never revisits it.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="cm">// Walk every simple route; keep the cheapest total per node.</span>
+<span class="kw">void</span> <span class="fn">walk</span>(<span class="kw">int</span> u, <span class="kw">long long</span> cost, <span class="kw">vector</span>&lt;<span class="kw">long long</span>&gt;&amp; best,
+          <span class="kw">vector</span>&lt;<span class="kw">bool</span>&gt;&amp; onPath, <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt;&gt;&amp; adj) {
+    onPath[u] = <span class="kw">true</span>;
+    <span class="kw">if</span> (cost &lt; best[u]) { best[u] = cost; }
+    <span class="kw">for</span> (<span class="kw">auto</span>&amp; [v, w] : adj[u]) {
+        <span class="kw">if</span> (onPath[v]) { <span class="kw">continue</span>; }        <span class="cm">// no repeats on one route</span>
+        <span class="fn">walk</span>(v, cost + w, best, onPath, adj);
+    }
+    onPath[u] = <span class="kw">false</span>;                  <span class="cm">// back out, try another route</span>
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three swaps take the route walk down to a heap-driven single pass.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Walk every route → keep one best cost per node</div>
+        <div class="wt-desc">A node does not need its history, only its cheapest known total. Shared prefixes are then paid for once instead of once per route through them.</div>
+        <div class="wt-gain">O(V!) → polynomial</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Scan all nodes for the cheapest → a min-heap</div>
+        <div class="wt-desc">Finding the smallest unsettled distance by scanning costs O(V) each round. A priority queue hands it over in O(log V).</div>
+        <div class="wt-gain">O(V²) → O((V + E) log V)</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">Decrease-key → push a duplicate, skip stale pops</div>
+        <div class="wt-desc">Standard heaps cannot cheaply lower a key. Push the improved pair instead and, on pop, discard any entry whose stored cost no longer matches <code>dist[u]</code>.</div>
+        <div class="wt-gain">plain heap, one extra comparison</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Set up.</b> Every distance starts at infinity except the source, which is 0. Push <code>(0, src)</code> onto a min-heap.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Pop the cheapest pair</b> <code>(d, u)</code>. If <code>d &gt; dist[u]</code> this is a stale copy left over from an earlier, worse guess — throw it away.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Settle <code>u</code>.</b> Its distance is final and will never be touched again.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Relax its edges.</b> For each <code>(u, v, w)</code>, if <code>dist[u] + w</code> beats <code>dist[v]</code>, write the better value and push <code>(dist[v], v)</code>.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>Stop when the heap empties.</b> Anything still at infinity is unreachable — report it as -1.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <p class="body">C++ first — that is the version the walkthrough below animates. Note the stale-pop guard on line 8; without it the algorithm is still correct but does redundant work.</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">long long</span>&gt; <span class="fn">dijkstra</span>(<span class="kw">int</span> n, <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt;&gt;&amp; adj, <span class="kw">int</span> src) {
+    <span class="kw">const long long</span> INF = LLONG_MAX;
+    <span class="kw">vector</span>&lt;<span class="kw">long long</span>&gt; dist(n, INF);
+    <span class="kw">priority_queue</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">long long</span>,<span class="kw">int</span>&gt;,
+                   <span class="kw">vector</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">long long</span>,<span class="kw">int</span>&gt;&gt;, <span class="kw">greater</span>&lt;&gt;&gt; pq;
+    dist[src] = 0;
+    pq.<span class="fn">push</span>({0, src});
+    <span class="kw">while</span> (!pq.<span class="fn">empty</span>()) {
+        <span class="kw">auto</span> [d, u] = pq.<span class="fn">top</span>(); pq.<span class="fn">pop</span>();
+        <span class="kw">if</span> (d &gt; dist[u]) { <span class="kw">continue</span>; }        <span class="cm">// stale copy</span>
+        <span class="kw">for</span> (<span class="kw">auto</span>&amp; [v, w] : adj[u]) {
+            <span class="kw">if</span> (d + w &lt; dist[v]) {
+                dist[v] = d + w;
+                pq.<span class="fn">push</span>({dist[v], v});
+            }
+        }
+    }
+    <span class="kw">return</span> dist;
+}</pre>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-py',this)" style="margin-top:.5rem">▶ Reveal the same thing in Python</button>
+  <div id="code-py" class="code-block">
+    <pre class="cb"><span class="kw">import</span> heapq
+
+<span class="kw">def</span> <span class="fn">dijkstra</span>(n, adj, src):
+    INF = <span class="fn">float</span>(<span class="nu">'inf'</span>)
+    dist = [INF] * n
+    dist[src] = <span class="nu">0</span>
+    pq = [(<span class="nu">0</span>, src)]
+    <span class="kw">while</span> pq:
+        d, u = heapq.<span class="fn">heappop</span>(pq)
+        <span class="kw">if</span> d &gt; dist[u]:
+            <span class="kw">continue</span>
+        <span class="kw">for</span> v, w <span class="kw">in</span> adj[u]:
+            <span class="kw">if</span> d + w &lt; dist[v]:
+                dist[v] = d + w
+                heapq.<span class="fn">heappush</span>(pq, (dist[v], v))
+    <span class="kw">return</span> dist</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Each step runs one line of the C++ above. On the "detour wins" example, watch node 1 get a guess of 10 first and then be improved to 7 before it is ever settled.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-u"><span class="cv-var-name">u</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-d"><span class="cv-var-name">d</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-pq"><span class="cv-var-name">heap</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-dist"><span class="cv-var-name">dist</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-graph" class="gv-wrap" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">5 nodes</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">unreachable</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">detour wins</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick a graph and settle the nodes by hand. Before pressing Next, name the cheapest node on the frontier and say which of its neighbours it improves.</p>
+
+  <div id="dr-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-legend">
+    <span><span class="leg-dot" style="background:var(--bg-info)"></span>settling now</span>
+    <span><span class="leg-dot" style="background:var(--bg-warn)"></span>frontier (guess only)</span>
+    <span><span class="leg-dot" style="background:var(--bg-success)"></span>settled, final</span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">heap (cheapest first)</div>
+          <div class="fitem-val" id="dr-f-pq">—</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">settled</div>
+          <div class="fitem-val" id="dr-f-n">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">result</div>
+          <div class="fitem-val" id="dr-f-res">…</div>
+        </div>
+      </div>
+      <div class="formula-eq" id="dr-f-dist"></div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">5 nodes → [0,3,1,4,7]</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">unreachable → [0,2,5,-1]</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">detour → [0,7,3,9]</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">A negative edge</div>
+    <div class="corner-body">Dijkstra returns a wrong answer and gives no warning. Settling a node assumes no later route can be cheaper, and a negative edge can make one cheaper. If negatives are possible, use Bellman-Ford — do not "fix" Dijkstra by adding a constant to every weight, which changes which route is shortest.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">Unreachable nodes</div>
+    <div class="corner-body">They are never pushed, so they keep the sentinel. Report -1 or infinity — never 0, which reads as "already there".</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Stale heap entries</div>
+    <div class="corner-body">A node can sit in the heap several times with different guesses. The <code>d &gt; dist[u]</code> check discards the outdated copies. Without it the code still gives the right answer but re-relaxes edges it did not need to.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Overflow on the sentinel</div>
+    <div class="corner-body"><code>dist[u] + w</code> where <code>dist[u] == LLONG_MAX</code> wraps around and can look like an improvement. Either guard with <code>if (dist[u] == INF) continue;</code> or use a sentinel that leaves headroom, such as <code>4e18</code>.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">Zero-weight edges</div>
+    <div class="corner-body">Perfectly fine — the proof only needs weights that are not negative. Ties settle in an arbitrary order and the distances come out the same.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Assert weights are non-negative</b> at the boundary, or document it loudly. This is the failure that produces plausible wrong numbers rather than a crash.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Keep the stale-pop guard.</b> One comparison saves re-relaxing every edge of an already-settled node.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Use 64-bit distances.</b> V·maxWeight overflows 32 bits on large graphs long before anything looks wrong.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Never add to the infinity sentinel.</b> Guard the relaxation or leave headroom in the sentinel value.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>If you only need one target,</b> stop the moment it is popped — everything after that is wasted work.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>For the route, store <code>parent[v] = u</code></b> at each improvement and walk it back. Do not re-run the search to find it.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Heap Dijkstra</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Dense O(V²)</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Bellman-Ford</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O((V + E) log V)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">The version above. The default for sparse graphs, which is almost everything you meet in an interview — road networks, grids, state spaces.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(V²)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">Drop the heap and scan the distance array for the cheapest unsettled node each round. Better when the graph is dense — with E ≈ V² the scan is free next to the edge work, and you avoid the heap's constant factor and its stale entries entirely.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-dense',this)">▶ Reveal sketch</button>
+    <div id="code-dense" class="code-block">
+      <pre class="cb"><span class="kw">for</span> (<span class="kw">int</span> it = 0; it &lt; n; it++) {
+    <span class="kw">int</span> u = -1;
+    <span class="kw">for</span> (<span class="kw">int</span> v = 0; v &lt; n; v++) {          <span class="cm">// scan, no heap</span>
+        <span class="kw">if</span> (!done[v] &amp;&amp; (u &lt; 0 || dist[v] &lt; dist[u])) { u = v; }
+    }
+    <span class="kw">if</span> (dist[u] == INF) { <span class="kw">break</span>; }
+    done[u] = <span class="kw">true</span>;
+    <span class="cm">// ... relax every edge out of u ...</span>
+}</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O(V·E)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">Slower, but it is the answer when weights can be negative — and it detects negative cycles, which Dijkstra cannot even represent. Reach for it the moment the problem mentions refunds, discounts, or profits along an edge.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O((V + E) log V)</div>
+      <div class="ccard-n">Each successful relaxation pushes one heap entry, so at most E entries exist. Every entry is pushed and popped once at O(log V), and each pop scans one adjacency list.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(V)</div>
+      <div class="ccard-n">One distance per node. The heap can hold up to O(E) entries at once because improvements push duplicates rather than decreasing a key.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">LeetCode problems that are this algorithm</p>
+  <div class="takehome">
+    <p><b>LC 743 — Network Delay Time:</b> Dijkstra unchanged; the answer is the largest finite distance, or -1 if any node is unreachable.</p>
+    <p><b>LC 1631 — Path With Minimum Effort:</b> same loop with a different combine rule — the cost of a route is the <i>maximum</i> edge on it, not the sum. Dijkstra works for any rule that never decreases along a route.</p>
+    <p><b>LC 787 — Cheapest Flights Within K Stops:</b> the extra "at most K stops" makes a node's state <i>(city, stops used)</i>. Once you widen the node, it is Dijkstra again.</p>
+    <p><b>LC 778 — Swim in Rising Water:</b> a grid where the cost is the highest cell on the route. Same max-rule variant, implicit graph.</p>
+    <p><b>The trick to carry:</b> if all weights are 1, use BFS. If they are not, use Dijkstra — and if any is negative, stop and use Bellman-Ford.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script src="../../static/algo.js"></script>
+<script>
+  const LAYOUT = [
+    { vb: '0 0 515 210', pos: [[60,105],[215,50],[215,160],[355,105],[470,105]] },
+    { vb: '0 0 515 210', pos: [[80,80],[240,80],[400,80],[240,175]] },
+    { vb: '0 0 515 210', pos: [[70,105],[245,50],[245,160],[425,105]] },
+  ];
+
+  const INF = Infinity;
+
+  /* Map one animation step onto the shared painter. DOM only. */
+  function gDraw(conId, exIdx, st) {
+    const raw = EX[exIdx].edges, pos = LAYOUT[exIdx].pos;
+    const edges = raw.map(e => [e[0], e[1]]);
+    const key = (a, b) => Math.min(a, b) + '-' + Math.max(a, b);
+    const hot = st.hi ? key(st.hi[0], st.hi[1]) : null;
+    const onPath = new Set();
+    for (let i = 0; i + 1 < (st.path || []).length; i++) { onPath.add(key(st.path[i], st.path[i + 1])); }
+    const frontier = new Set(st.frontier || []);
+    const settled = new Set(st.settled || []);
+    const fin = d => (d === undefined || d === null || d === INF) ? '∞' : d;
+    gvPaint(conId, { vb: LAYOUT[exIdx].vb, pos, edges, weights: raw.map(e => e[2]) }, {
+      nodeCls: pos.map((_, i) =>
+        i === st.cur ? 'cur' : settled.has(i) ? 'seen' : frontier.has(i) ? 'queue' : ''),
+      edgeCls: edges.map(e => {
+        const k = key(e[0], e[1]);
+        return k === hot ? 'hot' : onPath.has(k) ? 'tree' : '';
+      }),
+      labels:  pos.map((_, i) => fin((st.dist || [])[i])),
+      labelOn: pos.map((_, i) => settled.has(i)),
+    });
+  }
+
+  /* ── answer-bearing examples (drive bf / cv / dr panels AND the verifier) ── */
+  const EX = [
+    { n: 5, edges: [[0,1,4],[0,2,1],[2,1,2],[1,3,1],[2,3,5],[3,4,3]], src: 0, answer: [0,3,1,4,7] },
+    { n: 4, edges: [[0,1,2],[1,2,3]],                                 src: 0, answer: [0,2,5,-1] },
+    { n: 4, edges: [[0,1,10],[0,2,3],[2,1,4],[1,3,2],[2,3,20]],       src: 0, answer: [0,7,3,9]  },
+  ];
+
+  const CV_LINES = [
+    { n:1,  c:'vector<long long> dijkstra(int n, vector<...>& adj, int src) {' },
+    { n:2,  c:'    vector<long long> dist(n, INF);' },
+    { n:3,  c:'    priority_queue<..., greater<>> pq;' },
+    { n:4,  c:'    dist[src] = 0;' },
+    { n:5,  c:'    pq.push({0, src});' },
+    { n:6,  c:'    while (!pq.empty()) {' },
+    { n:7,  c:'        auto [d, u] = pq.top(); pq.pop();' },
+    { n:8,  c:'        if (d > dist[u]) continue;      // stale copy' },
+    { n:9,  c:'        for (auto& [v, w] : adj[u]) {' },
+    { n:10, c:'            if (d + w < dist[v]) {' },
+    { n:11, c:'                dist[v] = d + w;' },
+    { n:12, c:'                pq.push({dist[v], v});' },
+    { n:13, c:'            }' },
+    { n:14, c:'        }' },
+    { n:15, c:'    }' },
+    { n:16, c:'    return dist;' },
+    { n:17, c:'}' },
+  ];
+
+  /* ════════════════ SEC 1 INSIGHT — settle the cheapest ════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+
+  function siGenSteps(n, edges, src) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const e of edges) { adj[e[0]].push([e[1], e[2]]); adj[e[1]].push([e[0], e[2]]); }
+    const dist = new Array(n).fill(Infinity);
+    const settled = [];
+    dist[src] = 0;
+    const steps = [];
+    const front = () => {
+      const f = [];
+      for (let i = 0; i < n; i++) { if (dist[i] < Infinity && settled.indexOf(i) < 0) { f.push(i); } }
+      return f;
+    };
+    steps.push({ dist: dist.slice(), settled: [], frontier: front(), cur: -1, hi: null,
+      cap: `Only the source has a cost (0). Everything else is still ∞.` });
+    while (true) {
+      const f = front();
+      if (!f.length) { break; }
+      let u = f[0];
+      for (const x of f) { if (dist[x] < dist[u]) { u = x; } }
+      settled.push(u);
+      const improved = [];
+      for (const [v, w] of adj[u]) {
+        if (settled.indexOf(v) >= 0) { continue; }
+        if (dist[u] + w < dist[v]) { dist[v] = dist[u] + w; improved.push(v + '→' + dist[v]); }
+      }
+      steps.push({ dist: dist.slice(), settled: settled.slice(), frontier: front(), cur: u, hi: null,
+        cap: `Cheapest guess on the frontier is node ${u} at ${dist[u]} — settle it. ` +
+             (improved.length ? `New guesses: ${improved.join(', ')}.` : 'No neighbour improves.') });
+    }
+    steps.push({ dist: dist.slice(), settled: settled.slice(), frontier: [], cur: -1, hi: null,
+      cap: `Every reachable node is settled. Each was final the moment it was the cheapest guess.` });
+    return steps;
+  }
+
+  function siRender(st) {
+    gDraw('si-graph', 0, st);
+    document.getElementById('si-cap').textContent = st.cap;
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+
+  /* ════════════════ SEC 2 BRUTE FORCE — every simple route ════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null, bfEx = 0;
+
+  function bfGenSteps(n, edges, src) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const e of edges) { adj[e[0]].push([e[1], e[2]]); adj[e[1]].push([e[0], e[2]]); }
+    const best = new Array(n).fill(Infinity);
+    const onPath = new Array(n).fill(false);
+    const path = [];
+    const steps = [];
+    let routes = 0;
+    steps.push({ dist: best.slice(), settled: [], frontier: [], cur: -1, hi: null,
+      path: [], routes, cost: 0,
+      narr: `Start at node ${src} and follow every route that never repeats a node, keeping the cheapest total per node.` });
+    const walk = (u, cost) => {
+      onPath[u] = true;
+      path.push(u);
+      routes++;
+      if (cost < best[u]) { best[u] = cost; }
+      steps.push({ dist: best.slice(), settled: [], frontier: [], cur: u, hi: null,
+        path: path.slice(), routes, cost,
+        narr: `Route ${path.join('→')} reaches node ${u} at cost ${cost}. Routes walked: ${routes}.` });
+      for (const [v, w] of adj[u]) {
+        if (onPath[v]) { continue; }
+        walk(v, cost + w);
+      }
+      onPath[u] = false;
+      path.pop();
+    };
+    walk(src, 0);
+    const result = best.map(d => (d === Infinity ? -1 : d));
+    steps.push({ dist: best.slice(), settled: [], frontier: [], cur: -1, hi: null,
+      path: [], routes, cost: 0,
+      narr: `${routes} route(s) walked on a ${n}-node graph. Answer ${JSON.stringify(result)} — right, but the shared prefixes were paid for over and over.`,
+      result });
+    return steps;
+  }
+
+  function bfRender(st) {
+    gDraw('bf-graph', bfEx, st);
+    stripPaint('bf-strip', st.dist.map((d, i) =>
+      ({ text: 'best[' + i + ']=' + (d === Infinity ? '∞' : d), cls: d === Infinity ? '' : 'set' })));
+    document.getElementById('bf-routes').textContent = st.routes;
+    document.getElementById('bf-path').textContent = st.path.length ? st.path.join('→') : '—';
+    document.getElementById('bf-cost').textContent = st.cost;
+    document.getElementById('bf-narr').textContent = st.narr;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+  function bfLoadEx(idx) {
+    bfStopPlay(); bfCur = 0; bfEx = idx;
+    [0,1,2].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+    bfSteps = bfGenSteps(EX[idx].n, EX[idx].edges, EX[idx].src);
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ════════════════ SEC 6 CODE VIZ — one C++ line per step ════════════════ */
+  let cvCur = 0, cvSteps = [], cvTimer = null, cvEx = 0;
+
+  function cvGenSteps(n, edges, src) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const e of edges) { adj[e[0]].push([e[1], e[2]]); adj[e[1]].push([e[0], e[2]]); }
+    const dist = new Array(n).fill(Infinity);
+    let pq = [], settled = [], u = null, d = null;
+    const steps = [];
+    const fmt = a => '[' + a.map(x => (x === Infinity ? '∞' : x)).join(',') + ']';
+    const snap = (o) => Object.assign({
+      dist: dist.slice(), settled: settled.slice(),
+      frontier: pq.map(p => p[1]), cur: (u === null ? -1 : u), hi: null,
+      changed: [], u, d, pq: pq.map(p => p.slice()),
+    }, o);
+    steps.push(snap({ line: 1, narr: `Called with ${n} nodes, source ${src}.` }));
+    steps.push(snap({ line: 2, changed: ['dist'], narr: 'Every distance starts at infinity.' }));
+    dist[src] = 0;
+    steps.push(snap({ line: 4, changed: ['dist'], narr: `The source costs nothing: dist[${src}] = 0.` }));
+    pq.push([0, src]);
+    steps.push(snap({ line: 5, changed: ['pq'], narr: `Push (0, ${src}).` }));
+    while (pq.length) {
+      steps.push(snap({ line: 6, narr: `The heap holds ${pq.length} entr(y/ies), so keep going.` }));
+      pq.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const top = pq.shift();
+      d = top[0]; u = top[1];
+      steps.push(snap({ line: 7, changed: ['u', 'd', 'pq'], narr: `Pop the cheapest entry: (${d}, ${u}).` }));
+      if (d > dist[u]) {
+        steps.push(snap({ line: 8, narr: `${d} is worse than the stored dist[${u}] = ${dist[u]}, so this is a stale copy — skip it.` }));
+        u = null; d = null;
+        continue;
+      }
+      settled.push(u);
+      steps.push(snap({ line: 8, narr: `${d} matches dist[${u}], so node ${u} is settled — its cost is final.` }));
+      for (const [v, w] of adj[u]) {
+        steps.push(snap({ line: 9, hi: [u, v], narr: `Edge ${u}–${v} of weight ${w}.` }));
+        if (d + w < dist[v]) {
+          dist[v] = d + w;
+          pq.push([dist[v], v]);
+          steps.push(snap({ line: 11, changed: ['dist', 'pq'], hi: [u, v],
+            narr: `${d} + ${w} = ${dist[v]} beats the old guess for node ${v}. Improve it and push.` }));
+        } else {
+          steps.push(snap({ line: 10, hi: [u, v],
+            narr: `${d} + ${w} = ${d + w} does not beat dist[${v}] = ${dist[v] === Infinity ? '∞' : dist[v]}, so leave it.` }));
+        }
+      }
+      u = null; d = null;
+    }
+    steps.push(snap({ line: 6, narr: 'The heap is empty — every reachable node has been settled.' }));
+    const result = dist.map(x => (x === Infinity ? -1 : x));
+    steps.push(snap({ line: 16, phase: 'done', narr: `Return ${fmt(dist)} → reported as ${JSON.stringify(result)}.`, result }));
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const ln = document.getElementById('cvL' + st.line);
+    if (ln) ln.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    const fmt = a => '[' + a.map(x => (x === Infinity ? '∞' : x)).join(',') + ']';
+    setCard('cv-v-u', st.u === null ? '—' : st.u, ch.includes('u'));
+    setCard('cv-v-d', st.d === null ? '—' : st.d, ch.includes('d'));
+    setCard('cv-v-pq', st.pq.length ? st.pq.slice().sort((a, b) => a[0] - b[0]).map(p => '(' + p[0] + ',' + p[1] + ')').join(' ') : 'empty', ch.includes('pq'));
+    setCard('cv-v-dist', fmt(st.dist), ch.includes('dist'));
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : ' is-active');
+    gDraw('cv-graph', cvEx, st);
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+  function cvLoadEx(idx) {
+    cvStopPlay(); cvCur = 0; cvEx = idx;
+    [0,1,2].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(EX[idx].n, EX[idx].edges, EX[idx].src);
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ════════════════ SEC 7 DRY RUN — the oracle ════════════════ */
+  let drCur = 0, drSteps = [], drTimer = null, drEx = 0;
+
+  function drGenSteps(n, edges, src) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const e of edges) { adj[e[0]].push([e[1], e[2]]); adj[e[1]].push([e[0], e[2]]); }
+    const dist = new Array(n).fill(Infinity);
+    const settled = [];
+    let pq = [];
+    const steps = [];
+    const snap = (o) => Object.assign({
+      dist: dist.slice(), settled: settled.slice(),
+      frontier: pq.map(p => p[1]), cur: -1, hi: null,
+      pq: pq.map(p => p.slice()),
+    }, o);
+    dist[src] = 0;
+    pq.push([0, src]);
+    steps.push(snap({ what: `Start at node ${src}`,
+      why: `Its cost is 0 and everything else is ∞. The heap holds one entry.` }));
+    while (pq.length) {
+      pq.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const top = pq.shift();
+      const d = top[0], u = top[1];
+      if (d > dist[u]) {
+        steps.push(snap({ cur: u, what: `Discard the stale entry (${d}, ${u})`,
+          why: `Node ${u} already has a better cost of ${dist[u]}, so this leftover copy carries no news.` }));
+        continue;
+      }
+      settled.push(u);
+      const improved = [];
+      for (const [v, w] of adj[u]) {
+        if (d + w < dist[v]) {
+          dist[v] = d + w;
+          pq.push([dist[v], v]);
+          improved.push(`${v} → ${dist[v]}`);
+        }
+      }
+      steps.push(snap({ cur: u,
+        what: `Settle node ${u} at cost ${d}`,
+        why: improved.length
+          ? `It was the cheapest guess, so nothing can beat it later. Relaxing its edges improves ${improved.join(', ')}.`
+          : `It was the cheapest guess, so it is final. None of its neighbours can be reached more cheaply through it.` }));
+    }
+    const result = dist.map(x => (x === Infinity ? -1 : x));
+    const missing = result.filter(x => x === -1).length;
+    steps.push(snap({
+      what: 'Heap empty — finished',
+      why: missing
+        ? `${missing} node(s) were never reached and stay at -1. Result: ${JSON.stringify(result)}.`
+        : `Every node has a final cost: ${JSON.stringify(result)}.`,
+      result }));
+    return steps;
+  }
+
+  function drRender(st) {
+    gDraw('dr-graph', drEx, st);
+    document.getElementById('dr-f-pq').textContent = st.pq.length
+      ? st.pq.slice().sort((a, b) => a[0] - b[0]).map(p => '(' + p[0] + ',' + p[1] + ')').join(' ') : 'empty';
+    document.getElementById('dr-f-n').textContent = st.settled.length + ' / ' + st.dist.length;
+    document.getElementById('dr-f-dist').textContent =
+      'dist = [' + st.dist.map(x => (x === Infinity ? '∞' : x)).join(', ') + ']';
+    const res = document.getElementById('dr-f-res');
+    if ('result' in st) {
+      res.textContent = JSON.stringify(st.result);
+      res.style.color = 'var(--text-success)';
+    } else {
+      res.textContent = '…';
+      res.style.color = 'var(--text2)';
+    }
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.what;
+    if (whyEl) whyEl.textContent = st.why;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+  function drLoadEx(idx) {
+    drStopPlay(); drCur = 0; drEx = idx;
+    [0,1,2].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+    drSteps = drGenSteps(EX[idx].n, EX[idx].edges, EX[idx].src);
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ── init ── */
+  siSteps = siGenSteps(EX[0].n, EX[0].edges, EX[0].src);
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>
