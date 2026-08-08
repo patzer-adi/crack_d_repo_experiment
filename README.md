@@ -83,6 +83,7 @@ crack_d/
 │   ├── prerequisites.schema.json # contract for prerequisites.json
 │   ├── basics.json             # language-agnostic programming drills (Basics tab, PLAN-022)
 │   ├── warmup.json             # 30 easy LeetCode problems, the on-ramp (Warm-Up tab, PLAN-023)
+│   ├── dp_ladder.json          # 15 Easy→gentle-Medium DP problems (DP Ladder view, PLAN-026)
 │   └── roadmap.json            # topic dependency DAG — edges + layout only, no counts (PLAN-024)
 ├── skills/
 │   ├── ds/                     # data structure reference sheets
@@ -205,6 +206,12 @@ There is a cliff between Basics and Problems. Basics ends at nested loops and pr
 That idea is stored in a `skill` field ("prefix sums — a running accumulator", "the recursive tree template", "binary search on a predicate boundary") and rendered as a pill under the statement, so the tab reads as a curriculum rather than a list. All 30 are **disjoint from the 211** — Warm-Up is additive, so the catalogue is 70 + 30 + 211 = **311 problems with no double-entry**.
 
 [`scripts/check_warmup.py`](scripts/check_warmup.py) is the data gate. Beyond the usual field/slug/order checks it enforces the three invariants that make Warm-Up *Warm-Up*: exactly 30 entries and **all Easy** (a Medium belongs in Problems); slug **and** `lc_num` disjoint from `problems.json` and `basics.json` (an overlap would silently double-count a problem across two tabs); and the `url` slug matching `slug` (a row that links somewhere other than what it describes is worse than a row with no link).
+
+### DP Ladder (PLAN-026)
+
+Dynamic Programming is where most people stall, and the 211-set's DP topic has 33 problems but only **two Easy** ones — it jumps to Medium almost immediately, with no gradient to climb. The **DP Ladder** is that gradient: [`data/dp_ladder.json`](data/dp_ladder.json) holds 15 problems across five ordered *stages* — *First recurrences* → *Scan & compare* → *Take-or-skip choice* → *Grid DP (the bridge)* → *Counting DP* — starting at a bare recurrence (Tribonacci, Divisor Game) and ramping into gentle Mediums (Unique Paths, Minimum Falling Path Sum), ending on Perfect Squares, which is Coin Change with square "coins" — the deliberate hand-off into the 211's DP set.
+
+It lives as a `General | DP Ladder` view-switch **inside the Warm-Up tab** rather than a seventh tab, mirroring the Problems tab's `Table | Roadmap` switch. Each row carries the same ⓘ hover card (with a `details` blurb written to make the recurrence *derivable*), a difficulty badge, and a status toggle that persists. [`scripts/check_dp_ladder.py`](scripts/check_dp_ladder.py) is the gate: exactly 15 entries, slug and `lc_num` disjoint from all three other datasets, canonical LC URLs, contiguous stages — and, unique to the ladder, **difficulty non-decreasing across the ramp**, the machine-checkable form of "gradually increasing so solving them is natural". The catalogue is now four disjoint datasets = 70 + 30 + 15 + 211 = **326 problems, no double-entry**.
 
 ---
 
@@ -401,7 +408,9 @@ Implementation work is tracked under `AGENT_MD/plan/`:
 - `current_state_report.md` — living snapshot of project state.
 - `rules.md` — authoring conventions for plan and report documents.
 
-The latest plan: [PLAN-025](AGENT_MD/plan/plans/PLAN-025_nav_declutter_and_roadmap_polish.md) — a presentation-only polish pass: the roadmap now scales to fill the content column (no horizontal scroll on large screens) with a legend-only header, and the nav dropped its `Practice`/`Learn` group labels and per-tab counts, the counts recast on each Practice page as **X of Y completed**, landed 2026-07-15 ([REPORT-025](AGENT_MD/plan/reports/REPORT-025_nav_declutter_and_roadmap_polish.md)).
+The latest plan: [PLAN-026](AGENT_MD/plan/plans/PLAN-026_dp_ladder.md) — the **DP Ladder**, a 15-problem Dynamic-Programming on-ramp that ramps from a bare recurrence up into gentle Mediums, for building DP fluency before the Medium/Hard DP set. It is a new disjoint dataset [`data/dp_ladder.json`](data/dp_ladder.json) surfaced as a `General | DP Ladder` view-switch inside the Warm-Up tab (the nav stays six tabs), gated by [`scripts/check_dp_ladder.py`](scripts/check_dp_ladder.py) — which additionally enforces that difficulty is **non-decreasing across the ramp**, landed 2026-07-26 ([REPORT-026](AGENT_MD/plan/reports/REPORT-026_dp_ladder.md)).
+
+It builds on [PLAN-025](AGENT_MD/plan/plans/PLAN-025_nav_declutter_and_roadmap_polish.md) — a presentation-only polish pass: the roadmap now scales to fill the content column (no horizontal scroll on large screens) with a legend-only header, and the nav dropped its `Practice`/`Learn` group labels and per-tab counts, the counts recast on each Practice page as **X of Y completed**, landed 2026-07-15 ([REPORT-025](AGENT_MD/plan/reports/REPORT-025_nav_declutter_and_roadmap_polish.md)).
 
 It builds on [PLAN-024](AGENT_MD/plan/plans/PLAN-024_topic_roadmap_and_branding.md) — the **topic roadmap** (a live, clickable 20-node dependency DAG behind a `Table | Roadmap` switch on the Problems tab, with every count derived from the problem set rather than stored) and the **crack_IT** identity (pinned logo + favicon, replacing a topbar that picked a random logo on every page load), landed 2026-07-14 ([REPORT-024](AGENT_MD/plan/reports/REPORT-024_topic_roadmap_and_branding.md)).
 

@@ -418,8 +418,8 @@
       "word-ladder",
       "open-the-lock"
     ],
-    "lesson_status": "none",
-    "lesson_path": null
+    "lesson_status": "generated",
+    "lesson_path": "algorithms/bfs/lesson.html"
   },
   {
     "id": "dfs",
@@ -451,8 +451,8 @@
       "pacific-atlantic-water-flow",
       "all-paths-from-source-to-target"
     ],
-    "lesson_status": "none",
-    "lesson_path": null
+    "lesson_status": "generated",
+    "lesson_path": "algorithms/dfs/lesson.html"
   },
   {
     "id": "topological-sort",
@@ -485,8 +485,8 @@
       "Topo Sort",
       "Kahn's Algorithm"
     ],
-    "lesson_status": "none",
-    "lesson_path": null
+    "lesson_status": "generated",
+    "lesson_path": "algorithms/topological-sort/lesson.html"
   },
   {
     "id": "dijkstras-algorithm",
@@ -519,8 +519,8 @@
       "Dijkstra",
       "SSSP"
     ],
-    "lesson_status": "none",
-    "lesson_path": null
+    "lesson_status": "generated",
+    "lesson_path": "algorithms/dijkstras-algorithm/lesson.html"
   },
   {
     "id": "bellman-ford",
@@ -547,8 +547,8 @@
     "related_lc": [
       "cheapest-flights-within-k-stops"
     ],
-    "lesson_status": "none",
-    "lesson_path": null
+    "lesson_status": "generated",
+    "lesson_path": "algorithms/bellman-ford/lesson.html"
   },
   {
     "id": "a-star",
@@ -576,8 +576,8 @@
     "aliases": [
       "A-Star"
     ],
-    "lesson_status": "none",
-    "lesson_path": null
+    "lesson_status": "generated",
+    "lesson_path": "algorithms/a-star/lesson.html"
   },
   {
     "id": "kruskals-mst",
@@ -608,8 +608,8 @@
     "aliases": [
       "Kruskal MST"
     ],
-    "lesson_status": "none",
-    "lesson_path": null
+    "lesson_status": "generated",
+    "lesson_path": "algorithms/kruskals-mst/lesson.html"
   },
   {
     "id": "prims-mst",
@@ -640,8 +640,8 @@
       "Prim MST",
       "Jarník's Algorithm"
     ],
-    "lesson_status": "none",
-    "lesson_path": null
+    "lesson_status": "generated",
+    "lesson_path": "algorithms/prims-mst/lesson.html"
   },
   {
     "id": "boruvkas-mst",

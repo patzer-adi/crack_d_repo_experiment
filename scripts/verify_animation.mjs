@@ -40,6 +40,17 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
+// A lesson target is either a bare problem slug (→ lessons/<slug>/) or an
+// `algo:` prefixed algorithm id (→ algorithms/<id>/, PLAN-027). The prefix is
+// mandatory rather than inferred because the two namespaces genuinely collide:
+// `edit-distance` and `binary-search` are both a problems.json slug AND an
+// algorithms.json id, so guessing from the name alone would gate the wrong file.
+export function lessonDir(target) {
+  return target.startsWith("algo:")
+    ? path.join(ROOT, "algorithms", target.slice(5))
+    : path.join(ROOT, "lessons", target);
+}
+
 // Two authoring conventions coexist in the corpus:
 //   A (newer): function drGenSteps(arg, ...) driven by `const EX = [...]`
 //   B (older): function drGen(ex)            driven by `const EXAMPLES = [...]`
@@ -199,7 +210,7 @@ function runCase(ctx, genName, fnSource, ex) {
 }
 
 function verify(slug) {
-  const htmlPath = path.join(ROOT, "lessons", slug, "lesson.html");
+  const htmlPath = path.join(lessonDir(slug), "lesson.html");
   const report = { slug, cases: [], errors: [], skipped: [] };
   if (!fs.existsSync(htmlPath)) {
     report.errors.push(`lesson.html not found at ${htmlPath}`);
@@ -285,7 +296,7 @@ function verify(slug) {
 // declared answers. Enforced ON PRESENCE: a lesson without verify.py is reported
 // (backfill pending) but not failed, so the pre-G4 corpus keeps passing.
 function runIndependence(slug, examples) {
-  const py = path.join(ROOT, "lessons", slug, "verify.py");
+  const py = path.join(lessonDir(slug), "verify.py");
   if (!fs.existsSync(py)) return { status: "absent" };
   const inputs = examples.map(({ answer, label, ...rest }) => rest);
   const res = spawnSync("python3", [py], { input: JSON.stringify(inputs), encoding: "utf8", timeout: 20000 });
@@ -311,7 +322,7 @@ function main() {
   const json = args.includes("--json");
   const slug = args.find((a) => !a.startsWith("--"));
   if (!slug) {
-    console.error("usage: node scripts/verify_animation.mjs <slug> [--json]");
+    console.error("usage: node scripts/verify_animation.mjs <slug|algo:id> [--json]");
     process.exit(2);
   }
 
@@ -338,7 +349,8 @@ function main() {
     }
     const ind = report.independence || { status: "absent" };
     if (ind.status === "absent")
-      console.log("  · independent reference: none — add lessons/" + report.slug + "/verify.py (PLAN-019 G4)");
+      console.log("  · independent reference: none — add " +
+        path.relative(ROOT, path.join(lessonDir(report.slug), "verify.py")) + " (PLAN-019 G4)");
     else if (ind.status === "error")
       console.log(`  ✗ independent reference (verify.py): ${ind.reason}`);
     else

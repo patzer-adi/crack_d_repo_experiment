@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A* Algorithm — Algorithm Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<link rel="stylesheet" href="../../static/algo.css">
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Algorithm Lesson</p>
+  <h1>A* Algorithm</h1>
+  <div class="header-meta">
+    <span class="badge badge-arr">Graph Algorithms</span>
+    <span class="badge badge-med">Tier 2 · core</span>
+    <span class="badge badge-arr">O(E log V) time · O(V) space</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. The second one is the only thing standing between A* and a wrong answer.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">What does one move cost?</div>
+      <div class="acard-a">One step, in four directions.</div>
+      <div class="acard-u">→ g is a plain step count, so the answer is comparable to BFS</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Which guess is safe to use?</div>
+      <div class="acard-a">Manhattan distance to the goal.</div>
+      <div class="acard-u">→ it can never over-estimate on a 4-way unit-cost grid, which is what keeps A* correct</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Is the goal always reachable?</div>
+      <div class="acard-a">No — walls can seal it off.</div>
+      <div class="acard-u">→ return -1 when the open set empties without reaching it</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Do we need the route or the length?</div>
+      <div class="acard-a">The length.</div>
+      <div class="acard-u">→ return g at the goal; a parent map would rebuild the route</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Add a guess of what is left, and the search stops walking backwards</p>
+
+  <p class="body">Dijkstra spreads evenly in every direction because it only knows what a route has already cost. A* also asks how far there is still to go, and sorts the frontier by the sum. If that guess never over-estimates, the answer stays exactly right — but the effort goes toward the goal instead of behind it.</p>
+
+  <div style="margin:1.25rem 0">
+    <div class="gv-legend">
+      <span><span class="leg-dot" style="background:var(--bg-danger);border-radius:4px"></span>wall</span>
+      <span><span class="leg-dot" style="background:var(--bg-info);border-radius:4px"></span>expanding now</span>
+      <span><span class="leg-dot" style="background:var(--bg-warn);border-radius:4px"></span>open (f = g + h)</span>
+      <span><span class="leg-dot" style="background:var(--bg2);border:1px solid var(--border);border-radius:4px"></span>expanded</span>
+      <span><span class="leg-dot" style="background:var(--bg-success);border-radius:4px"></span>goal</span>
+    </div>
+    <div id="si-grid" style="margin:.5rem 0"></div>
+    <div id="si-cap" class="gv-cap"></div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="ctrl-btn"     onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn"     onclick="siNext()">Next →</button>
+      <button class="ctrl-btn"     onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <div style="margin:1.25rem 0;font-size:13px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:.5rem;color:var(--text)">Why an optimistic guess keeps the answer exact:</div>
+    <div class="skeleton">
+      <div class="wt-item">
+        <div class="wt-num">1</div>
+        <div class="wt-body">
+          <div class="wt-name">f is a lower bound on the whole route</div>
+          <div class="wt-desc">g is what a route to this cell really cost. h is a guess of the rest that is never too big. So f = g + h can never exceed the true cost of the best route through this cell — it can only be too small.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">2</div>
+        <div class="wt-body">
+          <div class="wt-name">At the goal, the guess is zero</div>
+          <div class="wt-desc">h(goal) = 0, so when the goal comes off the queue its f is exactly its g — a real cost, not an estimate. Nothing about it is optimistic any more.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">3</div>
+        <div class="wt-body">
+          <div class="wt-name">So nothing left behind can beat it</div>
+          <div class="wt-desc">Every other cell still on the queue has an f at least as large, and its f under-states the true cost of finishing through it. So no unexplored route can come in cheaper. Over-estimate anywhere and this collapses: A* would return a longer path and never notice.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Run Dijkstra, but order the frontier by <code>f = g + h</code> where <code>h</code> never over-estimates the remaining cost. Since <code>h</code> is 0 at the goal, popping the goal yields its true cost, and every cell still queued has an f that under-states its route — so none can beat it. With <code>h = 0</code> this is exactly Dijkstra.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">The uninformed version is plain breadth-first search: expand in rings, ignoring where the goal is. It gets the same answer — but it works outward in every direction, including straight away from the target. Count the cells it expands, then compare with the A* run above.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">5×5 → 8</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">sealed → -1</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">detour → 6</button>
+  </div>
+  <div id="bf-grid" style="margin:.75rem 0"></div>
+  <div class="gv-counter">
+    <span>cells expanded: <b id="bf-exp">0</b></span>
+    <span>ring: <b id="bf-ring">0</b></span>
+  </div>
+  <div id="bf-narr" class="gv-cap"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: same O(E) bound, far more work in practice</p>
+    <p class="infobox-d">BFS is not asymptotically worse — that is the point. A* wins on the constant, by never spending a pop on a cell whose optimistic total already exceeds a route it has in hand.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="cm">// Uninformed BFS: correct, but expands in every direction equally.</span>
+<span class="kw">int</span> <span class="fn">bfs</span>(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; grid, Point s, Point t) {
+    <span class="kw">queue</span>&lt;<span class="kw">pair</span>&lt;Point,<span class="kw">int</span>&gt;&gt; q;
+    q.<span class="fn">push</span>({s, 0}); seen[s.r][s.c] = <span class="kw">true</span>;
+    <span class="kw">while</span> (!q.<span class="fn">empty</span>()) {
+        <span class="kw">auto</span> [u, d] = q.<span class="fn">front</span>(); q.<span class="fn">pop</span>();
+        <span class="kw">if</span> (u == t) { <span class="kw">return</span> d; }
+        <span class="kw">for</span> (Point v : <span class="fn">neighbours</span>(u)) {
+            <span class="kw">if</span> (<span class="fn">blocked</span>(v) || seen[v.r][v.c]) { <span class="kw">continue</span>; }
+            seen[v.r][v.c] = <span class="kw">true</span>;
+            q.<span class="fn">push</span>({v, d + 1});
+        }
+    }
+    <span class="kw">return</span> -1;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three swaps turn an even spread into a directed one, without giving up the guarantee.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Order by cost so far → order by g + h</div>
+        <div class="wt-desc">Give the frontier a sense of direction. A cell that is cheap to reach but points away from the goal now sorts behind one that is slightly dearer but closer.</div>
+        <div class="wt-gain">same answer, far fewer expansions</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Any guess → a guess that never over-estimates</div>
+        <div class="wt-desc">This is the whole correctness condition, and it is the one people break. Manhattan distance works for 4-way unit steps because a single step changes it by exactly 1, so it can never be too big.</div>
+        <div class="wt-gain">turns a heuristic into a guarantee</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">Decrease-key → push a duplicate, skip stale pops</div>
+        <div class="wt-desc">Exactly as in Dijkstra: on improvement push a fresh entry, and discard any pop whose g no longer matches the stored g.</div>
+        <div class="wt-gain">a plain heap suffices</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Set up.</b> <code>g[start] = 0</code>. Push <code>(h(start), 0, start)</code> onto a min-heap ordered by <code>f</code>.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Pop the smallest f.</b> If it is the goal, return its <code>g</code> — that is the shortest length, and you can stop immediately.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Drop stale entries.</b> If the popped <code>g</code> is worse than the stored <code>g</code> for that cell, this is an old copy — skip it.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Relax the four neighbours.</b> If <code>g + 1</code> improves a neighbour, store it and push <code>(g + 1 + h(v), g + 1, v)</code>.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>If the heap empties</b> without reaching the goal, no route exists — return -1.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <p class="body">C++ first — that is the version the walkthrough below animates. Delete the <code>h</code> term and you have Dijkstra; the rest of the code is identical.</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">int</span> <span class="fn">h</span>(Point a, Point b) { <span class="kw">return</span> <span class="fn">abs</span>(a.r - b.r) + <span class="fn">abs</span>(a.c - b.c); }
+
+<span class="kw">int</span> <span class="fn">astar</span>(<span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; grid, Point s, Point t) {
+    <span class="kw">int</span> R = grid.<span class="fn">size</span>(), C = grid[0].<span class="fn">size</span>();
+    <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt; g(R, <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;(C, INT_MAX));
+    <span class="kw">priority_queue</span>&lt;Node, <span class="kw">vector</span>&lt;Node&gt;, <span class="kw">greater</span>&lt;&gt;&gt; open;   <span class="cm">// keyed on f</span>
+    g[s.r][s.c] = 0;
+    open.<span class="fn">push</span>({<span class="fn">h</span>(s, t), 0, s});
+    <span class="kw">while</span> (!open.<span class="fn">empty</span>()) {
+        <span class="kw">auto</span> [f, gu, u] = open.<span class="fn">top</span>(); open.<span class="fn">pop</span>();
+        <span class="kw">if</span> (u == t) { <span class="kw">return</span> gu; }              <span class="cm">// h(t)=0, so gu is exact</span>
+        <span class="kw">if</span> (gu &gt; g[u.r][u.c]) { <span class="kw">continue</span>; }        <span class="cm">// stale copy</span>
+        <span class="kw">for</span> (Point v : <span class="fn">neighbours</span>(u)) {
+            <span class="kw">if</span> (<span class="fn">blocked</span>(grid, v)) { <span class="kw">continue</span>; }
+            <span class="kw">if</span> (gu + 1 &lt; g[v.r][v.c]) {
+                g[v.r][v.c] = gu + 1;
+                open.<span class="fn">push</span>({gu + 1 + <span class="fn">h</span>(v, t), gu + 1, v});
+            }
+        }
+    }
+    <span class="kw">return</span> -1;
+}</pre>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-py',this)" style="margin-top:.5rem">▶ Reveal the same thing in Python</button>
+  <div id="code-py" class="code-block">
+    <pre class="cb"><span class="kw">import</span> heapq
+
+<span class="kw">def</span> <span class="fn">astar</span>(grid, s, t):
+    R, C = <span class="fn">len</span>(grid), <span class="fn">len</span>(grid[<span class="nu">0</span>])
+    h = <span class="kw">lambda</span> p: <span class="fn">abs</span>(p[<span class="nu">0</span>] - t[<span class="nu">0</span>]) + <span class="fn">abs</span>(p[<span class="nu">1</span>] - t[<span class="nu">1</span>])
+    g = {s: <span class="nu">0</span>}
+    open_ = [(h(s), <span class="nu">0</span>, s)]
+    <span class="kw">while</span> open_:
+        f, gu, u = heapq.<span class="fn">heappop</span>(open_)
+        <span class="kw">if</span> u == t:
+            <span class="kw">return</span> gu
+        <span class="kw">if</span> gu &gt; g.<span class="fn">get</span>(u, <span class="fn">float</span>(<span class="nu">'inf'</span>)):
+            <span class="kw">continue</span>
+        r, c = u
+        <span class="kw">for</span> dr, dc <span class="kw">in</span> ((<span class="nu">1</span>, <span class="nu">0</span>), (-<span class="nu">1</span>, <span class="nu">0</span>), (<span class="nu">0</span>, <span class="nu">1</span>), (<span class="nu">0</span>, -<span class="nu">1</span>)):
+            v = (r + dr, c + dc)
+            <span class="kw">if</span> <span class="kw">not</span> (<span class="nu">0</span> &lt;= v[<span class="nu">0</span>] &lt; R <span class="kw">and</span> <span class="nu">0</span> &lt;= v[<span class="nu">1</span>] &lt; C) <span class="kw">or</span> grid[v[<span class="nu">0</span>]][v[<span class="nu">1</span>]]:
+                <span class="kw">continue</span>
+            <span class="kw">if</span> gu + <span class="nu">1</span> &lt; g.<span class="fn">get</span>(v, <span class="fn">float</span>(<span class="nu">'inf'</span>)):
+                g[v] = gu + <span class="nu">1</span>
+                heapq.<span class="fn">heappush</span>(open_, (gu + <span class="nu">1</span> + h(v), gu + <span class="nu">1</span>, v))
+    <span class="kw">return</span> -<span class="nu">1</span></pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Each step runs one line of the C++ above. The grid shows each cell's g value once it has one. On the detour example, watch A* head straight at the wall first — the guess is optimistic, so it has to be disappointed before it turns.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-u"><span class="cv-var-name">u</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-g"><span class="cv-var-name">g(u)</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-f"><span class="cv-var-name">f = g + h</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-open"><span class="cv-var-name">open size</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-grid" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">5×5 → 8</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">sealed → -1</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">detour → 6</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick a grid and expand the cells by hand. Before pressing Next, name the open cell with the smallest <code>f</code> — ties can go either way and the answer does not change.</p>
+
+  <div id="dr-grid" style="margin:.75rem 0"></div>
+  <div class="gv-legend">
+    <span><span class="leg-dot" style="background:var(--bg-info);border-radius:4px"></span>expanding now</span>
+    <span><span class="leg-dot" style="background:var(--bg-warn);border-radius:4px"></span>open</span>
+    <span><span class="leg-dot" style="background:var(--bg-danger);border-radius:4px"></span>wall</span>
+    <span><span class="leg-dot" style="background:var(--bg-success);border-radius:4px"></span>goal</span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">expanded</div>
+          <div class="fitem-val" id="dr-f-exp">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">open</div>
+          <div class="fitem-val" id="dr-f-open">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">result</div>
+          <div class="fitem-val" id="dr-f-res">…</div>
+        </div>
+      </div>
+      <div class="formula-eq" id="dr-f-eq">f = g + h</div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">5×5 → 8</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">sealed → -1</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">detour → 6</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">A heuristic that over-estimates</div>
+    <div class="corner-body">The one failure that matters. A* returns a route that is too long and reports it confidently. Using Euclidean distance with 4-way moves is fine (it under-estimates), but using Manhattan with <i>diagonal</i> moves allowed is not — one diagonal step cuts Manhattan by 2.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">Returning when the goal is pushed, not popped</div>
+    <div class="corner-body">Tempting and wrong. When the goal is first pushed its g is only a candidate; a cheaper route may still be sitting in the heap. The guarantee applies at the moment it is <i>popped</i>.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Start or goal on a wall</div>
+    <div class="corner-body">Check both before the loop. Starting on a wall otherwise produces a route that walks out of one, and a walled goal is never popped so it falls through to -1 anyway — but by luck rather than design.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Start equals goal</div>
+    <div class="corner-body">Answer 0. The code above handles it: the start is popped first and matches the goal test immediately.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">A tie between two f values</div>
+    <div class="corner-body">Harmless for correctness — the length is the same either way. It does change which route is found, so a test that pins the exact route rather than its length will be flaky.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Prove the heuristic never over-estimates</b> for your move set, in a comment. This is the assumption that silently breaks when someone later adds diagonal movement.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Return on pop, not on push.</b> The optimality argument only holds at the pop.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Keep the stale-pop guard,</b> exactly as in Dijkstra, so a plain heap is enough.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Validate start and goal</b> before the loop — in bounds and not on a wall.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>If you need a route, store parents</b> during relaxation. Re-running the search to recover it doubles the cost.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Fall back to Dijkstra (h = 0) when in doubt.</b> Slower is much better than confidently wrong, and it is a one-line change.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">A*</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Bidirectional BFS</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Plain BFS / Dijkstra</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(E log V)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">The version above. Worth it when you have one specific goal and a cheap, honest estimate of the distance to it — maps, grids, puzzle state spaces. With no useful heuristic it degrades exactly to Dijkstra, so it is never worse than the fallback.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(b^(d/2))</span><span class="tag tag-space">O(b^(d/2))</span>
+    <p class="body">Search from both ends and stop when the frontiers touch. On a huge branching state space this is the bigger win, because two half-depth searches are vastly smaller than one full-depth search — and it needs no heuristic at all. The catch is that you need to be able to walk edges backwards.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-bidi',this)">▶ Reveal sketch</button>
+    <div id="code-bidi" class="code-block">
+      <pre class="cb"><span class="cm">// expand whichever frontier is smaller, then swap</span>
+<span class="kw">while</span> (!a.<span class="fn">empty</span>() &amp;&amp; !b.<span class="fn">empty</span>()) {
+    <span class="kw">if</span> (a.<span class="fn">size</span>() &gt; b.<span class="fn">size</span>()) { <span class="fn">swap</span>(a, b); }
+    <span class="cm">// expand one ring of `a`; if a cell is already in `b`, the</span>
+    <span class="cm">// two searches have met and the answer is depthA + depthB</span>
+}</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O(E) / O(E log V)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">No heuristic at all. Use BFS when every move costs 1 — it is simpler and has no heap. Use Dijkstra when moves have different costs but you have no distance estimate. Both give the same length as A*; they just look at more of the map to get it.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(E log V)</div>
+      <div class="ccard-n">Identical to Dijkstra in the worst case — an adversarial grid makes A* expand everything. The heuristic changes the constant, never the bound; the payoff is measured in cells expanded, not in big-O.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(V)</div>
+      <div class="ccard-n">One g value per cell, plus a heap that can hold one entry per improvement — O(E) in the worst case, since improvements push duplicates instead of decreasing a key.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">LeetCode problems that are this algorithm</p>
+  <div class="takehome">
+    <p><b>LC 1091 — Shortest Path in Binary Matrix:</b> the canonical A* fit. Moves are 8-way, so the admissible guess is Chebyshev distance (<code>max(|dr|,|dc|)</code>), not Manhattan.</p>
+    <p><b>LC 752 — Open the Lock:</b> the graph is implicit — nodes are 4-digit states. A useful guess is the per-wheel dial distance to the target.</p>
+    <p><b>LC 773 — Sliding Puzzle:</b> the classic. The sum of each tile's Manhattan distance from home never over-estimates, because one move relocates one tile by one square.</p>
+    <p><b>LC 787 — Cheapest Flights Within K Stops:</b> a good counter-example — with no honest distance estimate available, plain Dijkstra or Bellman-Ford is the right call.</p>
+    <p><b>The trick to carry:</b> A* is Dijkstra plus one term. All the work is in finding a guess you can prove is never too big — if you cannot, set h = 0 and you still have a correct algorithm.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script src="../../static/algo.js"></script>
+<script>
+  /* ── answer-bearing examples (drive bf / cv / dr panels AND the verifier) ── */
+  const EX = [
+    { grid: [[0,0,0,0,0],[1,1,0,1,1],[0,0,0,0,0],[0,1,1,1,0],[0,0,0,0,0]],
+      start: [0,0], goal: [4,4], answer: 8 },
+    { grid: [[0,0,0],[1,1,1],[0,0,0]],
+      start: [0,0], goal: [2,2], answer: -1 },
+    { grid: [[0,1,0],[0,1,0],[0,0,0]],
+      start: [0,0], goal: [0,2], answer: 6 },
+  ];
+
+  /* Paint a step onto the shared DP-table painter, used here as a grid. DOM only. */
+  function gridDraw(conId, exIdx, st) {
+    const ex = EX[exIdx], grid = ex.grid;
+    const R = grid.length, C = grid[0].length;
+    const openSet = new Set((st.open || []).map(p => p[0] + ',' + p[1]));
+    const cells = [];
+    for (let r = 0; r < R; r++) {
+      const row = [];
+      for (let c = 0; c < C; c++) {
+        const k = r + ',' + c;
+        const gv = st.g ? st.g[r][c] : null;
+        let cls = '';
+        if (grid[r][c] === 1) { cls = 'bad'; }
+        else if (st.cur && st.cur[0] === r && st.cur[1] === c) { cls = 'cur'; }
+        else if (r === ex.goal[0] && c === ex.goal[1] && st.reached) { cls = 'best'; }
+        else if (openSet.has(k)) { cls = 'src'; }
+        else if (gv !== null && gv !== undefined) { cls = 'set'; }
+        let v;
+        if (grid[r][c] === 1) { v = '#'; }
+        else if (gv === null || gv === undefined) { v = '·'; }
+        else { v = gv; }
+        row.push({ v, cls });
+      }
+      cells.push(row);
+    }
+    const colHead = [];
+    for (let c = 0; c < C; c++) { colHead.push('c' + c); }
+    const rowHead = [];
+    for (let r = 0; r < R; r++) { rowHead.push('r' + r); }
+    dpPaint(conId, { colHead, rowHead, corner: 'g' }, { cells });
+  }
+
+  const CV_LINES = [
+    { n:1,  c:'int astar(vector<vector<int>>& grid, Point s, Point t) {' },
+    { n:2,  c:'    vector<vector<int>> g(R, vector<int>(C, INT_MAX));' },
+    { n:3,  c:'    priority_queue<Node, vector<Node>, greater<>> open;' },
+    { n:4,  c:'    g[s.r][s.c] = 0;' },
+    { n:5,  c:'    open.push({h(s, t), 0, s});' },
+    { n:6,  c:'    while (!open.empty()) {' },
+    { n:7,  c:'        auto [f, gu, u] = open.top(); open.pop();' },
+    { n:8,  c:'        if (u == t) return gu;' },
+    { n:9,  c:'        if (gu > g[u.r][u.c]) continue;' },
+    { n:10, c:'        for (Point v : neighbours(u)) {' },
+    { n:11, c:'            if (blocked(grid, v)) continue;' },
+    { n:12, c:'            if (gu + 1 < g[v.r][v.c]) {' },
+    { n:13, c:'                g[v.r][v.c] = gu + 1;' },
+    { n:14, c:'                open.push({gu + 1 + h(v, t), gu + 1, v});' },
+    { n:15, c:'            }' },
+    { n:16, c:'        }' },
+    { n:17, c:'    }' },
+    { n:18, c:'    return -1;' },
+    { n:19, c:'}' },
+  ];
+
+  /* ════════════════ SEC 1 INSIGHT — where A* looks ════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+
+  function siGenSteps(grid, start, goal) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const R = grid.length, C = grid[0].length;
+    const h = (r, c) => Math.abs(r - goal[0]) + Math.abs(c - goal[1]);
+    const g = [];
+    for (let r = 0; r < R; r++) { g.push(new Array(C).fill(null)); }
+    let open = [[h(start[0], start[1]), 0, start[0], start[1]]];
+    g[start[0]][start[1]] = 0;
+    const steps = [];
+    let expanded = 0;
+    steps.push({ g: g.map(r => r.slice()), open: open.map(e => [e[2], e[3]]), cur: null, reached: false,
+      cap: `Start at (${start[0]},${start[1]}). Its guess of the remaining distance is ${h(start[0], start[1])}.` });
+    while (open.length) {
+      open.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const top = open.shift();
+      const f = top[0], gu = top[1], r = top[2], c = top[3];
+      if (gu > g[r][c]) { continue; }
+      expanded++;
+      if (r === goal[0] && c === goal[1]) {
+        steps.push({ g: g.map(x => x.slice()), open: open.map(e => [e[2], e[3]]), cur: [r, c], reached: true,
+          cap: `Goal popped with f = ${f} = g ${gu} + h 0. Answer ${gu}, after expanding ${expanded} cell(s).` });
+        return steps;
+      }
+      for (const d of DIRS) {
+        const nr = r + d[0], nc = c + d[1];
+        if (nr < 0 || nr >= R || nc < 0 || nc >= C || grid[nr][nc] === 1) { continue; }
+        if (g[nr][nc] === null || gu + 1 < g[nr][nc]) {
+          g[nr][nc] = gu + 1;
+          open.push([gu + 1 + h(nr, nc), gu + 1, nr, nc]);
+        }
+      }
+      steps.push({ g: g.map(x => x.slice()), open: open.map(e => [e[2], e[3]]), cur: [r, c], reached: false,
+        cap: `Expand (${r},${c}): f = ${f} is the smallest on the frontier (g ${gu} + h ${h(r, c)}). Cells expanded: ${expanded}.` });
+    }
+    steps.push({ g: g.map(x => x.slice()), open: [], cur: null, reached: false,
+      cap: `The frontier is empty after ${expanded} expansion(s) and the goal was never reached — no route exists.` });
+    return steps;
+  }
+
+  function siRender(st) {
+    gridDraw('si-grid', 0, st);
+    document.getElementById('si-cap').textContent = st.cap;
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+
+  /* ════════════════ SEC 2 BRUTE FORCE — uninformed BFS ════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null, bfEx = 0;
+
+  function bfGenSteps(grid, start, goal) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const R = grid.length, C = grid[0].length;
+    const g = [];
+    for (let r = 0; r < R; r++) { g.push(new Array(C).fill(null)); }
+    g[start[0]][start[1]] = 0;
+    let frontier = [start.slice()];
+    const steps = [];
+    let expanded = 0, ring = 0;
+    steps.push({ g: g.map(r => r.slice()), open: frontier.map(p => p.slice()), cur: null, reached: false,
+      expanded, ring,
+      narr: 'BFS spreads in rings. It has no idea where the goal is, so it grows in every direction at once.' });
+    let found = -1;
+    while (frontier.length && found < 0) {
+      const next = [];
+      for (const p of frontier) {
+        expanded++;
+        if (p[0] === goal[0] && p[1] === goal[1]) { found = g[p[0]][p[1]]; break; }
+        for (const d of DIRS) {
+          const nr = p[0] + d[0], nc = p[1] + d[1];
+          if (nr < 0 || nr >= R || nc < 0 || nc >= C || grid[nr][nc] === 1) { continue; }
+          if (g[nr][nc] !== null) { continue; }
+          g[nr][nc] = g[p[0]][p[1]] + 1;
+          next.push([nr, nc]);
+        }
+      }
+      if (found >= 0) { break; }
+      ring++;
+      frontier = next;
+      steps.push({ g: g.map(r => r.slice()), open: frontier.map(p => p.slice()), cur: null, reached: false,
+        expanded, ring,
+        narr: `Ring ${ring}: every cell exactly ${ring} step(s) from the start now has a value. Cells expanded so far: ${expanded}.` });
+    }
+    steps.push({ g: g.map(r => r.slice()), open: [], cur: null, reached: found >= 0,
+      expanded, ring,
+      narr: found >= 0
+        ? `Reached the goal at distance ${found} after expanding ${expanded} cell(s). Compare that count with the A* run in the section above.`
+        : `Every reachable cell expanded (${expanded}) and the goal was never found — no route exists.`,
+      result: found >= 0 ? found : -1 });
+    return steps;
+  }
+
+  function bfRender(st) {
+    gridDraw('bf-grid', bfEx, st);
+    document.getElementById('bf-exp').textContent = st.expanded;
+    document.getElementById('bf-ring').textContent = st.ring;
+    document.getElementById('bf-narr').textContent = st.narr;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+  function bfLoadEx(idx) {
+    bfStopPlay(); bfCur = 0; bfEx = idx;
+    [0,1,2].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+    bfSteps = bfGenSteps(EX[idx].grid, EX[idx].start, EX[idx].goal);
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ════════════════ SEC 6 CODE VIZ — one C++ line per step ════════════════ */
+  let cvCur = 0, cvSteps = [], cvTimer = null, cvEx = 0;
+
+  function cvGenSteps(grid, start, goal) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const R = grid.length, C = grid[0].length;
+    const hf = (r, c) => Math.abs(r - goal[0]) + Math.abs(c - goal[1]);
+    const g = [];
+    for (let r = 0; r < R; r++) { g.push(new Array(C).fill(null)); }
+    let open = [];
+    let uTxt = null, gTxt = null, fTxt = null, cur = null;
+    const steps = [];
+    const snap = (o) => Object.assign({
+      g: g.map(r => r.slice()), open: open.map(e => [e[2], e[3]]), cur, reached: false,
+      changed: [], uTxt, gTxt, fTxt, openSize: open.length,
+    }, o);
+    steps.push(snap({ line: 1, narr: `Grid is ${R}×${C}. Start (${start[0]},${start[1]}), goal (${goal[0]},${goal[1]}).` }));
+    steps.push(snap({ line: 2, changed: ['g'], narr: 'Every g starts at infinity.' }));
+    g[start[0]][start[1]] = 0;
+    steps.push(snap({ line: 4, changed: ['g'], narr: 'The start costs nothing to reach.' }));
+    open.push([hf(start[0], start[1]), 0, start[0], start[1]]);
+    steps.push(snap({ line: 5, changed: ['openSize'],
+      narr: `Push it with f = 0 + h = ${hf(start[0], start[1])}.` }));
+    while (open.length) {
+      steps.push(snap({ line: 6, narr: `${open.length} cell(s) waiting, so keep going.` }));
+      open.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const top = open.shift();
+      const f = top[0], gu = top[1], r = top[2], c = top[3];
+      cur = [r, c];
+      uTxt = '(' + r + ',' + c + ')'; gTxt = gu; fTxt = f;
+      steps.push(snap({ line: 7, changed: ['uTxt', 'gTxt', 'fTxt', 'openSize'],
+        narr: `Pop the smallest f = ${f}: cell (${r},${c}) with g = ${gu}, h = ${hf(r, c)}.` }));
+      if (r === goal[0] && c === goal[1]) {
+        steps.push(snap({ line: 8, phase: 'done', reached: true,
+          narr: `That is the goal. h is 0 here, so f = g = ${gu} is a real cost, not an estimate — return ${gu}.`,
+          result: gu }));
+        return steps;
+      }
+      if (gu > g[r][c]) {
+        steps.push(snap({ line: 9, narr: `g ${gu} is worse than the stored ${g[r][c]} — a stale copy, skip it.` }));
+        cur = null; uTxt = null; gTxt = null; fTxt = null;
+        continue;
+      }
+      for (const d of DIRS) {
+        const nr = r + d[0], nc = c + d[1];
+        if (nr < 0 || nr >= R || nc < 0 || nc >= C || grid[nr][nc] === 1) {
+          steps.push(snap({ line: 11, narr: `Neighbour (${nr},${nc}) is a wall or off the grid — skip.` }));
+          continue;
+        }
+        if (g[nr][nc] === null || gu + 1 < g[nr][nc]) {
+          g[nr][nc] = gu + 1;
+          open.push([gu + 1 + hf(nr, nc), gu + 1, nr, nc]);
+          steps.push(snap({ line: 14, changed: ['g', 'openSize'],
+            narr: `(${nr},${nc}) improves to g ${gu + 1}; push it with f = ${gu + 1} + ${hf(nr, nc)} = ${gu + 1 + hf(nr, nc)}.` }));
+        } else {
+          steps.push(snap({ line: 12, narr: `(${nr},${nc}) already has g ${g[nr][nc]}, which ${gu + 1} does not beat.` }));
+        }
+      }
+      cur = null; uTxt = null; gTxt = null; fTxt = null;
+    }
+    steps.push(snap({ line: 18, phase: 'done',
+      narr: 'The frontier emptied without popping the goal, so no route exists — return -1.', result: -1 }));
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const ln = document.getElementById('cvL' + st.line);
+    if (ln) ln.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    setCard('cv-v-u', st.uTxt === null ? '—' : st.uTxt, ch.includes('uTxt'));
+    setCard('cv-v-g', st.gTxt === null ? '—' : st.gTxt, ch.includes('gTxt'));
+    setCard('cv-v-f', st.fTxt === null ? '—' : st.fTxt, ch.includes('fTxt'));
+    setCard('cv-v-open', st.openSize, ch.includes('openSize'));
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : ' is-active');
+    gridDraw('cv-grid', cvEx, st);
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+  function cvLoadEx(idx) {
+    cvStopPlay(); cvCur = 0; cvEx = idx;
+    [0,1,2].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(EX[idx].grid, EX[idx].start, EX[idx].goal);
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ════════════════ SEC 7 DRY RUN — the oracle ════════════════ */
+  let drCur = 0, drSteps = [], drTimer = null, drEx = 0;
+
+  function drGenSteps(grid, start, goal) {
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+    const R = grid.length, C = grid[0].length;
+    const hf = (r, c) => Math.abs(r - goal[0]) + Math.abs(c - goal[1]);
+    const g = [];
+    for (let r = 0; r < R; r++) { g.push(new Array(C).fill(null)); }
+    const steps = [];
+    if (grid[start[0]][start[1]] === 1 || grid[goal[0]][goal[1]] === 1) {
+      steps.push({ g, open: [], cur: null, reached: false, expanded: 0,
+        what: 'Start or goal sits on a wall', why: 'There is nothing to search — return -1.', result: -1 });
+      return steps;
+    }
+    let open = [[hf(start[0], start[1]), 0, start[0], start[1]]];
+    g[start[0]][start[1]] = 0;
+    let expanded = 0;
+    const snap = (o) => Object.assign({
+      g: g.map(r => r.slice()), open: open.map(e => [e[2], e[3]]), cur: null, reached: false, expanded,
+    }, o);
+    steps.push(snap({ what: `Start at (${start[0]},${start[1]})`,
+      why: `g = 0 and h = ${hf(start[0], start[1])}, so f = ${hf(start[0], start[1])}. It is the only cell on the frontier.` }));
+    while (open.length) {
+      open.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const top = open.shift();
+      const f = top[0], gu = top[1], r = top[2], c = top[3];
+      if (gu > g[r][c]) {
+        steps.push(snap({ cur: [r, c], what: `Discard the stale copy of (${r},${c})`,
+          why: `It carries g ${gu} but the cell already has ${g[r][c]}.` }));
+        continue;
+      }
+      expanded++;
+      if (r === goal[0] && c === goal[1]) {
+        steps.push(snap({ cur: [r, c], reached: true, expanded,
+          what: `Goal (${r},${c}) popped with f = ${f}`,
+          why: `h is 0 at the goal, so f equals the real cost g = ${gu}. Every cell still waiting has f at least ${f} and its f under-states its route, so none can beat this.`,
+          result: gu }));
+        return steps;
+      }
+      const improved = [];
+      for (const d of DIRS) {
+        const nr = r + d[0], nc = c + d[1];
+        if (nr < 0 || nr >= R || nc < 0 || nc >= C || grid[nr][nc] === 1) { continue; }
+        if (g[nr][nc] === null || gu + 1 < g[nr][nc]) {
+          g[nr][nc] = gu + 1;
+          open.push([gu + 1 + hf(nr, nc), gu + 1, nr, nc]);
+          improved.push(`(${nr},${nc}) f=${gu + 1 + hf(nr, nc)}`);
+        }
+      }
+      steps.push(snap({ cur: [r, c], expanded,
+        what: `Expand (${r},${c}), f = ${f}`,
+        why: improved.length
+          ? `g ${gu} + h ${hf(r, c)} was the smallest on the frontier. New or improved: ${improved.join(', ')}.`
+          : `g ${gu} + h ${hf(r, c)} was the smallest, but every open neighbour already has an equal or better g.` }));
+    }
+    steps.push(snap({ what: 'Frontier empty, goal never popped',
+      why: `All ${expanded} reachable cell(s) were expanded and the goal was not among them — no route exists.`,
+      result: -1 }));
+    return steps;
+  }
+
+  function drRender(st) {
+    gridDraw('dr-grid', drEx, st);
+    document.getElementById('dr-f-exp').textContent = st.expanded;
+    document.getElementById('dr-f-open').textContent = st.open.length;
+    const res = document.getElementById('dr-f-res');
+    if ('result' in st) {
+      res.textContent = st.result;
+      res.style.color = st.result === -1 ? 'var(--text-danger)' : 'var(--text-success)';
+    } else {
+      res.textContent = '…';
+      res.style.color = 'var(--text2)';
+    }
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.what;
+    if (whyEl) whyEl.textContent = st.why;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+  function drLoadEx(idx) {
+    drStopPlay(); drCur = 0; drEx = idx;
+    [0,1,2].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+    drSteps = drGenSteps(EX[idx].grid, EX[idx].start, EX[idx].goal);
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ── init ── */
+  siSteps = siGenSteps(EX[0].grid, EX[0].start, EX[0].goal);
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>

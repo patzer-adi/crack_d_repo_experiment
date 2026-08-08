@@ -36,7 +36,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LESSONS = ROOT / "lessons"
+ALGORITHMS = ROOT / "algorithms"
 VERIFY_SCRIPT = ROOT / "scripts" / "verify_animation.mjs"
+
+
+def lesson_dir(target: str) -> Path:
+    """Resolve a lesson target to its directory.
+
+    A bare problem slug maps to ``lessons/<slug>/``; an ``algo:`` prefixed
+    algorithm id maps to ``algorithms/<id>/`` (PLAN-027). The prefix is required
+    rather than inferred because the namespaces collide — ``edit-distance`` and
+    ``binary-search`` are both a problems.json slug AND an algorithms.json id,
+    so a name-only guess would lint the wrong file.
+    """
+    return ALGORITHMS / target[5:] if target.startswith("algo:") else LESSONS / target
 
 # Legacy carve-out, retained as an empty set so the surrounding code paths
 # (severity = "warn" if slug in LEGACY_GOLDENS else "fail") still resolve.
@@ -664,9 +677,9 @@ def lint_animation(report: LintReport, slug: str) -> None:
 
 def lint_lesson(slug: str, sections: list[int] | None) -> LintReport:
     report = LintReport(slug=slug)
-    lesson_dir = LESSONS / slug
-    html_path = lesson_dir / "lesson.html"
-    plan_path = lesson_dir / "plan.md"
+    ldir = lesson_dir(slug)
+    html_path = ldir / "lesson.html"
+    plan_path = ldir / "plan.md"
 
     if not html_path.exists():
         report.add("file:lesson.html exists", False, f"{html_path} not found")
@@ -742,7 +755,7 @@ def render_json(report: LintReport) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Lint a lesson against PLAN-016 criteria")
-    ap.add_argument("slug", help="lesson slug, e.g. 3sum")
+    ap.add_argument("slug", help="lesson slug (e.g. 3sum) or algorithm id (e.g. algo:bfs)")
     ap.add_argument("--section", type=int, action="append",
                     help="lint only the named section(s); default = §1")
     ap.add_argument("--json", action="store_true", help="emit JSON output")

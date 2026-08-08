@@ -33,6 +33,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
+// Same target convention as verify_animation.mjs: a bare problem slug maps to
+// lessons/<slug>/, an `algo:` prefixed algorithm id to algorithms/<id>/ (PLAN-027).
+const lessonDir = (target) => target.startsWith("algo:")
+  ? path.join(ROOT, "algorithms", target.slice(5))
+  : path.join(ROOT, "lessons", target);
 const VIEWPORT = { width: 1000, height: 900 };
 const MOBILE = { width: 390, height: 844 }; // phone overflow pass (PLAN-020)
 const OVERFLOW_TOL = 2; // px slack for sub-pixel rounding
@@ -149,7 +154,7 @@ const CHECKER = `(() => {
 })()`;
 
 async function checkSlug(cdp, sessionId, slug, getErrors, resetErrors) {
-  const htmlPath = path.join(ROOT, "lessons", slug, "lesson.html");
+  const htmlPath = path.join(lessonDir(slug), "lesson.html");
   if (!fs.existsSync(htmlPath)) return { slug, ok: false, reasons: ["lesson.html not found"] };
   resetErrors();
   const s = sessionId;
@@ -207,8 +212,12 @@ async function checkSlug(cdp, sessionId, slug, getErrors, resetErrors) {
 
 function discoverGenerated() {
   const probs = JSON.parse(fs.readFileSync(path.join(ROOT, "data/problems.json"), "utf8"));
-  return probs.filter((p) => p.lesson_status === "generated" &&
+  const algos = JSON.parse(fs.readFileSync(path.join(ROOT, "data/algorithms.json"), "utf8"));
+  const fromProblems = probs.filter((p) => p.lesson_status === "generated" &&
     fs.existsSync(path.join(ROOT, "lessons", p.slug, "lesson.html"))).map((p) => p.slug).sort();
+  const fromAlgos = algos.filter((a) => a.lesson_status === "generated" &&
+    fs.existsSync(path.join(ROOT, "algorithms", a.id, "lesson.html"))).map((a) => "algo:" + a.id).sort();
+  return [...fromProblems, ...fromAlgos];
 }
 
 async function main() {
@@ -216,7 +225,7 @@ async function main() {
   const json = argv.includes("--json");
   let slugs = argv.filter((a) => !a.startsWith("--"));
   if (argv.includes("--all") || slugs.length === 0) slugs = discoverGenerated();
-  if (slugs.length === 0) { console.error("usage: node scripts/render_check.mjs <slug> [...] | --all"); process.exit(2); }
+  if (slugs.length === 0) { console.error("usage: node scripts/render_check.mjs <slug|algo:id> [...] | --all"); process.exit(2); }
 
   const bin = findBrowser();
   if (!bin) {

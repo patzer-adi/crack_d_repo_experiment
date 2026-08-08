@@ -32,6 +32,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LESSONS = ROOT / "lessons"
+ALGORITHMS = ROOT / "algorithms"
 RENDER_SCRIPT = ROOT / "scripts" / "render_check.mjs"
 AUDIT_BASELINE = ROOT / "scripts" / "audit_baseline.json"
 
@@ -40,12 +41,19 @@ from lint_lesson import lint_lesson  # noqa: E402
 
 
 def discover_slugs(only_generated: bool = True) -> list[str]:
+    """Every auditable lesson target: problem slugs, then `algo:`-prefixed
+    algorithm ids (PLAN-027). Both families share the same chassis and gates."""
     if only_generated:
         problems = json.loads((ROOT / "data/problems.json").read_text())
+        algorithms = json.loads((ROOT / "data/algorithms.json").read_text())
         return sorted(
             p["slug"] for p in problems
             if p.get("lesson_status") == "generated"
             and (LESSONS / p["slug"] / "lesson.html").exists()
+        ) + sorted(
+            "algo:" + a["id"] for a in algorithms
+            if a.get("lesson_status") == "generated"
+            and (ALGORITHMS / a["id"] / "lesson.html").exists()
         )
     slugs = []
     for path in sorted(LESSONS.iterdir()):
@@ -53,6 +61,12 @@ def discover_slugs(only_generated: bool = True) -> list[str]:
             continue
         if (path / "lesson.html").exists():
             slugs.append(path.name)
+    if ALGORITHMS.exists():
+        for path in sorted(ALGORITHMS.iterdir()):
+            if not path.is_dir() or path.name == "design":
+                continue
+            if (path / "lesson.html").exists():
+                slugs.append("algo:" + path.name)
     return slugs
 
 

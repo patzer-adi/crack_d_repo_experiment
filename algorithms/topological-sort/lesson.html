@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topological Sort — Algorithm Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<link rel="stylesheet" href="../../static/algo.css">
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Algorithm Lesson</p>
+  <h1>Topological Sort</h1>
+  <div class="header-meta">
+    <span class="badge badge-arr">Graph Algorithms</span>
+    <span class="badge badge-med">Tier 1 · primer</span>
+    <span class="badge badge-arr">O(V + E) time · O(V) space</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Two of them decide whether an answer exists at all.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Are the edges directed?</div>
+      <div class="acard-a">Yes — <code>u → v</code> means u must come before v.</div>
+      <div class="acard-u">→ an undirected graph has no topological order; the question would be meaningless</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Can the graph contain a cycle?</div>
+      <div class="acard-a">Yes, and then no valid order exists.</div>
+      <div class="acard-u">→ the algorithm must detect it, not spin or return a wrong order</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Is the order unique?</div>
+      <div class="acard-a">Usually not — several orders can be valid.</div>
+      <div class="acard-u">→ break ties by smallest id so the output is deterministic and testable</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">What should a cycle return?</div>
+      <div class="acard-a">An empty list.</div>
+      <div class="acard-u">→ the caller checks <code>result.size() != n</code>, which is also the cycle test</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Count what is still waiting in front of you</p>
+
+  <p class="body">You do not have to look ahead to know a node is safe to place. It is safe exactly when nothing is still waiting to come before it — when its count of incoming edges has fallen to zero. Placing it removes its edges, which may drop a successor to zero as well. The order builds itself out of a countdown.</p>
+
+  <div style="margin:1.25rem 0">
+    <div class="gv-legend">
+      <span><span class="leg-dot" style="background:var(--bg2);border:1px solid var(--border2)"></span>still blocked (label = edges waiting)</span>
+      <span><span class="leg-dot" style="background:var(--bg-warn)"></span>ready — nothing left in front</span>
+      <span><span class="leg-dot" style="background:var(--bg-success)"></span>placed in the order</span>
+    </div>
+    <div id="si-graph" class="gv-wrap" style="margin:.5rem 0"></div>
+    <div id="si-cap" class="gv-cap"></div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="ctrl-btn"     onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn"     onclick="siNext()">Next →</button>
+      <button class="ctrl-btn"     onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <div style="margin:1.25rem 0;font-size:13px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:.5rem;color:var(--text)">Why a zero count is enough to commit:</div>
+    <div class="skeleton">
+      <div class="wt-item">
+        <div class="wt-num">1</div>
+        <div class="wt-body">
+          <div class="wt-name">Zero incoming means no unmet requirement</div>
+          <div class="wt-desc">Every edge into a node is a "do this first". If none is left, every requirement has already been placed, so putting the node next cannot break any edge. No lookahead needed.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">2</div>
+        <div class="wt-body">
+          <div class="wt-name">Placing a node can only help others</div>
+          <div class="wt-desc">Removing a node deletes its outgoing edges, so successors' counts only ever fall. A node that becomes ready stays ready — there is nothing to undo and no backtracking.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">3</div>
+        <div class="wt-body">
+          <div class="wt-name">Getting stuck is exactly a cycle</div>
+          <div class="wt-desc">If the ready set empties with nodes left over, every leftover still has an incoming edge from another leftover. Follow those edges backwards and you must eventually repeat a node — that is a cycle, and no order exists.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Count incoming edges per node. Repeatedly take a node whose count is zero, append it, and decrement each successor. Counts only fall, so a ready node never becomes unready and no backtracking is possible. If fewer than V nodes come out, the leftovers form a cycle and no order exists.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">Without a stored count you would rescan. Each round, walk every unplaced node and, for each one, walk the whole edge list to ask "does anything unplaced still point at me?". Take the smallest node that passes, place it, and rescan from scratch. Correct, but each of the V rounds re-reads all E edges for every candidate. Watch the check counter.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">6-node DAG</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">cycle → []</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">diamond</button>
+  </div>
+  <div id="bf-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-counter">
+    <span>rounds: <b id="bf-rounds">0</b></span>
+    <span>edge checks: <b id="bf-checks">0</b></span>
+    <span>order so far: <b id="bf-order">—</b></span>
+  </div>
+  <div id="bf-narr" class="gv-cap"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(V²·E) time</p>
+    <p class="infobox-d">Nothing is remembered between rounds, so the same edges are re-read V times over — and for every candidate within a round. Storing one integer per node removes all of it.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="cm">// Rescan for a node nothing unplaced still points at.</span>
+<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; <span class="fn">topoSlow</span>(<span class="kw">int</span> n, <span class="kw">vector</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt;&amp; edges) {
+    <span class="kw">vector</span>&lt;<span class="kw">bool</span>&gt; placed(n, <span class="kw">false</span>);
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; order;
+    <span class="kw">for</span> (<span class="kw">int</span> round = 0; round &lt; n; round++) {
+        <span class="kw">int</span> pick = -1;
+        <span class="kw">for</span> (<span class="kw">int</span> u = 0; u &lt; n &amp;&amp; pick &lt; 0; u++) {
+            <span class="kw">if</span> (placed[u]) { <span class="kw">continue</span>; }
+            <span class="kw">bool</span> blocked = <span class="kw">false</span>;
+            <span class="kw">for</span> (<span class="kw">auto</span>&amp; e : edges) {      <span class="cm">// full edge scan, per candidate</span>
+                <span class="kw">if</span> (e.second == u &amp;&amp; !placed[e.first]) { blocked = <span class="kw">true</span>; <span class="kw">break</span>; }
+            }
+            <span class="kw">if</span> (!blocked) { pick = u; }
+        }
+        <span class="kw">if</span> (pick &lt; 0) { <span class="kw">return</span> {}; }     <span class="cm">// stuck => cycle</span>
+        placed[pick] = <span class="kw">true</span>;
+        order.<span class="fn">push_back</span>(pick);
+    }
+    <span class="kw">return</span> order;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three swaps take the rescan down to a single pass over the edges.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Rescan the edges → store one count per node</div>
+        <div class="wt-desc">Compute every in-degree once up front. "Is this node ready?" becomes a single array lookup instead of a scan.</div>
+        <div class="wt-gain">O(V²·E) → O(V² )</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Search for the next ready node → keep a ready set</div>
+        <div class="wt-desc">When a node is placed, decrement its successors and push any that hit zero. A node is discovered ready exactly once, by the edge that freed it.</div>
+        <div class="wt-gain">O(V²) → O(V + E)</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">Separate cycle check → count what came out</div>
+        <div class="wt-desc">No extra traversal is needed. If the loop ends with fewer than V nodes placed, the rest are locked in a cycle.</div>
+        <div class="wt-gain">cycle detection for free</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Count incoming edges.</b> Walk the edge list once and add 1 to <code>indeg[v]</code> for every edge <code>u → v</code>.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Seed the ready set</b> with every node whose in-degree is 0 — nothing has to come before them.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Take the smallest ready node</b> and append it to the order. Smallest-first is only for determinism; any ready node is correct.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Release its successors.</b> For each edge out of it, decrement <code>indeg[v]</code>; if that hits 0, add <code>v</code> to the ready set.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>Stop when the ready set is empty.</b> Return the order if it holds all <code>n</code> nodes, otherwise return an empty list — the leftovers form a cycle.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <p class="body">C++ first — that is the version the walkthrough below animates. The min-heap is only there to make the output unique; a plain queue is just as correct and slightly faster.</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; <span class="fn">topoSort</span>(<span class="kw">int</span> n, <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; adj) {
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; indeg(n, 0);
+    <span class="kw">for</span> (<span class="kw">int</span> u = 0; u &lt; n; u++) {
+        <span class="kw">for</span> (<span class="kw">int</span> v : adj[u]) { indeg[v]++; }
+    }
+    <span class="kw">priority_queue</span>&lt;<span class="kw">int</span>, <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;, <span class="kw">greater</span>&lt;<span class="kw">int</span>&gt;&gt; ready;
+    <span class="kw">for</span> (<span class="kw">int</span> u = 0; u &lt; n; u++) {
+        <span class="kw">if</span> (indeg[u] == 0) { ready.<span class="fn">push</span>(u); }
+    }
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; order;
+    <span class="kw">while</span> (!ready.<span class="fn">empty</span>()) {
+        <span class="kw">int</span> u = ready.<span class="fn">top</span>(); ready.<span class="fn">pop</span>();
+        order.<span class="fn">push_back</span>(u);
+        <span class="kw">for</span> (<span class="kw">int</span> v : adj[u]) {
+            <span class="kw">if</span> (--indeg[v] == 0) { ready.<span class="fn">push</span>(v); }
+        }
+    }
+    <span class="kw">if</span> ((<span class="kw">int</span>)order.<span class="fn">size</span>() != n) { <span class="kw">return</span> {}; }   <span class="cm">// stuck => cycle</span>
+    <span class="kw">return</span> order;
+}</pre>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-py',this)" style="margin-top:.5rem">▶ Reveal the same thing in Python</button>
+  <div id="code-py" class="code-block">
+    <pre class="cb"><span class="kw">import</span> heapq
+
+<span class="kw">def</span> <span class="fn">topo_sort</span>(n, adj):
+    indeg = [<span class="nu">0</span>] * n
+    <span class="kw">for</span> u <span class="kw">in</span> <span class="fn">range</span>(n):
+        <span class="kw">for</span> v <span class="kw">in</span> adj[u]:
+            indeg[v] += <span class="nu">1</span>
+    ready = [u <span class="kw">for</span> u <span class="kw">in</span> <span class="fn">range</span>(n) <span class="kw">if</span> indeg[u] == <span class="nu">0</span>]
+    heapq.<span class="fn">heapify</span>(ready)
+    order = []
+    <span class="kw">while</span> ready:
+        u = heapq.<span class="fn">heappop</span>(ready)
+        order.<span class="fn">append</span>(u)
+        <span class="kw">for</span> v <span class="kw">in</span> adj[u]:
+            indeg[v] -= <span class="nu">1</span>
+            <span class="kw">if</span> indeg[v] == <span class="nu">0</span>:
+                heapq.<span class="fn">heappush</span>(ready, v)
+    <span class="kw">return</span> order <span class="kw">if</span> <span class="fn">len</span>(order) == n <span class="kw">else</span> []</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Each step runs one line of the C++ above. Watch the in-degree array fall. On the cycle example the ready set is empty from the very start, so the loop never runs.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-u"><span class="cv-var-name">u</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-ready"><span class="cv-var-name">ready</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-indeg"><span class="cv-var-name">indeg</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-order"><span class="cv-var-name">order</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-graph" class="gv-wrap" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">6-node DAG</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">cycle → []</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">diamond</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick a graph and run the countdown by hand. Before pressing Next, name the smallest ready node and say which successors it frees.</p>
+
+  <div id="dr-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-legend">
+    <span><span class="leg-dot" style="background:var(--bg-info)"></span>being placed</span>
+    <span><span class="leg-dot" style="background:var(--bg-warn)"></span>ready</span>
+    <span><span class="leg-dot" style="background:var(--bg-success)"></span>already placed</span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">ready (smallest first)</div>
+          <div class="fitem-val" id="dr-f-ready">—</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">placed</div>
+          <div class="fitem-val" id="dr-f-n">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">result</div>
+          <div class="fitem-val" id="dr-f-res">…</div>
+        </div>
+      </div>
+      <div class="formula-eq" id="dr-f-order">order = []</div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">6-node → [4,5,0,2,3,1]</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">cycle → []</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">diamond → [0,1,2,3]</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">A cycle</div>
+    <div class="corner-body">Every node in the cycle keeps a positive in-degree forever, so none ever becomes ready. The loop exits early with a short order. The <code>size() != n</code> test is both the cycle detector and the error signal — do not add a second traversal for it.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">No edges at all</div>
+    <div class="corner-body">Every in-degree is 0, so every node is ready immediately and the answer is just the nodes in id order. Correct, and worth stating out loud — an empty edge list is a valid DAG.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">A disconnected graph</div>
+    <div class="corner-body">Nothing special is needed. Separate pieces contribute their own zero-in-degree nodes to the same ready set, and the pieces interleave freely in the output.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">A duplicate edge</div>
+    <div class="corner-body">If <code>u → v</code> appears twice, <code>indeg[v]</code> is 2 and is decremented twice — consistent, so it works. But a self-loop <code>u → u</code> makes <code>u</code> permanently blocked, which is right: it is a cycle of length one.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">Reading the edge direction backwards</div>
+    <div class="corner-body">The commonest bug, and it fails silently on symmetric-looking inputs. In LC 207 the pair <code>[a, b]</code> means "b before a", so the edge is <code>b → a</code>. Write the direction down before you write the loop.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Always check <code>order.size() == n</code></b> before trusting the result. Skipping it turns a cycle into a silently truncated answer.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Decrement once per edge,</b> inside the successor loop. Recomputing in-degrees each round is the accidental quadratic.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Use a plain queue unless the output must be unique.</b> The min-heap costs a log factor and buys only determinism.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Confirm the edge direction against the problem statement,</b> in writing. Reversed edges still produce a plausible-looking order.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Iterative, not recursive.</b> The DFS formulation is elegant but recurses to depth V; this one has no stack limit.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>To report <i>which</i> nodes form the cycle,</b> return the set with non-zero in-degree at the end — no extra pass required.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Kahn (in-degree)</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">DFS post-order</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Repeated rescan</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(V + E)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">The version above. Iterative, detects cycles for free, and lets you control tie-breaking — which is what you want when the problem asks for the smallest valid order, or for "can this be scheduled at all".</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(V + E)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">Run DFS; when a node has no unexplored successors left, push it onto a list. Reverse the list at the end. Shorter to write and natural when you already need DFS for something else, but it recurses to depth V and cycle detection needs an explicit third colour ("on the current path") rather than falling out.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-dfs',this)">▶ Reveal sketch</button>
+    <div id="code-dfs" class="code-block">
+      <pre class="cb"><span class="kw">void</span> <span class="fn">dfs</span>(<span class="kw">int</span> u) {
+    colour[u] = GREY;                 <span class="cm">// on the current path</span>
+    <span class="kw">for</span> (<span class="kw">int</span> v : adj[u]) {
+        <span class="kw">if</span> (colour[v] == GREY) { hasCycle = <span class="kw">true</span>; }
+        <span class="kw">if</span> (colour[v] == WHITE) { <span class="fn">dfs</span>(v); }
+    }
+    colour[u] = BLACK;
+    out.<span class="fn">push_back</span>(u);            <span class="cm">// reverse `out` at the end</span>
+}</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O(V²·E)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">The brute force from Step 1: each round, rescan for a node nothing unplaced points at. Only worth knowing as the thing the in-degree array replaces — it makes clear that the counts are pure memoisation of a question you would otherwise re-ask.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(V log V + E)</div>
+      <div class="ccard-n">The in-degree pass reads each edge once. Each node enters and leaves the ready set once, and each edge is decremented once. The log V is only the min-heap; with a plain queue it is O(V + E).</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(V)</div>
+      <div class="ccard-n">One in-degree per node, plus a ready set that can hold at most every node at once, plus the output list.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">LeetCode problems that are this algorithm</p>
+  <div class="takehome">
+    <p><b>LC 207 — Course Schedule:</b> only the cycle test is needed. Return <code>order.size() == n</code> and throw the order away.</p>
+    <p><b>LC 210 — Course Schedule II:</b> exactly the code above, order and all.</p>
+    <p><b>LC 269 — Alien Dictionary:</b> the hard part is building the graph — compare adjacent words to extract one edge per pair. The sort itself is unchanged.</p>
+    <p><b>LC 310 — Minimum Height Trees:</b> the same countdown on an undirected tree, peeling degree-1 leaves inward until 1 or 2 nodes remain.</p>
+    <p><b>The trick to carry:</b> any "X must happen before Y" problem is a DAG, and "can it be done?" is always "did all V nodes come out?".</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script src="../../static/algo.js"></script>
+<script>
+  const LAYOUT = [
+    { vb: '0 0 515 210', pos: [[195,55],[450,105],[195,158],[325,158],[65,55],[65,158]] },
+    { vb: '0 0 515 210', pos: [[150,60],[365,60],[258,165]] },
+    { vb: '0 0 515 210', pos: [[80,105],[235,50],[235,160],[400,105]] },
+  ];
+
+  /* Map one animation step onto the shared painter. DOM only. */
+  function gDraw(conId, exIdx, st) {
+    const edges = EX[exIdx].edges, pos = LAYOUT[exIdx].pos;
+    const key = (a, b) => a + '>' + b;
+    const hot = st.hi ? key(st.hi[0], st.hi[1]) : null;
+    const ready = new Set(st.ready || []);
+    const placed = new Set(st.placed || []);
+    gvPaint(conId, { vb: LAYOUT[exIdx].vb, pos, edges, directed: true }, {
+      nodeCls: pos.map((_, i) =>
+        i === st.cur ? 'cur' : placed.has(i) ? 'seen' : ready.has(i) ? 'queue' : ''),
+      edgeCls: edges.map(e => (key(e[0], e[1]) === hot ? 'hot' : placed.has(e[0]) ? 'dim' : '')),
+      labels:  pos.map((_, i) => placed.has(i) ? 'done' : 'in=' + (st.indeg ? st.indeg[i] : 0)),
+      labelOn: pos.map((_, i) => placed.has(i)),
+    });
+  }
+
+  /* ── answer-bearing examples (drive bf / cv / dr panels AND the verifier) ── */
+  const EX = [
+    { n: 6, edges: [[5,2],[5,0],[4,0],[4,1],[2,3],[3,1]], answer: [4,5,0,2,3,1] },
+    { n: 3, edges: [[0,1],[1,2],[2,0]],                   answer: []            },
+    { n: 4, edges: [[0,1],[0,2],[1,3],[2,3]],             answer: [0,1,2,3]     },
+  ];
+
+  const CV_LINES = [
+    { n:1,  c:'vector<int> topoSort(int n, vector<vector<int>>& adj) {' },
+    { n:2,  c:'    vector<int> indeg(n, 0);' },
+    { n:3,  c:'    for (int u = 0; u < n; u++)' },
+    { n:4,  c:'        for (int v : adj[u]) indeg[v]++;' },
+    { n:5,  c:'    priority_queue<int, vector<int>, greater<int>> ready;' },
+    { n:6,  c:'    for (int u = 0; u < n; u++)' },
+    { n:7,  c:'        if (indeg[u] == 0) ready.push(u);' },
+    { n:8,  c:'    vector<int> order;' },
+    { n:9,  c:'    while (!ready.empty()) {' },
+    { n:10, c:'        int u = ready.top(); ready.pop();' },
+    { n:11, c:'        order.push_back(u);' },
+    { n:12, c:'        for (int v : adj[u])' },
+    { n:13, c:'            if (--indeg[v] == 0) ready.push(v);' },
+    { n:14, c:'    }' },
+    { n:15, c:'    if ((int)order.size() != n) return {};' },
+    { n:16, c:'    return order;' },
+    { n:17, c:'}' },
+  ];
+
+  /* ════════════════ SEC 1 INSIGHT — the in-degree countdown ════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+
+  function siGenSteps(n, edges) {
+    const adj = Array.from({ length: n }, () => []);
+    const indeg = new Array(n).fill(0);
+    for (const e of edges) { adj[e[0]].push(e[1]); indeg[e[1]]++; }
+    const placed = [];
+    const steps = [];
+    const readyOf = () => {
+      const r = [];
+      for (let i = 0; i < n; i++) { if (indeg[i] === 0 && placed.indexOf(i) < 0) { r.push(i); } }
+      return r;
+    };
+    steps.push({ cur: -1, ready: readyOf(), placed: [], indeg: indeg.slice(), hi: null,
+      cap: `Each label counts the edges still pointing in. Nodes at in=0 are ready: ${readyOf().join(', ') || 'none'}.` });
+    while (true) {
+      const ready = readyOf();
+      if (!ready.length) { break; }
+      const u = Math.min.apply(null, ready);
+      placed.push(u);
+      const freed = [];
+      for (const v of adj[u]) {
+        indeg[v]--;
+        if (indeg[v] === 0) { freed.push(v); }
+      }
+      steps.push({ cur: u, ready: readyOf(), placed: placed.slice(), indeg: indeg.slice(), hi: null,
+        cap: freed.length
+          ? `Place ${u}. Its edges disappear, dropping node(s) ${freed.join(', ')} to in=0.`
+          : `Place ${u}. Nothing new reaches in=0 yet.` });
+    }
+    steps.push({ cur: -1, ready: [], placed: placed.slice(), indeg: indeg.slice(), hi: null,
+      cap: placed.length === n
+        ? `All ${n} nodes came out, so the order is valid: ${placed.join(', ')}.`
+        : `Stuck with ${n - placed.length} node(s) left, all still blocked — that is a cycle, and no order exists.` });
+    return steps;
+  }
+
+  function siRender(st) {
+    gDraw('si-graph', 0, st);
+    document.getElementById('si-cap').textContent = st.cap;
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+
+  /* ════════════════ SEC 2 BRUTE FORCE — rescan every round ════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null, bfEx = 0;
+
+  function bfGenSteps(n, edges) {
+    const placed = [];
+    const isPlaced = new Array(n).fill(false);
+    const steps = [];
+    let rounds = 0, checks = 0;
+    const indegOf = () => {
+      const d = new Array(n).fill(0);
+      for (const e of edges) { if (!isPlaced[e[0]]) { d[e[1]]++; } }
+      return d;
+    };
+    steps.push({ cur: -1, ready: [], placed: [], indeg: indegOf(), hi: null, rounds, checks,
+      narr: 'Nothing is stored between rounds. Each round rescans the edge list for every candidate.' });
+    for (let r = 0; r < n; r++) {
+      rounds++;
+      let pick = -1;
+      for (let u = 0; u < n && pick < 0; u++) {
+        if (isPlaced[u]) { continue; }
+        let blocked = false;
+        for (const e of edges) {
+          checks++;
+          if (e[1] === u && !isPlaced[e[0]]) { blocked = true; break; }
+        }
+        if (!blocked) { pick = u; }
+      }
+      if (pick < 0) {
+        steps.push({ cur: -1, ready: [], placed: placed.slice(), indeg: indegOf(), hi: null, rounds, checks,
+          narr: `Round ${rounds}: every remaining node is still pointed at by another remaining node. That is a cycle — no order exists.` });
+        break;
+      }
+      isPlaced[pick] = true;
+      placed.push(pick);
+      steps.push({ cur: pick, ready: [], placed: placed.slice(), indeg: indegOf(), hi: null, rounds, checks,
+        narr: `Round ${rounds}: node ${pick} had no unplaced predecessor, so place it. Edge checks so far: ${checks}.` });
+    }
+    const result = placed.length === n ? placed.slice() : [];
+    steps.push({ cur: -1, ready: [], placed: placed.slice(), indeg: indegOf(), hi: null, rounds, checks,
+      narr: `Finished after ${rounds} round(s) and ${checks} edge check(s) for a graph with only ${edges.length} edge(s). Result: ${JSON.stringify(result)}.`,
+      result });
+    return steps;
+  }
+
+  function bfRender(st) {
+    gDraw('bf-graph', bfEx, st);
+    document.getElementById('bf-rounds').textContent = st.rounds;
+    document.getElementById('bf-checks').textContent = st.checks;
+    document.getElementById('bf-order').textContent = st.placed.length ? st.placed.join(' ') : '—';
+    document.getElementById('bf-narr').textContent = st.narr;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+  function bfLoadEx(idx) {
+    bfStopPlay(); bfCur = 0; bfEx = idx;
+    [0,1,2].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+    bfSteps = bfGenSteps(EX[idx].n, EX[idx].edges);
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ════════════════ SEC 6 CODE VIZ — one C++ line per step ════════════════ */
+  let cvCur = 0, cvSteps = [], cvTimer = null, cvEx = 0;
+
+  function cvGenSteps(n, edges) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const e of edges) { adj[e[0]].push(e[1]); }
+    const indeg = new Array(n).fill(0);
+    let ready = [], order = [], u = null;
+    const steps = [];
+    const snap = (o) => Object.assign({
+      cur: (u === null ? -1 : u), ready: ready.slice(), placed: order.slice(),
+      indeg: indeg.slice(), hi: null, changed: [], u, order: order.slice(),
+    }, o);
+    steps.push(snap({ line: 1, narr: `Called with ${n} nodes and ${edges.length} edge(s).` }));
+    steps.push(snap({ line: 2, changed: ['indeg'], narr: 'Every in-degree starts at 0.' }));
+    for (const e of edges) { indeg[e[1]]++; }
+    steps.push(snap({ line: 4, changed: ['indeg'], narr: `Counted: indeg = [${indeg.join(',')}].` }));
+    for (let i = 0; i < n; i++) { if (indeg[i] === 0) { ready.push(i); } }
+    ready.sort((a, b) => a - b);
+    steps.push(snap({ line: 7, changed: ['ready'],
+      narr: ready.length ? `Ready to start: ${ready.join(', ')}.` : 'Nothing has in-degree 0 — the loop will not run even once.' }));
+    while (ready.length) {
+      steps.push(snap({ line: 9, narr: `${ready.length} node(s) ready, so keep going.` }));
+      ready.sort((a, b) => a - b);
+      u = ready.shift();
+      steps.push(snap({ line: 10, changed: ['u', 'ready'], narr: `Take the smallest ready node: ${u}.` }));
+      order.push(u);
+      steps.push(snap({ line: 11, changed: ['order'], narr: `Append it. order = [${order.join(',')}].` }));
+      for (const v of adj[u]) {
+        indeg[v]--;
+        const freed = indeg[v] === 0;
+        if (freed) { ready.push(v); }
+        steps.push(snap({ line: 13, changed: freed ? ['indeg', 'ready'] : ['indeg'], hi: [u, v],
+          narr: freed ? `indeg[${v}] hits 0 — node ${v} is now ready.` : `indeg[${v}] falls to ${indeg[v]}, still blocked.` }));
+      }
+      u = null;
+    }
+    steps.push(snap({ line: 9, narr: 'The ready set is empty, so the loop ends.' }));
+    const complete = order.length === n;
+    steps.push(snap({ line: 15,
+      narr: complete ? `${order.length} of ${n} nodes came out — a full order.`
+                     : `Only ${order.length} of ${n} came out. The rest form a cycle, so return an empty list.` }));
+    const result = complete ? order.slice() : [];
+    steps.push(snap({ line: complete ? 16 : 15, phase: 'done',
+      narr: `Return ${JSON.stringify(result)}.`, result }));
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const ln = document.getElementById('cvL' + st.line);
+    if (ln) ln.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    setCard('cv-v-u', st.u === null ? '—' : st.u, ch.includes('u'));
+    setCard('cv-v-ready', st.ready.length ? st.ready.slice().sort((a, b) => a - b).join(' ') : 'empty', ch.includes('ready'));
+    setCard('cv-v-indeg', '[' + st.indeg.join(',') + ']', ch.includes('indeg'));
+    setCard('cv-v-order', st.order.length ? st.order.join(' ') : '—', ch.includes('order'));
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : ' is-active');
+    gDraw('cv-graph', cvEx, st);
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+  function cvLoadEx(idx) {
+    cvStopPlay(); cvCur = 0; cvEx = idx;
+    [0,1,2].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(EX[idx].n, EX[idx].edges);
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ════════════════ SEC 7 DRY RUN — the oracle ════════════════ */
+  let drCur = 0, drSteps = [], drTimer = null, drEx = 0;
+
+  function drGenSteps(n, edges) {
+    const adj = Array.from({ length: n }, () => []);
+    const indeg = new Array(n).fill(0);
+    for (const e of edges) { adj[e[0]].push(e[1]); indeg[e[1]]++; }
+    let ready = [];
+    for (let i = 0; i < n; i++) { if (indeg[i] === 0) { ready.push(i); } }
+    ready.sort((a, b) => a - b);
+    const order = [];
+    const steps = [];
+    const snap = (o) => Object.assign({
+      cur: -1, ready: ready.slice().sort((a, b) => a - b), placed: order.slice(),
+      indeg: indeg.slice(), hi: null, order: order.slice(),
+    }, o);
+    steps.push(snap({ what: 'Count what points in',
+      why: `indeg = [${indeg.join(', ')}]. ` + (ready.length
+        ? `Node(s) ${ready.join(', ')} have nothing in front of them, so they are ready.`
+        : 'No node has in-degree 0, so nothing can go first.') }));
+    while (ready.length) {
+      ready.sort((a, b) => a - b);
+      const u = ready.shift();
+      order.push(u);
+      const freed = [];
+      for (const v of adj[u]) {
+        indeg[v]--;
+        if (indeg[v] === 0) { ready.push(v); freed.push(v); }
+      }
+      steps.push(snap({ cur: u,
+        what: `Place node ${u}`,
+        why: freed.length
+          ? `Every requirement of ${u} is already placed. Removing its edges frees node(s) ${freed.join(', ')}.`
+          : `Every requirement of ${u} is already placed. No successor reaches in-degree 0 yet.` }));
+    }
+    const complete = order.length === n;
+    const result = complete ? order.slice() : [];
+    steps.push(snap({
+      what: complete ? `All ${n} nodes placed` : `Stuck after ${order.length} of ${n}`,
+      why: complete
+        ? `Every edge points forward in this order. Result: ${JSON.stringify(result)}.`
+        : `The remaining node(s) all still point at one another — a cycle. No valid order exists, so return [].`,
+      result }));
+    return steps;
+  }
+
+  function drRender(st) {
+    gDraw('dr-graph', drEx, st);
+    document.getElementById('dr-f-ready').textContent = st.ready.length ? st.ready.join(' ') : 'empty';
+    document.getElementById('dr-f-n').textContent = st.placed.length + ' / ' + st.indeg.length;
+    document.getElementById('dr-f-order').textContent = 'order = [' + st.order.join(', ') + ']';
+    const res = document.getElementById('dr-f-res');
+    if ('result' in st) {
+      res.textContent = JSON.stringify(st.result);
+      res.style.color = st.result.length ? 'var(--text-success)' : 'var(--text-danger)';
+    } else {
+      res.textContent = '…';
+      res.style.color = 'var(--text2)';
+    }
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.what;
+    if (whyEl) whyEl.textContent = st.why;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+  function drLoadEx(idx) {
+    drStopPlay(); drCur = 0; drEx = idx;
+    [0,1,2].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+    drSteps = drGenSteps(EX[idx].n, EX[idx].edges);
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ── init ── */
+  siSteps = siGenSteps(EX[0].n, EX[0].edges);
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>

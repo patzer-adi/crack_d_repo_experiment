@@ -1,0 +1,257 @@
+[
+  {
+    "order": 10,
+    "lc_num": 1137,
+    "slug": "n-th-tribonacci-number",
+    "name": "N-th Tribonacci Number",
+    "url": "https://leetcode.com/problems/n-th-tribonacci-number/",
+    "section": "1 · First recurrences",
+    "difficulty": "Easy",
+    "statement": "Tribonacci starts T0=0, T1=T2=1 and each later term is the sum of the previous three. Return Tn.",
+    "details": "The recurrence is T(n) = T(n-1) + T(n-2) + T(n-3). Keep three rolling variables instead of an array and slide the window forward n-2 times. It is Fibonacci with a width-3 window — the gentlest possible first DP.",
+    "example": {
+      "input": "n = 4",
+      "output": "4"
+    },
+    "skill": "a fixed-width rolling window over the last three states",
+    "status": "new"
+  },
+  {
+    "order": 20,
+    "lc_num": 1025,
+    "slug": "divisor-game",
+    "name": "Divisor Game",
+    "url": "https://leetcode.com/problems/divisor-game/",
+    "section": "1 · First recurrences",
+    "difficulty": "Easy",
+    "statement": "From n, players alternately replace n with n−x for a divisor 0<x<n of n; whoever cannot move loses. Does the first player win with optimal play?",
+    "details": "Let win(k) be true if the player to move on k wins. win(k) is true when some divisor x makes win(k−x) false — you win by handing the opponent a loss. Fill the table upward from k=1. It collapses to 'n is even', but deriving that from the DP is the point.",
+    "example": {
+      "input": "n = 2",
+      "output": "true"
+    },
+    "skill": "game DP — you win if any move hands the opponent a loss",
+    "status": "new"
+  },
+  {
+    "order": 30,
+    "lc_num": 1646,
+    "slug": "get-maximum-in-generated-array",
+    "name": "Get Maximum in Generated Array",
+    "url": "https://leetcode.com/problems/get-maximum-in-generated-array/",
+    "section": "1 · First recurrences",
+    "difficulty": "Easy",
+    "statement": "An array is built by nums[0]=0, nums[1]=1, then nums[2i]=nums[i] and nums[2i+1]=nums[i]+nums[i+1]. Return the maximum value for a given n.",
+    "details": "Every entry is defined from strictly earlier entries, so one forward pass fills the whole array — no recursion. Generate it straight from the two-case recurrence while carrying a running maximum as you go.",
+    "example": {
+      "input": "n = 7",
+      "output": "3"
+    },
+    "skill": "fill a table from an index recurrence, track a running max",
+    "status": "new"
+  },
+  {
+    "order": 40,
+    "lc_num": 119,
+    "slug": "pascals-triangle-ii",
+    "name": "Pascal's Triangle II",
+    "url": "https://leetcode.com/problems/pascals-triangle-ii/",
+    "section": "1 · First recurrences",
+    "difficulty": "Easy",
+    "statement": "Return the kth (0-indexed) row of Pascal's triangle.",
+    "details": "Each row comes from the one above: row[j] = prev[j-1] + prev[j]. Apply that recurrence k times starting from [1]. Updating a single array right-to-left in place lets you build row k in O(k) space.",
+    "example": {
+      "input": "rowIndex = 3",
+      "output": "[1,3,3,1]"
+    },
+    "skill": "each row is a recurrence on the previous row",
+    "status": "new"
+  },
+  {
+    "order": 50,
+    "lc_num": 303,
+    "slug": "range-sum-query-immutable",
+    "name": "Range Sum Query - Immutable",
+    "url": "https://leetcode.com/problems/range-sum-query-immutable/",
+    "section": "2 · Scan & compare",
+    "difficulty": "Easy",
+    "statement": "Given an immutable array, answer many sumRange(i, j) queries returning the sum of nums[i..j].",
+    "details": "Precompute prefix[k] = prefix[k-1] + nums[k-1], the sum of the first k elements. Then any range sum is prefix[j+1] − prefix[i] in O(1). It is the smallest 'build a table once, reuse it forever' DP and the base for every prefix-sum problem.",
+    "example": {
+      "input": "nums = [-2,0,3,-5,2,-1]; sumRange(0,2)",
+      "output": "1"
+    },
+    "skill": "prefix sums — precompute once, answer ranges in O(1)",
+    "status": "new"
+  },
+  {
+    "order": 60,
+    "lc_num": 2016,
+    "slug": "maximum-difference-between-increasing-elements",
+    "name": "Maximum Difference Between Increasing Elements",
+    "url": "https://leetcode.com/problems/maximum-difference-between-increasing-elements/",
+    "section": "2 · Scan & compare",
+    "difficulty": "Easy",
+    "statement": "Return the maximum of nums[j]−nums[i] over all i<j with nums[i]<nums[j], or −1 if no such pair exists.",
+    "details": "Sweep left to right carrying the minimum seen so far. At each j the best answer ending there is nums[j] − min_so_far; keep the best positive value. This min-so-far scan is exactly the core of Best Time to Buy and Sell Stock.",
+    "example": {
+      "input": "nums = [7,1,5,4]",
+      "output": "4"
+    },
+    "skill": "carry a min-so-far while scanning for the best pair",
+    "status": "new"
+  },
+  {
+    "order": 70,
+    "lc_num": 392,
+    "slug": "is-subsequence",
+    "name": "Is Subsequence",
+    "url": "https://leetcode.com/problems/is-subsequence/",
+    "section": "2 · Scan & compare",
+    "difficulty": "Easy",
+    "statement": "Return whether string s is a subsequence of string t (its characters appear in order, not necessarily contiguous).",
+    "details": "Walk two pointers through s and t; advance the s-pointer only when it matches the current t character. s is a subsequence exactly when its pointer reaches the end. This greedy match is the base case that Longest Common Subsequence generalises into a table.",
+    "example": {
+      "input": "s = \"abc\", t = \"ahbgdc\"",
+      "output": "true"
+    },
+    "skill": "two-pointer greedy subsequence match",
+    "status": "new"
+  },
+  {
+    "order": 80,
+    "lc_num": 2140,
+    "slug": "solving-questions-with-brainpower",
+    "name": "Solving Questions With Brainpower",
+    "url": "https://leetcode.com/problems/solving-questions-with-brainpower/",
+    "section": "3 · Take-or-skip choice",
+    "difficulty": "Medium",
+    "statement": "Each question i gives points[i] but then forces you to skip the next brainpower[i] questions. Maximise the total points earned.",
+    "details": "Let dp[i] be the best points obtainable from question i onward. At i you either solve it — points[i] + dp[i + brainpower[i] + 1] — or skip it — dp[i+1] — and take the max. Fill dp from the back so the states you jump to already exist. It is House Robber with a variable skip distance.",
+    "example": {
+      "input": "questions = [[3,2],[4,3],[4,4],[2,5]]",
+      "output": "5"
+    },
+    "skill": "take-or-skip DP filled from the end",
+    "status": "new"
+  },
+  {
+    "order": 90,
+    "lc_num": 1218,
+    "slug": "longest-arithmetic-subsequence-of-given-difference",
+    "name": "Longest Arithmetic Subsequence of Given Difference",
+    "url": "https://leetcode.com/problems/longest-arithmetic-subsequence-of-given-difference/",
+    "section": "3 · Take-or-skip choice",
+    "difficulty": "Medium",
+    "statement": "Given arr and an integer difference, return the length of the longest subsequence whose consecutive elements differ by exactly difference.",
+    "details": "Let best[v] be the longest valid subsequence ending in value v. For each x, best[x] = best[x − difference] + 1 — extend the chain that ended at the required predecessor. A hash map keyed by value replaces an index DP because the link here is by value, not position.",
+    "example": {
+      "input": "arr = [1,5,7,8,5,3,4,2,1], difference = -2",
+      "output": "4"
+    },
+    "skill": "value-keyed DP: extend the chain ending at x−d",
+    "status": "new"
+  },
+  {
+    "order": 100,
+    "lc_num": 62,
+    "slug": "unique-paths",
+    "name": "Unique Paths",
+    "url": "https://leetcode.com/problems/unique-paths/",
+    "section": "4 · Grid DP — the bridge",
+    "difficulty": "Medium",
+    "statement": "A robot at the top-left of an m×n grid moves only right or down. Count the distinct paths to the bottom-right corner.",
+    "details": "Paths to a cell = paths from above + paths from the left, because those are the only two ways to arrive. Fill the grid row by row with the top row and left column set to 1. This is the canonical 2-D grid recurrence every later grid problem reuses.",
+    "example": {
+      "input": "m = 3, n = 7",
+      "output": "28"
+    },
+    "skill": "grid DP: a cell sums the neighbours that flow into it",
+    "status": "new"
+  },
+  {
+    "order": 110,
+    "lc_num": 63,
+    "slug": "unique-paths-ii",
+    "name": "Unique Paths II",
+    "url": "https://leetcode.com/problems/unique-paths-ii/",
+    "section": "4 · Grid DP — the bridge",
+    "difficulty": "Medium",
+    "statement": "Same as Unique Paths, but some grid cells contain obstacles that cannot be entered. Count the distinct paths.",
+    "details": "Reuse dp[i][j] = dp[i-1][j] + dp[i][j-1], but force dp = 0 on any obstacle cell so no path can route through it. The only change from Unique Paths is that blocked cells contribute zero — a clean lesson in bending a recurrence to a constraint.",
+    "example": {
+      "input": "obstacleGrid = [[0,0,0],[0,1,0],[0,0,0]]",
+      "output": "2"
+    },
+    "skill": "grid DP with blocked cells forced to zero",
+    "status": "new"
+  },
+  {
+    "order": 120,
+    "lc_num": 931,
+    "slug": "minimum-falling-path-sum",
+    "name": "Minimum Falling Path Sum",
+    "url": "https://leetcode.com/problems/minimum-falling-path-sum/",
+    "section": "4 · Grid DP — the bridge",
+    "difficulty": "Medium",
+    "statement": "In an n×n matrix a falling path starts anywhere in the top row and each step moves to the cell directly below or diagonally below-left/right. Return the minimum path sum.",
+    "details": "dp[i][j] = matrix[i][j] + min(dp[i-1][j-1], dp[i-1][j], dp[i-1][j+1]) — the cheapest of the up-to-three cells that can fall into (i,j). The answer is the minimum of the last row. Same grid shape as Unique Paths, but minimising a cost instead of counting paths.",
+    "example": {
+      "input": "matrix = [[2,1,3],[6,5,4],[7,8,9]]",
+      "output": "13"
+    },
+    "skill": "grid DP taking a min over the cells above",
+    "status": "new"
+  },
+  {
+    "order": 130,
+    "lc_num": 2320,
+    "slug": "count-number-of-ways-to-place-houses",
+    "name": "Count Number of Ways to Place Houses",
+    "url": "https://leetcode.com/problems/count-number-of-ways-to-place-houses/",
+    "section": "4 · Grid DP — the bridge",
+    "difficulty": "Medium",
+    "statement": "On each side of a street with n plots, houses may be placed so that no two are adjacent on the same side. Return the number of arrangements modulo 1e9+7, counting both sides.",
+    "details": "For one side, let f(i) be the ways to fill the first i plots: f(i) = f(i-1) (leave i empty) + f(i-2) (place on i, forcing i-1 empty) — that is Fibonacci. The two sides are independent, so the answer is f(n) squared. Spotting the House-Robber/Fibonacci recurrence is the whole trick.",
+    "example": {
+      "input": "n = 2",
+      "output": "9"
+    },
+    "skill": "independent Fibonacci counts, then combine the two sides",
+    "status": "new"
+  },
+  {
+    "order": 140,
+    "lc_num": 96,
+    "slug": "unique-binary-search-trees",
+    "name": "Unique Binary Search Trees",
+    "url": "https://leetcode.com/problems/unique-binary-search-trees/",
+    "section": "5 · Counting DP",
+    "difficulty": "Medium",
+    "statement": "Return how many structurally distinct binary search trees store the values 1..n.",
+    "details": "Fix each value k as the root: the left subtree uses the k-1 smaller values and the right uses the n-k larger ones, independently. So G(n) = Σ over k of G(k-1)·G(n-k) — a sum over every possible root. These are the Catalan numbers, built bottom-up from G(0)=1.",
+    "example": {
+      "input": "n = 3",
+      "output": "5"
+    },
+    "skill": "count by summing over each root choice (Catalan)",
+    "status": "new"
+  },
+  {
+    "order": 150,
+    "lc_num": 279,
+    "slug": "perfect-squares",
+    "name": "Perfect Squares",
+    "url": "https://leetcode.com/problems/perfect-squares/",
+    "section": "5 · Counting DP",
+    "difficulty": "Medium",
+    "statement": "Return the least number of perfect-square numbers (1, 4, 9, …) that sum to n.",
+    "details": "dp[x] = 1 + min over squares s ≤ x of dp[x − s] — the best way to make x is one square plus the best way to make the remainder. Fill dp from 0 up to n. This is Coin Change with the coins being perfect squares: your bridge into the 211's Dynamic Programming set.",
+    "example": {
+      "input": "n = 12",
+      "output": "3"
+    },
+    "skill": "unbounded-coin DP over square 'coins'",
+    "status": "new"
+  }
+]

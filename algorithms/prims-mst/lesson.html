@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prim's Algorithm — Algorithm Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<link rel="stylesheet" href="../../static/algo.css">
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Algorithm Lesson</p>
+  <h1>Prim's Algorithm</h1>
+  <div class="header-meta">
+    <span class="badge badge-arr">Graph Algorithms</span>
+    <span class="badge badge-med">Tier 2 · core</span>
+    <span class="badge badge-arr">O(E log V) time · O(V) space</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. One of them decides the implementation, not the algorithm.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Is the graph connected?</div>
+      <div class="acard-a">Not necessarily.</div>
+      <div class="acard-u">→ if the blob stops growing before it holds all V nodes, no spanning tree exists</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Undirected?</div>
+      <div class="acard-a">Yes.</div>
+      <div class="acard-u">→ a minimum spanning tree is only defined on undirected graphs</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Dense or sparse?</div>
+      <div class="acard-a">Ask — it changes the code, not the idea.</div>
+      <div class="acard-u">→ heap for sparse graphs, a plain O(V²) scan when E approaches V²</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Does the starting node matter?</div>
+      <div class="acard-a">No.</div>
+      <div class="acard-u">→ every start gives the same total weight, so node 0 is fine</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">Grow one blob, always by its cheapest exit</p>
+
+  <p class="body">Hold one connected group and repeatedly swallow the cheapest edge that leads out of it. That edge is the cheapest one crossing the boundary between what you have and what you do not, and such an edge always belongs to some minimum tree. So the blob is a piece of a correct answer at every moment, and never needs revising.</p>
+
+  <div style="margin:1.25rem 0">
+    <div class="gv-legend">
+      <span><span class="leg-dot" style="background:var(--bg2);border:1px solid var(--border2)"></span>outside the blob</span>
+      <span><span class="leg-dot" style="background:var(--bg-warn)"></span>reachable — a candidate exit</span>
+      <span><span class="leg-dot" style="background:var(--bg-info)"></span>absorbed this step</span>
+      <span><span class="leg-dot" style="background:var(--bg-success)"></span>in the blob</span>
+    </div>
+    <div id="si-graph" class="gv-wrap" style="margin:.5rem 0"></div>
+    <div id="si-cap" class="gv-cap"></div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="ctrl-btn"     onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn"     onclick="siNext()">Next →</button>
+      <button class="ctrl-btn"     onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <div style="margin:1.25rem 0;font-size:13px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:.5rem;color:var(--text)">Why the cheapest exit is always safe:</div>
+    <div class="skeleton">
+      <div class="wt-item">
+        <div class="wt-num">1</div>
+        <div class="wt-body">
+          <div class="wt-name">The blob defines a cut</div>
+          <div class="wt-desc">Everything is either in the blob or outside it. A spanning tree must connect the two sides, so at least one of its edges crosses that boundary.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">2</div>
+        <div class="wt-body">
+          <div class="wt-name">Swapping in the cheapest crossing edge never costs more</div>
+          <div class="wt-desc">If a minimum tree crosses by a dearer edge, remove it and add the cheapest crossing one. The result still spans and costs no more, so some minimum tree contains the cheapest exit.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">3</div>
+        <div class="wt-body">
+          <div class="wt-name">So the blob is never wrong</div>
+          <div class="wt-desc">It starts as a single node, which is trivially part of a minimum tree, and every absorption keeps that true. This is why there is no backtracking and no comparison of alternatives — only the current cheapest exit ever matters.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Keep one connected blob and absorb the cheapest edge leaving it, over and over. That edge is the cheapest crossing the blob's cut, which the exchange argument places in some minimum tree — so the blob stays a subtree of a correct answer throughout. If it stalls before holding all V nodes, the graph was disconnected.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">The idea works without a heap: each round, scan the entire edge list to find the cheapest edge with one end inside the blob and one end outside. Same answer, but every round re-reads every edge, including all the ones now buried deep inside the blob. Watch the scan counter.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">6 nodes → 11</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">disconnected</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">triangle → 3</button>
+  </div>
+  <div id="bf-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-counter">
+    <span>rounds: <b id="bf-rounds">0</b></span>
+    <span>edge scans: <b id="bf-scans">0</b></span>
+    <span>total: <b id="bf-total">0</b></span>
+  </div>
+  <div id="bf-narr" class="gv-cap"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(V·E) time</p>
+    <p class="infobox-d">V-1 absorptions, each preceded by a full E-edge scan. Nothing is remembered between rounds, so the same interior edges are re-examined every single time.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="cm">// Rescan every edge each round to find the cheapest exit.</span>
+<span class="kw">for</span> (<span class="kw">int</span> round = 1; round &lt; n; round++) {
+    <span class="kw">int</span> bw = INT_MAX, bv = -1;
+    <span class="kw">for</span> (<span class="kw">auto</span>&amp; [u, v, w] : edges) {          <span class="cm">// full scan, every round</span>
+        <span class="kw">if</span> (inTree[u] &amp;&amp; !inTree[v] &amp;&amp; w &lt; bw) { bw = w; bv = v; }
+        <span class="kw">if</span> (inTree[v] &amp;&amp; !inTree[u] &amp;&amp; w &lt; bw) { bw = w; bv = u; }
+    }
+    <span class="kw">if</span> (bv &lt; 0) { <span class="kw">return</span> -1; }               <span class="cm">// stalled => disconnected</span>
+    inTree[bv] = <span class="kw">true</span>;
+    total += bw;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three swaps turn the rescan into a heap-driven single pass.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Rescan all edges → keep the exits in a heap</div>
+        <div class="wt-desc">Only edges from newly absorbed nodes can be new exits. Push those once and let the heap hand back the cheapest, instead of re-deriving it from scratch each round.</div>
+        <div class="wt-gain">O(V·E) → O(E log V)</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Remove edges that stop being exits → skip them on pop</div>
+        <div class="wt-desc">An edge whose far end has since been absorbed is stale, but deleting from a heap is awkward. Leave it in and test <code>inTree[u]</code> when it comes out.</div>
+        <div class="wt-gain">a plain heap, no decrease-key</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">Separate connectivity check → count absorptions</div>
+        <div class="wt-desc">The heap empties early when nothing else can be reached. Compare the count with V and the disconnected case answers itself.</div>
+        <div class="wt-gain">no extra traversal</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Seed the heap</b> with <code>(0, start)</code> — it costs nothing to absorb the starting node itself.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Pop the cheapest pair</b> <code>(w, u)</code>. If <code>u</code> is already in the blob this is a stale candidate — skip it.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Absorb <code>u</code>.</b> Mark it, add <code>w</code> to the total, and increment the count.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Offer its edges.</b> Push <code>(weight, v)</code> for every neighbour <code>v</code> not yet in the blob — these are the new candidate exits.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>When the heap empties,</b> return the total if all <code>n</code> nodes were absorbed; otherwise the graph was disconnected.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <p class="body">C++ first — that is the version the walkthrough below animates. It is almost exactly Dijkstra; the one change is that the heap key is the <i>edge</i> weight, not the total distance from the start.</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">long long</span> <span class="fn">prim</span>(<span class="kw">int</span> n, <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt;&gt;&amp; adj) {
+    <span class="kw">vector</span>&lt;<span class="kw">bool</span>&gt; inTree(n, <span class="kw">false</span>);
+    <span class="kw">priority_queue</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;,
+                   <span class="kw">vector</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt;, <span class="kw">greater</span>&lt;&gt;&gt; pq;
+    pq.<span class="fn">push</span>({0, 0});                <span class="cm">// (edge weight, node)</span>
+    <span class="kw">long long</span> total = 0;
+    <span class="kw">int</span> used = 0;
+    <span class="kw">while</span> (!pq.<span class="fn">empty</span>()) {
+        <span class="kw">auto</span> [w, u] = pq.<span class="fn">top</span>(); pq.<span class="fn">pop</span>();
+        <span class="kw">if</span> (inTree[u]) { <span class="kw">continue</span>; }     <span class="cm">// stale exit</span>
+        inTree[u] = <span class="kw">true</span>;
+        total += w;
+        used++;
+        <span class="kw">for</span> (<span class="kw">auto</span>&amp; [v, wt] : adj[u]) {
+            <span class="kw">if</span> (!inTree[v]) { pq.<span class="fn">push</span>({wt, v}); }
+        }
+    }
+    <span class="kw">return</span> used == n ? total : -1;    <span class="cm">// -1 = disconnected</span>
+}</pre>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-py',this)" style="margin-top:.5rem">▶ Reveal the same thing in Python</button>
+  <div id="code-py" class="code-block">
+    <pre class="cb"><span class="kw">import</span> heapq
+
+<span class="kw">def</span> <span class="fn">prim</span>(n, adj):
+    in_tree = [<span class="kw">False</span>] * n
+    pq = [(<span class="nu">0</span>, <span class="nu">0</span>)]
+    total, used = <span class="nu">0</span>, <span class="nu">0</span>
+    <span class="kw">while</span> pq:
+        w, u = heapq.<span class="fn">heappop</span>(pq)
+        <span class="kw">if</span> in_tree[u]:
+            <span class="kw">continue</span>
+        in_tree[u] = <span class="kw">True</span>
+        total += w
+        used += <span class="nu">1</span>
+        <span class="kw">for</span> v, wt <span class="kw">in</span> adj[u]:
+            <span class="kw">if</span> <span class="kw">not</span> in_tree[v]:
+                heapq.<span class="fn">heappush</span>(pq, (wt, v))
+    <span class="kw">return</span> total <span class="kw">if</span> used == n <span class="kw">else</span> <span class="kw">None</span></pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Each step runs one line of the C++ above. Watch several candidates for the same node pile up in the heap, and only the cheapest one survive the <code>inTree</code> test.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-u"><span class="cv-var-name">u</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-w"><span class="cv-var-name">w</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-pq"><span class="cv-var-name">heap</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-total"><span class="cv-var-name">total</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-used"><span class="cv-var-name">used</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-graph" class="gv-wrap" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">6 nodes → 11</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">disconnected</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">triangle → 3</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick a graph and grow the blob by hand. Before pressing Next, name the cheapest edge leaving the blob.</p>
+
+  <div id="dr-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-legend">
+    <span><span class="leg-dot" style="background:var(--bg-info)"></span>absorbed this step</span>
+    <span><span class="leg-dot" style="background:var(--bg-warn)"></span>candidate exit</span>
+    <span><span class="leg-dot" style="background:var(--bg-success)"></span>in the blob</span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">absorbed</div>
+          <div class="fitem-val" id="dr-f-used">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">total weight</div>
+          <div class="fitem-val" id="dr-f-total">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">result</div>
+          <div class="fitem-val" id="dr-f-res">…</div>
+        </div>
+      </div>
+      <div class="formula-eq" id="dr-f-pq">heap = empty</div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">6 nodes → 11</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">disconnected → none</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">triangle → 3</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">A disconnected graph</div>
+    <div class="corner-body">The heap runs dry with <code>used &lt; n</code>. Returning the total anyway reports the weight of one component's tree, which is not a spanning tree of the graph. Check the count.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">Forgetting the stale-pop test</div>
+    <div class="corner-body">Without <code>if (inTree[u]) continue;</code> a node is absorbed once per queued candidate, so its weight is added several times and <code>used</code> overshoots <code>n</code>. The answer comes out too large.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Seeding with weight 0</div>
+    <div class="corner-body">Deliberate, not a hack. The start node joins the blob for free because no edge is used to reach it, so pushing <code>(0, start)</code> keeps the loop uniform and adds nothing to the total.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Keying the heap on total distance</div>
+    <div class="corner-body">That is Dijkstra, not Prim, and it gives a shortest-path tree instead of a minimum spanning tree — often a different tree with a larger total. The key must be the single edge's weight.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">A dense graph</div>
+    <div class="corner-body">With E ≈ V² the heap holds V² entries and O(E log V) is worse than a plain O(V²) scan for the cheapest exit. Same algorithm, different data structure.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Check <code>used == n</code></b> before returning. That single comparison is the disconnected-graph guard.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Keep the stale-pop test.</b> It replaces decrease-key and is the only thing stopping double-counting.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Key the heap on the edge weight,</b> never on a running total. That one character is the whole difference from Dijkstra.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Accumulate into 64-bit.</b> V-1 large weights overflow a 32-bit total.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Pick the implementation from the density.</b> Heap for sparse, O(V²) scan for dense — a factor of log V either way.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>For the edges themselves,</b> push <code>(weight, node, from)</code> and record <code>from</code> on each absorption. No second pass needed.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Prim + heap</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Prim O(V²)</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Kruskal</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(E log V)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">The version above. The default when the graph is sparse and you already hold an adjacency list. It also stops early in a natural way if you only want the first k absorptions.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(V²)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">Keep <code>best[v]</code> = the cheapest known edge into <code>v</code>, and each round scan the array for the smallest among nodes outside the blob. No heap, no stale entries, and on a dense graph it beats the heap version — sorting or heaping V² edges costs more than V² scanning does.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-dense',this)">▶ Reveal sketch</button>
+    <div id="code-dense" class="code-block">
+      <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; best(n, INT_MAX); best[0] = 0;
+<span class="kw">for</span> (<span class="kw">int</span> it = 0; it &lt; n; it++) {
+    <span class="kw">int</span> u = -1;
+    <span class="kw">for</span> (<span class="kw">int</span> v = 0; v &lt; n; v++) {           <span class="cm">// scan, no heap</span>
+        <span class="kw">if</span> (!inTree[v] &amp;&amp; (u &lt; 0 || best[v] &lt; best[u])) { u = v; }
+    }
+    <span class="kw">if</span> (best[u] == INT_MAX) { <span class="kw">return</span> -1; }   <span class="cm">// disconnected</span>
+    inTree[u] = <span class="kw">true</span>; total += best[u];
+    <span class="kw">for</span> (<span class="kw">int</span> v = 0; v &lt; n; v++) { best[v] = <span class="fn">min</span>(best[v], w[u][v]); }
+}</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O(E log E)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">Same problem, opposite strategy: sort every edge and merge many components instead of growing one. Prefer it when the input arrives as an edge list, or when you need union-find anyway. Prefer Prim when the graph is dense or already an adjacency list.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(E log V)</div>
+      <div class="ccard-n">Each edge is pushed at most twice — once when each endpoint is absorbed — so the heap sees O(E) entries, each pushed and popped at O(log V). The stale-pop test is O(1).</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(V)</div>
+      <div class="ccard-n">One flag per node. The heap itself can reach O(E) entries, because stale candidates are left in rather than removed.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">LeetCode problems that are this algorithm</p>
+  <div class="takehome">
+    <p><b>LC 1584 — Min Cost to Connect All Points:</b> the graph is complete, so E = V². This is the one where dense Prim genuinely beats Kruskal — no V² edge list to build or sort.</p>
+    <p><b>LC 1135 — Connecting Cities With Minimum Cost:</b> sparse and given as an edge list, so either works; the disconnected check is the real content.</p>
+    <p><b>LC 1168 — Optimize Water Distribution in a Village:</b> the trick is a virtual node 0 with the well costs as its edges. After that it is one unchanged MST run.</p>
+    <p><b>The trick to carry:</b> Prim is Dijkstra with the heap keyed on the edge weight instead of the running total. If you can write one, you can write the other — just be sure which one the problem wants.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script src="../../static/algo.js"></script>
+<script>
+  const LAYOUT = [
+    { vb: '0 0 515 210', pos: [[60,55],[195,55],[60,165],[300,110],[430,50],[430,170]] },
+    { vb: '0 0 515 210', pos: [[70,70],[210,70],[350,70],[130,170],[300,170]] },
+    { vb: '0 0 515 210', pos: [[130,60],[360,60],[245,165]] },
+  ];
+
+  /* Map one animation step onto the shared painter. DOM only. */
+  function gDraw(conId, exIdx, st) {
+    const raw = EX[exIdx].edges, pos = LAYOUT[exIdx].pos;
+    const edges = raw.map(e => [e[0], e[1]]);
+    const inTree = new Set(st.inTree || []);
+    const cand = new Set(st.cand || []);
+    const treeEdges = new Set(st.treeEdges || []);
+    gvPaint(conId, { vb: LAYOUT[exIdx].vb, pos, edges, weights: raw.map(e => e[2]) }, {
+      nodeCls: pos.map((_, i) =>
+        i === st.cur ? 'cur' : inTree.has(i) ? 'seen' : cand.has(i) ? 'queue' : ''),
+      edgeCls: edges.map((_, i) =>
+        i === st.hiIdx ? 'hot' : treeEdges.has(i) ? 'tree' : 'dim'),
+      labels:  pos.map((_, i) => inTree.has(i) ? 'in' : cand.has(i) ? 'exit' : ''),
+      labelOn: pos.map((_, i) => inTree.has(i)),
+    });
+  }
+
+  /* ── answer-bearing examples (drive bf / cv / dr panels AND the verifier) ── */
+  const EX = [
+    { n: 6, edges: [[0,1,4],[0,2,3],[1,2,1],[1,3,2],[2,3,4],[3,4,2],[4,5,6],[3,5,3]], answer: 11 },
+    { n: 5, edges: [[0,1,2],[1,2,3],[3,4,1]],                                          answer: null },
+    { n: 3, edges: [[0,1,1],[1,2,2],[0,2,3]],                                          answer: 3 },
+  ];
+
+  const CV_LINES = [
+    { n:1,  c:'long long prim(int n, vector<vector<pair<int,int>>>& adj) {' },
+    { n:2,  c:'    vector<bool> inTree(n, false);' },
+    { n:3,  c:'    priority_queue<..., greater<>> pq;' },
+    { n:4,  c:'    pq.push({0, 0});            // (edge weight, node)' },
+    { n:5,  c:'    long long total = 0;  int used = 0;' },
+    { n:6,  c:'    while (!pq.empty()) {' },
+    { n:7,  c:'        auto [w, u] = pq.top(); pq.pop();' },
+    { n:8,  c:'        if (inTree[u]) continue;   // stale exit' },
+    { n:9,  c:'        inTree[u] = true;' },
+    { n:10, c:'        total += w;  used++;' },
+    { n:11, c:'        for (auto& [v, wt] : adj[u])' },
+    { n:12, c:'            if (!inTree[v]) pq.push({wt, v});' },
+    { n:13, c:'    }' },
+    { n:14, c:'    return used == n ? total : -1;' },
+    { n:15, c:'}' },
+  ];
+
+  /* ════════════════ SEC 1 INSIGHT — the blob grows ════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+
+  function siGenSteps(n, edges) {
+    const inTree = new Array(n).fill(false);
+    const treeEdges = [];
+    const steps = [];
+    inTree[0] = true;
+    let total = 0;
+    const candOf = () => {
+      const c = [];
+      for (let i = 0; i < edges.length; i++) {
+        const e = edges[i];
+        if (inTree[e[0]] && !inTree[e[1]] && c.indexOf(e[1]) < 0) { c.push(e[1]); }
+        if (inTree[e[1]] && !inTree[e[0]] && c.indexOf(e[0]) < 0) { c.push(e[0]); }
+      }
+      return c;
+    };
+    const members = () => { const m = []; for (let i = 0; i < n; i++) { if (inTree[i]) { m.push(i); } } return m; };
+    steps.push({ inTree: members(), cand: candOf(), cur: -1, hiIdx: -1, treeEdges: [],
+      cap: `The blob starts as just node 0. Its exits are the nodes highlighted as candidates.` });
+    while (true) {
+      let bi = -1;
+      for (let i = 0; i < edges.length; i++) {
+        const e = edges[i];
+        const crosses = (inTree[e[0]] && !inTree[e[1]]) || (inTree[e[1]] && !inTree[e[0]]);
+        if (!crosses) { continue; }
+        if (bi < 0 || e[2] < edges[bi][2]) { bi = i; }
+      }
+      if (bi < 0) { break; }
+      const e = edges[bi];
+      const grow = inTree[e[0]] ? e[1] : e[0];
+      inTree[grow] = true;
+      treeEdges.push(bi);
+      total += e[2];
+      steps.push({ inTree: members(), cand: candOf(), cur: grow, hiIdx: bi, treeEdges: treeEdges.slice(),
+        cap: `Cheapest exit is ${e[0]}–${e[1]} at weight ${e[2]}, so node ${grow} joins. Blob total is now ${total}.` });
+    }
+    steps.push({ inTree: members(), cand: [], cur: -1, hiIdx: -1, treeEdges: treeEdges.slice(),
+      cap: members().length === n
+        ? `The blob holds all ${n} nodes at total weight ${total}. Every step took the cheapest edge across its own boundary.`
+        : `The blob stalled at ${members().length} of ${n} nodes — nothing else can be reached, so no spanning tree exists.` });
+    return steps;
+  }
+
+  function siRender(st) {
+    gDraw('si-graph', 0, st);
+    document.getElementById('si-cap').textContent = st.cap;
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+
+  /* ════════════════ SEC 2 BRUTE FORCE — rescan for the cheapest exit ════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null, bfEx = 0;
+
+  function bfGenSteps(n, edges) {
+    const inTree = new Array(n).fill(false);
+    inTree[0] = true;
+    const treeEdges = [];
+    const steps = [];
+    let total = 0, rounds = 0, scans = 0;
+    const members = () => { const m = []; for (let i = 0; i < n; i++) { if (inTree[i]) { m.push(i); } } return m; };
+    steps.push({ inTree: members(), cand: [], cur: -1, hiIdx: -1, treeEdges: [], rounds, scans, total,
+      narr: `Blob starts at node 0. Each round rescans all ${edges.length} edge(s) to find the cheapest exit.` });
+    for (let r = 1; r < n; r++) {
+      rounds++;
+      let bi = -1;
+      for (let i = 0; i < edges.length; i++) {
+        scans++;
+        const e = edges[i];
+        const crosses = (inTree[e[0]] && !inTree[e[1]]) || (inTree[e[1]] && !inTree[e[0]]);
+        if (!crosses) { continue; }
+        if (bi < 0 || e[2] < edges[bi][2]) { bi = i; }
+      }
+      if (bi < 0) {
+        steps.push({ inTree: members(), cand: [], cur: -1, hiIdx: -1, treeEdges: treeEdges.slice(),
+          rounds, scans, total,
+          narr: `Round ${rounds}: scanned all ${edges.length} edge(s) and found no exit. The blob cannot grow — the graph is disconnected.` });
+        break;
+      }
+      const e = edges[bi];
+      const grow = inTree[e[0]] ? e[1] : e[0];
+      inTree[grow] = true;
+      treeEdges.push(bi);
+      total += e[2];
+      steps.push({ inTree: members(), cand: [], cur: grow, hiIdx: bi, treeEdges: treeEdges.slice(),
+        rounds, scans, total,
+        narr: `Round ${rounds}: after ${scans} edge scan(s), the cheapest exit is ${e[0]}–${e[1]} (${e[2]}). Absorb node ${grow}; total ${total}.` });
+    }
+    steps.push({ inTree: members(), cand: [], cur: -1, hiIdx: -1, treeEdges: treeEdges.slice(),
+      rounds, scans, total,
+      narr: `${rounds} round(s) cost ${scans} edge scan(s) on a graph with only ${edges.length} edge(s) — the interior edges were re-read every round.` });
+    return steps;
+  }
+
+  function bfRender(st) {
+    gDraw('bf-graph', bfEx, st);
+    document.getElementById('bf-rounds').textContent = st.rounds;
+    document.getElementById('bf-scans').textContent = st.scans;
+    document.getElementById('bf-total').textContent = st.total;
+    document.getElementById('bf-narr').textContent = st.narr;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+  function bfLoadEx(idx) {
+    bfStopPlay(); bfCur = 0; bfEx = idx;
+    [0,1,2].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+    bfSteps = bfGenSteps(EX[idx].n, EX[idx].edges);
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ════════════════ SEC 6 CODE VIZ — one C++ line per step ════════════════ */
+  let cvCur = 0, cvSteps = [], cvTimer = null, cvEx = 0;
+
+  function cvGenSteps(n, edges) {
+    const adj = Array.from({ length: n }, () => []);
+    for (let i = 0; i < edges.length; i++) {
+      adj[edges[i][0]].push([edges[i][1], edges[i][2], i]);
+      adj[edges[i][1]].push([edges[i][0], edges[i][2], i]);
+    }
+    const inTree = new Array(n).fill(false);
+    const treeEdges = [];
+    let pq = [], total = 0, used = 0, u = null, w = null;
+    const steps = [];
+    const members = () => { const m = []; for (let i = 0; i < n; i++) { if (inTree[i]) { m.push(i); } } return m; };
+    const snap = (o) => Object.assign({
+      inTree: members(), cand: pq.map(p => p[1]), cur: (u === null ? -1 : u), hiIdx: -1,
+      treeEdges: treeEdges.slice(), changed: [], u, w, pq: pq.map(p => p.slice()), total, used,
+    }, o);
+    steps.push(snap({ line: 1, narr: `${n} nodes, ${edges.length} edge(s).` }));
+    steps.push(snap({ line: 2, narr: 'Nothing is in the blob yet.' }));
+    pq.push([0, 0, -1]);
+    steps.push(snap({ line: 4, changed: ['pq'], narr: 'Seed with (0, node 0) — the start joins for free.' }));
+    steps.push(snap({ line: 5, changed: ['total', 'used'], narr: 'Total 0, nothing absorbed.' }));
+    while (pq.length) {
+      steps.push(snap({ line: 6, narr: `The heap holds ${pq.length} candidate(s), so keep going.` }));
+      pq.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const top = pq.shift();
+      w = top[0]; u = top[1];
+      const via = top[2];
+      steps.push(snap({ line: 7, changed: ['u', 'w', 'pq'], hiIdx: via,
+        narr: `Pop the cheapest candidate: node ${u} at edge weight ${w}.` }));
+      if (inTree[u]) {
+        steps.push(snap({ line: 8, narr: `Node ${u} is already in the blob — a stale candidate, so skip it.` }));
+        u = null; w = null;
+        continue;
+      }
+      inTree[u] = true;
+      if (via >= 0) { treeEdges.push(via); }
+      steps.push(snap({ line: 9, hiIdx: via, narr: `Absorb node ${u} into the blob.` }));
+      total += w;
+      used++;
+      steps.push(snap({ line: 10, changed: ['total', 'used'], hiIdx: via,
+        narr: `Total is now ${total}; ${used} of ${n} node(s) absorbed.` }));
+      for (const nb of adj[u]) {
+        if (!inTree[nb[0]]) {
+          pq.push([nb[1], nb[0], nb[2]]);
+          steps.push(snap({ line: 12, changed: ['pq'], hiIdx: nb[2],
+            narr: `Node ${nb[0]} is outside, so offer edge ${u}–${nb[0]} (${nb[1]}) as a new exit.` }));
+        }
+      }
+      u = null; w = null;
+    }
+    steps.push(snap({ line: 6, narr: 'The heap is empty — no exits remain.' }));
+    const ok = used === n;
+    steps.push(snap({ line: 14, phase: 'done',
+      narr: ok ? `All ${n} node(s) absorbed, so return the total ${total}.`
+               : `Only ${used} of ${n} node(s) could be reached — the graph is disconnected.`,
+      result: ok ? total : null }));
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const ln = document.getElementById('cvL' + st.line);
+    if (ln) ln.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    setCard('cv-v-u', st.u === null ? '—' : st.u, ch.includes('u'));
+    setCard('cv-v-w', st.w === null ? '—' : st.w, ch.includes('w'));
+    setCard('cv-v-pq', st.pq.length ? st.pq.slice().sort((a, b) => a[0] - b[0]).map(p => '(' + p[0] + ',' + p[1] + ')').join(' ') : 'empty', ch.includes('pq'));
+    setCard('cv-v-total', st.total, ch.includes('total'));
+    setCard('cv-v-used', st.used, ch.includes('used'));
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : ' is-active');
+    gDraw('cv-graph', cvEx, st);
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+  function cvLoadEx(idx) {
+    cvStopPlay(); cvCur = 0; cvEx = idx;
+    [0,1,2].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(EX[idx].n, EX[idx].edges);
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ════════════════ SEC 7 DRY RUN — the oracle ════════════════ */
+  let drCur = 0, drSteps = [], drTimer = null, drEx = 0;
+
+  function drGenSteps(n, edges) {
+    const adj = Array.from({ length: n }, () => []);
+    for (let i = 0; i < edges.length; i++) {
+      adj[edges[i][0]].push([edges[i][1], edges[i][2], i]);
+      adj[edges[i][1]].push([edges[i][0], edges[i][2], i]);
+    }
+    const inTree = new Array(n).fill(false);
+    const treeEdges = [];
+    let pq = [[0, 0, -1]], total = 0, used = 0;
+    const steps = [];
+    const members = () => { const m = []; for (let i = 0; i < n; i++) { if (inTree[i]) { m.push(i); } } return m; };
+    const snap = (o) => Object.assign({
+      inTree: members(), cand: pq.map(p => p[1]), cur: -1, hiIdx: -1,
+      treeEdges: treeEdges.slice(), total, used, pq: pq.map(p => p.slice()),
+    }, o);
+    steps.push(snap({ what: 'Seed the heap with node 0',
+      why: `It costs nothing to start there, so push (0, 0). ${n} node(s) must be absorbed in total.` }));
+    while (pq.length) {
+      pq.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const top = pq.shift();
+      const w = top[0], u = top[1], via = top[2];
+      if (inTree[u]) {
+        steps.push(snap({ cur: u, hiIdx: via,
+          what: `Skip the stale candidate (${w}, ${u})`,
+          why: `Node ${u} joined the blob earlier by a cheaper edge, so this leftover offer is worthless.` }));
+        continue;
+      }
+      inTree[u] = true;
+      if (via >= 0) { treeEdges.push(via); }
+      total += w;
+      used++;
+      const offered = [];
+      for (const nb of adj[u]) {
+        if (!inTree[nb[0]]) { pq.push([nb[1], nb[0], nb[2]]); offered.push(nb[0] + ':' + nb[1]); }
+      }
+      steps.push(snap({ cur: u, hiIdx: via,
+        what: `Absorb node ${u} at cost ${w}`,
+        why: (via < 0 ? 'This is the starting node, so nothing is added. ' : `It was the cheapest edge leaving the blob, so by the cut property it belongs to some minimum tree. Total is now ${total}. `)
+          + (offered.length ? `New exits offered: ${offered.join(', ')}.` : 'It offers no new exits.') }));
+    }
+    const ok = used === n;
+    steps.push(snap({
+      what: ok ? `Spanning tree complete: weight ${total}` : 'No spanning tree exists',
+      why: ok
+        ? `All ${n} node(s) are in the blob, and every absorption was the cheapest exit at the time. No cheaper tree exists.`
+        : `The heap ran dry with only ${used} of ${n} node(s) absorbed, so part of the graph is unreachable from node 0.`,
+      result: ok ? total : null }));
+    return steps;
+  }
+
+  function drRender(st) {
+    gDraw('dr-graph', drEx, st);
+    const usedEl = document.getElementById('dr-f-used');
+    usedEl.textContent = st.used + ' / ' + EX[drEx].n;
+    usedEl.style.color = st.used === EX[drEx].n ? 'var(--text-success)' : 'var(--text-warn)';
+    document.getElementById('dr-f-total').textContent = st.total;
+    document.getElementById('dr-f-pq').textContent = 'heap = ' +
+      (st.pq.length ? st.pq.slice().sort((a, b) => a[0] - b[0]).map(p => '(' + p[0] + ',' + p[1] + ')').join(' ') : 'empty');
+    const res = document.getElementById('dr-f-res');
+    if ('result' in st) {
+      res.textContent = st.result === null ? 'none' : st.result;
+      res.style.color = st.result === null ? 'var(--text-danger)' : 'var(--text-success)';
+    } else {
+      res.textContent = '…';
+      res.style.color = 'var(--text2)';
+    }
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.what;
+    if (whyEl) whyEl.textContent = st.why;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+  function drLoadEx(idx) {
+    drStopPlay(); drCur = 0; drEx = idx;
+    [0,1,2].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+    drSteps = drGenSteps(EX[idx].n, EX[idx].edges);
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ── init ── */
+  siSteps = siGenSteps(EX[0].n, EX[0].edges);
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Depth-First Search (DFS) — Algorithm Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<link rel="stylesheet" href="../../static/algo.css">
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Algorithm Lesson</p>
+  <h1>Depth-First Search (DFS)</h1>
+  <div class="header-meta">
+    <span class="badge badge-arr">Graph Algorithms</span>
+    <span class="badge badge-med">Tier 1 · primer</span>
+    <span class="badge badge-arr">O(V + E) time · O(V) space</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. Each answer changes what the traversal has to handle.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Is the whole graph connected?</div>
+      <div class="acard-a">No — it can come in separate pieces.</div>
+      <div class="acard-u">→ one dive is not enough; restart from every node still unvisited</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Directed or undirected?</div>
+      <div class="acard-a">Undirected here.</div>
+      <div class="acard-u">→ "connected" is symmetric. On a directed graph you need strongly connected components instead.</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">How deep can the graph get?</div>
+      <div class="acard-a">A path of every node — depth V.</div>
+      <div class="acard-u">→ use an explicit stack; recursion dies somewhere around 10⁴–10⁵ frames</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Does the order inside a component matter?</div>
+      <div class="acard-a">No, only the grouping.</div>
+      <div class="acard-u">→ sort each component before returning so the answer is unique</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">One dive drains one whole component</p>
+
+  <p class="body">DFS commits to a direction. It follows an edge as far as it will go before it ever considers the second option, and it only backs up when there is nothing new ahead. So a single dive cannot stop halfway through a group of connected nodes — it keeps going until the group is exhausted. That is the whole component finder.</p>
+
+  <div style="margin:1.25rem 0">
+    <div class="gv-legend">
+      <span><span class="leg-dot" style="background:var(--bg2);border:1px solid var(--border2)"></span>not visited</span>
+      <span><span class="leg-dot" style="background:var(--bg-info)"></span>where the dive is now</span>
+      <span><span class="leg-dot" style="background:var(--bg-warn)"></span>waiting on the stack</span>
+      <span><span class="leg-dot" style="background:var(--bg-success)"></span>done, component fixed</span>
+    </div>
+    <div id="si-graph" class="gv-wrap" style="margin:.5rem 0"></div>
+    <div id="si-cap" class="gv-cap"></div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="ctrl-btn"     onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn"     onclick="siNext()">Next →</button>
+      <button class="ctrl-btn"     onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <div style="margin:1.25rem 0;font-size:13px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:.5rem;color:var(--text)">Why one dive is exactly one component:</div>
+    <div class="skeleton">
+      <div class="wt-item">
+        <div class="wt-num">1</div>
+        <div class="wt-body">
+          <div class="wt-name">Nothing reachable is left behind</div>
+          <div class="wt-desc">The dive only ends when the stack is empty, and the stack only empties when every neighbour of every node it touched was already visited. So no reachable node can escape it.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">2</div>
+        <div class="wt-body">
+          <div class="wt-name">Nothing unreachable is pulled in</div>
+          <div class="wt-desc">The dive only ever moves along an edge. A node in a different piece has no edge into this one, so it can never be reached. The group it collects is exactly the component.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">3</div>
+        <div class="wt-body">
+          <div class="wt-name">So the restarts count the pieces</div>
+          <div class="wt-desc">After a dive, the next node still marked unvisited must be in a piece nothing has touched. Each restart therefore begins a brand new component, and the number of restarts is the number of components.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Push a start node and repeatedly pop, marking each neighbour the moment it is pushed. The dive ends exactly when the reachable set is exhausted, so the nodes it collected are one connected component. Loop over all nodes and restart the dive on any that are still unmarked; each restart is one more component.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">Without traversal you would do label propagation: give every node its own label, then sweep the whole edge list pulling both endpoints down to the smaller label, and repeat until a whole sweep changes nothing. It is correct — labels can only fall, so it must settle — but a long chain moves the news one edge per sweep, so it costs O(V·E). Watch the sweep counter.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">3 pieces</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">one path</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">no edges</button>
+  </div>
+  <div id="bf-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-counter">
+    <span>sweeps: <b id="bf-sweeps">0</b></span>
+    <span>edge checks: <b id="bf-checks">0</b></span>
+  </div>
+  <div id="bf-strip" class="gv-strip"></div>
+  <div id="bf-narr" class="gv-cap"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(V·E) time</p>
+    <p class="infobox-d">Each sweep touches every edge but may move a label only one hop. On a path of V nodes the label at one end needs V sweeps to reach the other, and every sweep re-checks all E edges even where nothing can change.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="cm">// Label propagation: sweep the edge list until nothing changes.</span>
+<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; <span class="fn">labels</span>(<span class="kw">int</span> n, <span class="kw">vector</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt;&amp; edges) {
+    <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; lab(n);
+    <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; n; i++) { lab[i] = i; }
+    <span class="kw">bool</span> changed = <span class="kw">true</span>;
+    <span class="kw">while</span> (changed) {
+        changed = <span class="kw">false</span>;
+        <span class="kw">for</span> (<span class="kw">auto</span>&amp; e : edges) {         <span class="cm">// a full sweep, every time</span>
+            <span class="kw">int</span> m = <span class="fn">min</span>(lab[e.first], lab[e.second]);
+            <span class="kw">if</span> (lab[e.first]  != m) { lab[e.first]  = m; changed = <span class="kw">true</span>; }
+            <span class="kw">if</span> (lab[e.second] != m) { lab[e.second] = m; changed = <span class="kw">true</span>; }
+        }
+    }
+    <span class="kw">return</span> lab;                       <span class="cm">// equal labels = same component</span>
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three swaps take repeated sweeping down to a single pass.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Sweep until stable → walk once</div>
+        <div class="wt-desc">Instead of pushing news one hop per sweep, follow the edges directly. Reachability is transitive, so one walk settles a whole group in one go.</div>
+        <div class="wt-gain">O(V·E) → O(V + E)</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Compare labels afterwards → collect during the walk</div>
+        <div class="wt-desc">The nodes a dive touches are the component. Append them as you pop, so there is no second grouping pass over the label array.</div>
+        <div class="wt-gain">drops a full post-processing pass</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">Mark on pop → mark on push</div>
+        <div class="wt-desc">If a node is only marked when it comes off the stack, the same node can be pushed once per incoming edge. Marking at push time caps the stack at V entries.</div>
+        <div class="wt-gain">stack stays O(V), not O(E)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Mark everything unvisited</b> and start with an empty list of components.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Walk the nodes in order.</b> Skip any that is already visited — it belongs to a component you have finished.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Start a dive.</b> Push the node, mark it, and repeatedly pop a node <code>u</code>, adding it to the component being built.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Push unvisited neighbours,</b> marking each one <i>as you push it</i> so nothing enters the stack twice.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>When the stack empties</b> the component is complete. Sort it, record it, and go back to step 2.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <p class="body">C++ first — that is the version the walkthrough below animates. The Python version is the same algorithm with the noise removed.</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt; <span class="fn">components</span>(<span class="kw">int</span> n, <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt;&amp; adj) {
+    <span class="kw">vector</span>&lt;<span class="kw">bool</span>&gt; seen(n, <span class="kw">false</span>);
+    <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">int</span>&gt;&gt; comps;
+    <span class="kw">for</span> (<span class="kw">int</span> s = 0; s &lt; n; s++) {
+        <span class="kw">if</span> (seen[s]) { <span class="kw">continue</span>; }      <span class="cm">// already in a component</span>
+        <span class="kw">vector</span>&lt;<span class="kw">int</span>&gt; comp;
+        <span class="kw">stack</span>&lt;<span class="kw">int</span>&gt; st;
+        st.<span class="fn">push</span>(s); seen[s] = <span class="kw">true</span>;
+        <span class="kw">while</span> (!st.<span class="fn">empty</span>()) {
+            <span class="kw">int</span> u = st.<span class="fn">top</span>(); st.<span class="fn">pop</span>();
+            comp.<span class="fn">push_back</span>(u);
+            <span class="kw">for</span> (<span class="kw">int</span> v : adj[u]) {
+                <span class="kw">if</span> (seen[v]) { <span class="kw">continue</span>; }
+                seen[v] = <span class="kw">true</span>;             <span class="cm">// mark on PUSH, not on pop</span>
+                st.<span class="fn">push</span>(v);
+            }
+        }
+        <span class="fn">sort</span>(comp.<span class="fn">begin</span>(), comp.<span class="fn">end</span>());
+        comps.<span class="fn">push_back</span>(comp);
+    }
+    <span class="kw">return</span> comps;
+}</pre>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-py',this)" style="margin-top:.5rem">▶ Reveal the same thing in Python</button>
+  <div id="code-py" class="code-block">
+    <pre class="cb"><span class="kw">def</span> <span class="fn">components</span>(n, adj):
+    seen = [<span class="kw">False</span>] * n
+    comps = []
+    <span class="kw">for</span> s <span class="kw">in</span> <span class="fn">range</span>(n):
+        <span class="kw">if</span> seen[s]:
+            <span class="kw">continue</span>
+        comp, st = [], [s]
+        seen[s] = <span class="kw">True</span>
+        <span class="kw">while</span> st:
+            u = st.<span class="fn">pop</span>()
+            comp.<span class="fn">append</span>(u)
+            <span class="kw">for</span> v <span class="kw">in</span> adj[u]:
+                <span class="kw">if</span> seen[v]:
+                    <span class="kw">continue</span>
+                seen[v] = <span class="kw">True</span>
+                st.<span class="fn">append</span>(v)
+        comps.<span class="fn">append</span>(<span class="fn">sorted</span>(comp))
+    <span class="kw">return</span> comps</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Each step runs one line of the C++ above. Watch <code>s</code> skip past nodes that are already visited — every time it does not skip, a new component begins.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-s"><span class="cv-var-name">s</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-u"><span class="cv-var-name">u</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-st"><span class="cv-var-name">stack</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-comp"><span class="cv-var-name">comp</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-n"><span class="cv-var-name">components</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-graph" class="gv-wrap" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">3 pieces</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">one path</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">no edges</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick a graph and step the dive by hand. Before pressing Next, say which node comes off the top of the stack and whether it starts a new component.</p>
+
+  <div id="dr-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-legend">
+    <span><span class="leg-dot" style="background:var(--bg-info)"></span>popped now</span>
+    <span><span class="leg-dot" style="background:var(--bg-warn)"></span>on the stack</span>
+    <span><span class="leg-dot" style="background:var(--bg-success)"></span>placed in a component</span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">stack (top → bottom)</div>
+          <div class="fitem-val" id="dr-f-st">—</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">current component</div>
+          <div class="fitem-val" id="dr-f-comp">—</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">components found</div>
+          <div class="fitem-val" id="dr-f-n">0</div>
+        </div>
+      </div>
+      <div class="formula-eq" id="dr-f-res">result = …</div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">3 pieces</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">one path</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">no edges</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">Isolated nodes</div>
+    <div class="corner-body">A node with no edges is still a component of size one. The outer loop reaches it, the dive pops it immediately, and it is recorded. Forgetting the outer loop is how people report 0 components for an edgeless graph.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">Marking on pop instead of on push</div>
+    <div class="corner-body">The classic bug. If <code>seen[v]</code> is set only when <code>v</code> is popped, a node with three unvisited neighbours can sit on the stack three times and be added to the component three times. Mark it the moment you push it.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Deep graphs and the call stack</div>
+    <div class="corner-body">A recursive DFS on a path of 10⁵ nodes overflows. The explicit stack above has no such limit — it is the same algorithm with the frames moved to the heap.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">Self-loops and repeated edges</div>
+    <div class="corner-body">Both are absorbed by the <code>seen</code> guard and change nothing. A self-loop points at an already-marked node; a repeat finds the neighbour already marked.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">A directed graph</div>
+    <div class="corner-body">This does <b>not</b> find components on a directed graph. Reachability stops being symmetric, so "u reaches v" no longer means they belong together. Use Kosaraju or Tarjan for strongly connected components.</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Mark on push.</b> It bounds the stack at V entries and stops duplicates entering a component.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Iterative, not recursive,</b> on anything user-sized. A stack overflow is a crash, not an exception you can catch.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Keep the outer restart loop.</b> Without it you silently return only the component containing node 0.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Sort the output</b> (or document that it is unordered). An unsorted component list makes tests flaky when the adjacency order changes.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Build the adjacency list once,</b> in O(V + E). Re-scanning an edge list inside the dive is the usual accidental O(V·E).</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>If you only need the count,</b> skip collecting nodes and just count restarts — same traversal, O(1) extra memory.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Iterative DFS</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">Union-find</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">BFS</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(V + E)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">The version above. Best when you already hold an adjacency list and want the component contents, a spanning tree, or entry/exit times for later work like cycle detection or bridges.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(E·α(V))</span><span class="tag tag-space">O(V)</span>
+    <p class="body">Merge the two endpoints of every edge, then read off the classes. Nearly linear, and the only option when edges <i>arrive over time</i> — you can answer "same component?" after each one without redoing any work. DFS would have to restart from scratch.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-uf',this)">▶ Reveal sketch</button>
+    <div id="code-uf" class="code-block">
+      <pre class="cb"><span class="kw">int</span> <span class="fn">find</span>(<span class="kw">int</span> x) { <span class="kw">return</span> p[x] == x ? x : p[x] = <span class="fn">find</span>(p[x]); }
+<span class="kw">void</span> <span class="fn">join</span>(<span class="kw">int</span> a, <span class="kw">int</span> b) { p[<span class="fn">find</span>(a)] = <span class="fn">find</span>(b); }
+<span class="cm">// components = number of x with find(x) == x</span></pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O(V + E)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">Swap the stack for a queue and you get BFS — identical cost and identical components, since the reachable set does not care about visit order. Prefer BFS when you also want shortest distances; prefer DFS when you want depth structure such as back edges, bridges, or topological order.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(V + E)</div>
+      <div class="ccard-n">Marking at push time lets each node enter the stack once, so there are V pops across all restarts. Each pop scans one adjacency list, and every edge is scanned from both ends — 2E in total.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(V)</div>
+      <div class="ccard-n">The seen array is V entries and the stack holds at most V nodes, since no node is ever pushed twice.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">LeetCode problems that are this algorithm</p>
+  <div class="takehome">
+    <p><b>LC 200 — Number of Islands:</b> the grid is the graph and a cell's four neighbours are its edges. Counting islands is counting restarts.</p>
+    <p><b>LC 547 — Number of Provinces:</b> components from an adjacency matrix, almost unchanged from the code above.</p>
+    <p><b>LC 695 — Max Area of Island:</b> same dive, but return the size of each component instead of its contents.</p>
+    <p><b>LC 207 — Course Schedule:</b> DFS on a directed graph, where the depth structure matters — a back edge to a node still on the stack is a cycle.</p>
+    <p><b>The trick to carry:</b> "how many groups" and "what is in my group" are always one traversal plus a restart loop. What changes between problems is only what counts as a neighbour.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script src="../../static/algo.js"></script>
+<script>
+  const LAYOUT = [
+    { vb: '0 0 515 210', pos: [[70,60],[180,60],[125,155],[290,60],[290,155],[430,60],[430,155]] },
+    { vb: '0 0 515 210', pos: [[60,105],[160,105],[260,105],[360,105],[460,105]] },
+    { vb: '0 0 515 210', pos: [[100,105],[220,105],[340,105],[460,105]] },
+  ];
+
+  /* Map one animation step onto the shared painter. DOM only. */
+  function gDraw(conId, exIdx, st) {
+    const edges = EX[exIdx].edges, pos = LAYOUT[exIdx].pos;
+    const key = (a, b) => Math.min(a, b) + '-' + Math.max(a, b);
+    const hot = st.hi ? key(st.hi[0], st.hi[1]) : null;
+    const onStack = new Set(st.stack || []);
+    const done = new Set(st.done || []);
+    gvPaint(conId, { vb: LAYOUT[exIdx].vb, pos, edges }, {
+      nodeCls: pos.map((_, i) =>
+        i === st.cur ? 'cur' : onStack.has(i) ? 'queue' : done.has(i) ? 'seen' : ''),
+      edgeCls: edges.map(e => (key(e[0], e[1]) === hot ? 'hot' : '')),
+      labels:  pos.map((_, i) => (st.lab && st.lab[i] !== null && st.lab[i] !== undefined) ? String(st.lab[i]) : ''),
+      labelOn: pos.map((_, i) => done.has(i)),
+    });
+  }
+
+  /* ── answer-bearing examples (drive bf / cv / dr panels AND the verifier) ── */
+  const EX = [
+    { n: 7, edges: [[0,1],[1,2],[0,2],[3,4],[5,6]], answer: [[0,1,2],[3,4],[5,6]] },
+    { n: 5, edges: [[0,1],[1,2],[2,3],[3,4]],       answer: [[0,1,2,3,4]]         },
+    { n: 4, edges: [],                              answer: [[0],[1],[2],[3]]     },
+  ];
+
+  const CV_LINES = [
+    { n:1,  c:'vector<vector<int>> components(int n, vector<vector<int>>& adj) {' },
+    { n:2,  c:'    vector<bool> seen(n, false);' },
+    { n:3,  c:'    vector<vector<int>> comps;' },
+    { n:4,  c:'    for (int s = 0; s < n; s++) {' },
+    { n:5,  c:'        if (seen[s]) continue;' },
+    { n:6,  c:'        vector<int> comp;  stack<int> st;' },
+    { n:7,  c:'        st.push(s);  seen[s] = true;' },
+    { n:8,  c:'        while (!st.empty()) {' },
+    { n:9,  c:'            int u = st.top(); st.pop();' },
+    { n:10, c:'            comp.push_back(u);' },
+    { n:11, c:'            for (int v : adj[u]) {' },
+    { n:12, c:'                if (seen[v]) continue;' },
+    { n:13, c:'                seen[v] = true;  st.push(v);' },
+    { n:14, c:'            }' },
+    { n:15, c:'        }' },
+    { n:16, c:'        sort(comp.begin(), comp.end());' },
+    { n:17, c:'        comps.push_back(comp);' },
+    { n:18, c:'    }' },
+    { n:19, c:'    return comps;' },
+    { n:20, c:'}' },
+  ];
+
+  /* ════════════════ SEC 1 INSIGHT — one dive per component ════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+
+  function siGenSteps(n, edges) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const e of edges) { adj[e[0]].push(e[1]); adj[e[1]].push(e[0]); }
+    const seen = new Array(n).fill(false);
+    const lab = new Array(n).fill(null);
+    const done = [];
+    const steps = [];
+    let cid = 0;
+    steps.push({ cur: -1, stack: [], done: [], lab: lab.slice(), hi: null,
+      cap: 'Nothing visited yet. The dive will start at node 0.' });
+    for (let s = 0; s < n; s++) {
+      if (seen[s]) { continue; }
+      cid++;
+      const st = [s];
+      seen[s] = true;
+      steps.push({ cur: -1, stack: st.slice(), done: done.slice(), lab: lab.slice(), hi: null,
+        cap: `Node ${s} was never reached, so it starts component ${cid}.` });
+      while (st.length) {
+        const u = st.pop();
+        lab[u] = cid;
+        done.push(u);
+        steps.push({ cur: u, stack: st.slice(), done: done.slice(), lab: lab.slice(), hi: null,
+          cap: `Dive into node ${u}. It joins component ${cid}.` });
+        for (const v of adj[u]) {
+          if (seen[v]) { continue; }
+          seen[v] = true;
+          st.push(v);
+        }
+      }
+      steps.push({ cur: -1, stack: [], done: done.slice(), lab: lab.slice(), hi: null,
+        cap: `The dive ran out of new nodes — component ${cid} is complete and cannot grow.` });
+    }
+    steps.push({ cur: -1, stack: [], done: done.slice(), lab: lab.slice(), hi: null,
+      cap: `${cid} dive(s), so ${cid} component(s). Each restart found a piece nothing had touched.` });
+    return steps;
+  }
+
+  function siRender(st) {
+    gDraw('si-graph', 0, st);
+    document.getElementById('si-cap').textContent = st.cap;
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+
+  /* ════════════════ SEC 2 BRUTE FORCE — label propagation ════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null, bfEx = 0;
+
+  function bfGenSteps(n, edges) {
+    const lab = [];
+    for (let i = 0; i < n; i++) { lab.push(i); }
+    const steps = [];
+    let sweeps = 0, checks = 0;
+    steps.push({ cur: -1, stack: [], done: [], lab: lab.slice(), hi: null, sweeps, checks,
+      narr: 'Every node starts with its own label. Now sweep the edge list until no label changes.' });
+    let changed = true;
+    while (changed) {
+      changed = false;
+      sweeps++;
+      for (const e of edges) {
+        checks++;
+        const m = Math.min(lab[e[0]], lab[e[1]]);
+        if (lab[e[0]] !== m || lab[e[1]] !== m) {
+          lab[e[0]] = m; lab[e[1]] = m;
+          changed = true;
+          steps.push({ cur: -1, stack: [], done: [], lab: lab.slice(), hi: [e[0], e[1]], sweeps, checks,
+            narr: `Sweep ${sweeps}: edge ${e[0]}–${e[1]} pulls both labels down to ${m}. Edge checks so far: ${checks}.` });
+        }
+      }
+      if (!changed) {
+        steps.push({ cur: -1, stack: [], done: [], lab: lab.slice(), hi: null, sweeps, checks,
+          narr: `Sweep ${sweeps} changed nothing, so the labels have settled. That last sweep still cost a full pass over the edges.` });
+      }
+    }
+    const groups = {};
+    for (let i = 0; i < n; i++) {
+      if (!groups[lab[i]]) { groups[lab[i]] = []; }
+      groups[lab[i]].push(i);
+    }
+    const result = Object.keys(groups).map(k => groups[k].slice().sort((a, b) => a - b))
+      .sort((a, b) => a[0] - b[0]);
+    steps.push({ cur: -1, stack: [], done: [], lab: lab.slice(), hi: null, sweeps, checks,
+      narr: `Done after ${sweeps} sweep(s) and ${checks} edge check(s). Equal labels mean one component: ${JSON.stringify(result)}.`,
+      result });
+    return steps;
+  }
+
+  function bfRender(st) {
+    gDraw('bf-graph', bfEx, st);
+    stripPaint('bf-strip', st.lab.map((v, i) => ({ text: 'lab[' + i + ']=' + v, cls: 'set' })));
+    document.getElementById('bf-sweeps').textContent = st.sweeps;
+    document.getElementById('bf-checks').textContent = st.checks;
+    document.getElementById('bf-narr').textContent = st.narr;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+  function bfLoadEx(idx) {
+    bfStopPlay(); bfCur = 0; bfEx = idx;
+    [0,1,2].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+    bfSteps = bfGenSteps(EX[idx].n, EX[idx].edges);
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ════════════════ SEC 6 CODE VIZ — one C++ line per step ════════════════ */
+  let cvCur = 0, cvSteps = [], cvTimer = null, cvEx = 0;
+
+  function cvGenSteps(n, edges) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const e of edges) { adj[e[0]].push(e[1]); adj[e[1]].push(e[0]); }
+    const seen = new Array(n).fill(false);
+    const comps = [];
+    const done = [];
+    let st = [], comp = [], s = null, u = null;
+    const steps = [];
+    const snap = (o) => Object.assign({
+      cur: (u === null ? -1 : u), stack: st.slice(), done: done.slice(),
+      lab: new Array(n).fill(null), hi: null, changed: [],
+      s, u, stackTxt: st.slice(), comp: comp.slice(), ncomp: comps.length,
+    }, o);
+    steps.push(snap({ line: 1, narr: `Called with ${n} nodes.` }));
+    steps.push(snap({ line: 2, changed: ['seen'], narr: 'Nothing is visited yet.' }));
+    steps.push(snap({ line: 3, changed: ['ncomp'], narr: 'The component list starts empty.' }));
+    for (let ss = 0; ss < n; ss++) {
+      s = ss; u = null;
+      steps.push(snap({ line: 4, changed: ['s'], narr: `Try node ${ss} as the start of a new component.` }));
+      if (seen[ss]) {
+        steps.push(snap({ line: 5, narr: `Node ${ss} was already collected, so skip it — it is not a new component.` }));
+        continue;
+      }
+      comp = [];
+      st = [];
+      steps.push(snap({ line: 6, changed: ['comp', 'stackTxt'], narr: 'Start a fresh component and an empty stack.' }));
+      st.push(ss);
+      seen[ss] = true;
+      steps.push(snap({ line: 7, changed: ['stackTxt'], narr: `Push ${ss} and mark it visited straight away.` }));
+      while (st.length) {
+        steps.push(snap({ line: 8, narr: `The stack holds ${st.length} node(s), so keep diving.` }));
+        u = st.pop();
+        steps.push(snap({ line: 9, changed: ['u', 'stackTxt'], narr: `Pop node ${u} off the top.` }));
+        comp.push(u);
+        done.push(u);
+        steps.push(snap({ line: 10, changed: ['comp'], narr: `Node ${u} joins the component being built.` }));
+        for (const v of adj[u]) {
+          steps.push(snap({ line: 11, hi: [u, v], narr: `Look at neighbour ${v} of node ${u}.` }));
+          if (seen[v]) {
+            steps.push(snap({ line: 12, hi: [u, v], narr: `Node ${v} is already marked — skip it.` }));
+            continue;
+          }
+          seen[v] = true;
+          st.push(v);
+          steps.push(snap({ line: 13, changed: ['stackTxt'], hi: [u, v], narr: `Mark ${v} and push it. Marking now stops it entering twice.` }));
+        }
+        u = null;
+      }
+      steps.push(snap({ line: 15, narr: 'The stack is empty — this component cannot grow any further.' }));
+      comp.sort((a, b) => a - b);
+      steps.push(snap({ line: 16, changed: ['comp'], narr: `Sort it: ${JSON.stringify(comp)}.` }));
+      comps.push(comp.slice());
+      steps.push(snap({ line: 17, changed: ['ncomp'], narr: `Record it. ${comps.length} component(s) found so far.` }));
+    }
+    s = null; u = null; comp = [];
+    const result = comps.map(c => c.slice());
+    steps.push(snap({ line: 19, phase: 'done', ncomp: comps.length,
+      narr: `Return ${JSON.stringify(result)} — ${result.length} component(s).`, result }));
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const ln = document.getElementById('cvL' + st.line);
+    if (ln) ln.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    setCard('cv-v-s', st.s === null ? '—' : st.s, ch.includes('s'));
+    setCard('cv-v-u', st.u === null ? '—' : st.u, ch.includes('u'));
+    setCard('cv-v-st', st.stackTxt.length ? st.stackTxt.slice().reverse().join(' ') : 'empty', ch.includes('stackTxt'));
+    setCard('cv-v-comp', st.comp.length ? st.comp.join(' ') : '—', ch.includes('comp'));
+    setCard('cv-v-n', st.ncomp, ch.includes('ncomp'));
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : ' is-active');
+    gDraw('cv-graph', cvEx, st);
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+  function cvLoadEx(idx) {
+    cvStopPlay(); cvCur = 0; cvEx = idx;
+    [0,1,2].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(EX[idx].n, EX[idx].edges);
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ════════════════ SEC 7 DRY RUN — the oracle ════════════════ */
+  let drCur = 0, drSteps = [], drTimer = null, drEx = 0;
+
+  function drGenSteps(n, edges) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const e of edges) { adj[e[0]].push(e[1]); adj[e[1]].push(e[0]); }
+    const seen = new Array(n).fill(false);
+    const comps = [];
+    const done = [];
+    const lab = new Array(n).fill(null);
+    const steps = [];
+    const snap = (o) => Object.assign({
+      cur: -1, stack: [], done: done.slice(), lab: lab.slice(), hi: null,
+      comp: [], ncomp: comps.length,
+    }, o);
+    steps.push(snap({ what: 'Nothing visited yet',
+      why: `${n} node(s) and ${edges.length} edge(s). Walk the nodes in order and dive from the first unvisited one.` }));
+    for (let s = 0; s < n; s++) {
+      if (seen[s]) {
+        steps.push(snap({ what: `Skip node ${s}`, why: 'It was already collected by an earlier dive, so it starts nothing new.' }));
+        continue;
+      }
+      const st = [s];
+      const comp = [];
+      seen[s] = true;
+      steps.push(snap({ stack: st.slice(), comp: comp.slice(),
+        what: `Start component ${comps.length + 1} at node ${s}`,
+        why: 'Nothing has reached this node, so it must be in a piece we have not seen.' }));
+      while (st.length) {
+        const u = st.pop();
+        comp.push(u);
+        done.push(u);
+        lab[u] = comps.length + 1;
+        let pushed = [];
+        for (const v of adj[u]) {
+          if (seen[v]) { continue; }
+          seen[v] = true;
+          st.push(v);
+          pushed.push(v);
+        }
+        steps.push(snap({ cur: u, stack: st.slice(), comp: comp.slice(),
+          what: `Pop node ${u}`,
+          why: pushed.length
+            ? `It joins the component; its unvisited neighbour(s) ${pushed.join(', ')} go on the stack.`
+            : 'It joins the component; every neighbour was already marked, so nothing new is pushed.' }));
+      }
+      comp.sort((a, b) => a - b);
+      comps.push(comp);
+      steps.push(snap({ comp: comp.slice(),
+        what: `Component ${comps.length} finished: ${JSON.stringify(comp)}`,
+        why: 'The stack emptied, so nothing else is reachable from here.' }));
+    }
+    const result = comps.map(c => c.slice());
+    steps.push(snap({
+      what: `${result.length} component(s) in total`,
+      why: `Every node has been placed exactly once. Result: ${JSON.stringify(result)}.`,
+      result }));
+    return steps;
+  }
+
+  function drRender(st) {
+    gDraw('dr-graph', drEx, st);
+    document.getElementById('dr-f-st').textContent = st.stack.length ? st.stack.slice().reverse().join(' → ') : 'empty';
+    document.getElementById('dr-f-comp').textContent = st.comp.length ? st.comp.join(' ') : '—';
+    document.getElementById('dr-f-n').textContent = st.ncomp;
+    document.getElementById('dr-f-res').textContent =
+      'result = ' + ('result' in st ? JSON.stringify(st.result) : '…');
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.what;
+    if (whyEl) whyEl.textContent = st.why;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+  function drLoadEx(idx) {
+    drStopPlay(); drCur = 0; drEx = idx;
+    [0,1,2].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+    drSteps = drGenSteps(EX[idx].n, EX[idx].edges);
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ── init ── */
+  siSteps = siGenSteps(EX[0].n, EX[0].edges);
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,62 @@
+/* algo.css — shared visuals for ALGORITHM lessons (algorithms/<id>/lesson.html).
+   Loaded IN ADDITION TO lesson.css, never instead of it. LC lessons do not load
+   this file. Two families of visual live here:
+     .gv-*  node-link graph, drawn as a viewBox SVG so it scales to any width
+     .dp-*  dynamic-programming table, with row/column headers
+   See static/CLASSES.md for the vocabulary. Do not restyle these per lesson —
+   a lesson-specific <style> block is for genuinely one-off markup only. */
+
+/* ── node-link graph ──────────────────────────────────────────────────────── */
+.gv-wrap { width: 100%; overflow-x: auto; }
+.gv-svg  { width: 100%; max-width: 560px; height: auto; display: block; margin: 0 auto; }
+
+.gv-edge      { stroke: var(--border2); stroke-width: 2.5; fill: none; }
+.gv-edge.hot  { stroke: var(--text-info);    stroke-width: 4.5; }
+.gv-edge.tree { stroke: var(--text-success); stroke-width: 4.5; }
+.gv-edge.bad  { stroke: var(--text-danger);  stroke-width: 2.5; stroke-dasharray: 5 4; }
+.gv-edge.dim  { stroke: var(--border2);      stroke-width: 1.5; opacity: .45; }
+
+.gv-node       { fill: var(--bg2); stroke: var(--border2); stroke-width: 2; }
+.gv-node.seen  { fill: var(--bg-success); stroke: var(--border-success); }
+.gv-node.queue { fill: var(--bg-warn);    stroke: var(--border-warn); }
+.gv-node.cur   { fill: var(--bg-info);    stroke: var(--text-info); stroke-width: 3.5; }
+.gv-node.bad   { fill: var(--bg-danger);  stroke: var(--border-danger); }
+
+.gv-id    { font-family: var(--mono); font-size: 15px; font-weight: 700; fill: var(--text);  text-anchor: middle; }
+.gv-lbl   { font-family: var(--mono); font-size: 12px; font-weight: 700; fill: var(--text2); text-anchor: middle; }
+.gv-lbl.on{ fill: var(--text-success); }
+.gv-w     { font-family: var(--mono); font-size: 12px; font-weight: 700; fill: var(--text3); text-anchor: middle; }
+.gv-w.hot { fill: var(--text-info); }
+
+.gv-legend  { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin: .5rem 0; font-size: 12px; color: var(--text2); }
+.gv-legend .leg-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 5px; }
+.gv-cap     { font-family: var(--mono); font-size: 12px; color: var(--text2); margin: .625rem 0; min-height: 2.4em; }
+.gv-counter { display: flex; gap: 1.5rem; flex-wrap: wrap; font-family: var(--mono); font-size: 13px; margin: .625rem 0; }
+.gv-counter b { color: var(--text-warn); }
+
+/* small chips for a per-node array (dist[], parent[], colour[] …) */
+.gv-strip { display: flex; gap: 5px; flex-wrap: wrap; font-family: var(--mono); font-size: 12px; margin: .5rem 0; }
+.gv-strip span { padding: 3px 7px; border-radius: 5px; background: var(--bg2); border: 1px solid var(--border2); color: var(--text2); }
+.gv-strip span.set { background: var(--bg-success); border-color: var(--border-success); color: var(--text-success); }
+.gv-strip span.cur { background: var(--bg-info);    border-color: var(--border-info);    color: var(--text-info); }
+
+/* ── dynamic-programming table ────────────────────────────────────────────── */
+.dp-wrap  { width: 100%; overflow-x: auto; margin: .5rem 0; }
+.dp-table { border-collapse: separate; border-spacing: 3px; font-family: var(--mono); font-size: 13px; margin: 0 auto; }
+.dp-table th { font-weight: 600; color: var(--text3); font-size: 12px; padding: 2px 6px; text-align: center; }
+.dp-table td {
+  min-width: 34px; height: 30px; text-align: center; padding: 0 6px;
+  border-radius: 5px; border: 1.5px solid var(--border2); background: var(--bg2);
+  color: var(--text2); transition: background .15s, border-color .15s;
+}
+.dp-table td.set  { background: var(--bg2);          border-color: var(--border);         color: var(--text); }
+.dp-table td.cur  { background: var(--bg-info);      border-color: var(--text-info);      color: var(--text-info);    font-weight: 700; }
+.dp-table td.src  { background: var(--bg-warn);      border-color: var(--border-warn);    color: var(--text-warn); }
+.dp-table td.best { background: var(--bg-success);   border-color: var(--border-success); color: var(--text-success); font-weight: 700; }
+.dp-table td.bad  { background: var(--bg-danger);    border-color: var(--border-danger);  color: var(--text-danger); }
+.dp-table td.dim  { opacity: .38; }
+
+@media (max-width: 480px) {
+  .dp-table { font-size: 11px; border-spacing: 2px; }
+  .dp-table td { min-width: 26px; height: 25px; padding: 0 3px; }
+}

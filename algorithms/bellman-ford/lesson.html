@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bellman-Ford Algorithm — Algorithm Lesson</title>
+<link rel="stylesheet" href="../../static/lesson.css">
+<link rel="stylesheet" href="../../static/algo.css">
+</head>
+<body>
+
+<div class="header">
+  <p class="header-eyebrow">Algorithm Lesson</p>
+  <h1>Bellman-Ford Algorithm</h1>
+  <div class="header-meta">
+    <span class="badge badge-arr">Graph Algorithms</span>
+    <span class="badge badge-med">Tier 2 · core</span>
+    <span class="badge badge-arr">O(V·E) time · O(V) space</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 0: CLARIFYING QUESTIONS ═══ -->
+<div class="section" style="padding-top:.5rem">
+  <p class="sec-label">Before you code</p>
+  <p class="sec-title">Clarifying questions to ask first</p>
+  <p class="body">Ask these before writing anything. The answers decide whether the question even has an answer.</p>
+  <div class="asgrid">
+    <div class="acard">
+      <div class="acard-q">Can a weight be negative?</div>
+      <div class="acard-a">Yes — that is the whole reason to be here.</div>
+      <div class="acard-u">→ Dijkstra is ruled out; its greedy claim needs non-negative weights</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Can there be a negative cycle?</div>
+      <div class="acard-a">Possibly.</div>
+      <div class="acard-u">→ then "shortest" has no answer at all, and the algorithm must say so instead of returning numbers</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">Directed or undirected?</div>
+      <div class="acard-a">Directed.</div>
+      <div class="acard-u">→ a negative edge in an undirected graph <i>is</i> a negative cycle: walk it back and forth</div>
+    </div>
+    <div class="acard">
+      <div class="acard-q">How do we mark an unreachable node?</div>
+      <div class="acard-a">With null, not -1.</div>
+      <div class="acard-u">→ with negative weights, -1 is a perfectly legal distance. A numeric sentinel would be ambiguous.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: THE INSIGHT ═══ -->
+<div class="section">
+  <p class="sec-label">The Insight</p>
+  <p class="sec-title">After round k, every route of k edges has been priced</p>
+
+  <p class="body">You cannot settle nodes one at a time any more — a negative edge could always undercut a finished answer. So stop being clever. Relax every edge, then do it again. Each full round extends every correct distance by one more edge, and a shortest route never repeats a node, so V-1 rounds is enough.</p>
+
+  <div style="margin:1.25rem 0">
+    <div class="gv-legend">
+      <span><span class="leg-dot" style="background:var(--bg2);border:1px solid var(--border2)"></span>still ∞</span>
+      <span><span class="leg-dot" style="background:var(--bg-warn)"></span>has a value, may still fall</span>
+      <span><span class="leg-dot" style="background:var(--bg-success)"></span>proved final by this round</span>
+    </div>
+    <div id="si-graph" class="gv-wrap" style="margin:.5rem 0"></div>
+    <div id="si-cap" class="gv-cap"></div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="ctrl-btn"     onclick="siPrev()">← Prev</button>
+      <button class="ctrl-btn pri" id="si-bplay" onclick="siTogglePlay()">▶ Auto</button>
+      <button class="ctrl-btn"     onclick="siNext()">Next →</button>
+      <button class="ctrl-btn"     onclick="siReset()">↺ Reset</button>
+      <span class="step-ctr" id="si-sctr"></span>
+    </div>
+  </div>
+
+  <div style="margin:1.25rem 0;font-size:13px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:.5rem;color:var(--text)">Why V-1 rounds is exactly the right number:</div>
+    <div class="skeleton">
+      <div class="wt-item">
+        <div class="wt-num">1</div>
+        <div class="wt-body">
+          <div class="wt-name">A round adds one edge to every answer</div>
+          <div class="wt-desc">Suppose the true shortest route to v is correct up to its second-to-last node u. A round relaxes every edge, including u→v, so after that round v is correct too. Order inside the round does not matter — it can only help.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">2</div>
+        <div class="wt-body">
+          <div class="wt-name">A shortest route uses at most V-1 edges</div>
+          <div class="wt-desc">If it repeated a node it would contain a cycle. Without negative cycles, dropping that cycle is never worse, so some shortest route has no repeats — and a route with no repeats touches at most V nodes, hence V-1 edges.</div>
+        </div>
+      </div>
+      <div class="wt-item">
+        <div class="wt-num">3</div>
+        <div class="wt-body">
+          <div class="wt-name">So one extra round is a negative-cycle detector</div>
+          <div class="wt-desc">After V-1 rounds everything reachable is final. If a V-th round still lowers something, the improvement must come from a route with more than V-1 edges — a repeat — and it only helped because that cycle pays. There is no answer to return.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox success">
+    <p class="infobox-t">The kernel</p>
+    <p class="infobox-d">Relax every edge, V-1 times over. Round k makes every route of k edges correct, and a shortest route in a graph with no negative cycle needs at most V-1 edges, so the answer is complete. One more round that still improves something proves a reachable negative cycle exists.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2: BRUTE FORCE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 1</p>
+  <p class="sec-title">Brute force — feel the cost</p>
+  <p class="body">The naive method is to walk every route that never repeats a node and keep the cheapest total per node. It is right whenever no negative cycle exists — but the route count grows factorially, and it cannot say anything useful when a cycle does pay. Watch the counter.</p>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="bf-ex0" onclick="bfLoadEx(0)">negatives, no cycle</button>
+    <button class="ex-btn"        id="bf-ex1" onclick="bfLoadEx(1)">negative cycle</button>
+    <button class="ex-btn"        id="bf-ex2" onclick="bfLoadEx(2)">unreachable</button>
+  </div>
+  <div id="bf-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-counter">
+    <span>routes walked: <b id="bf-routes">0</b></span>
+    <span>current route: <b id="bf-path">—</b></span>
+    <span>cost: <b id="bf-cost">0</b></span>
+  </div>
+  <div id="bf-strip" class="gv-strip"></div>
+  <div id="bf-narr" class="gv-cap"></div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="bf-prev" onclick="bfPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="bf-play" onclick="bfTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="bf-next" onclick="bfNext()">Next →</button>
+    <button class="ctrl-btn"                  onclick="bfReset()">↺ Reset</button>
+    <span class="step-ctr" id="bf-sctr"></span>
+  </div>
+  <div class="infobox danger" style="margin-top:.875rem">
+    <p class="infobox-t" style="color:var(--text-danger)">Cost: O(V!) time — and it cannot report a negative cycle</p>
+    <p class="infobox-d">Restricting to routes with no repeats is what keeps it finite, but that same restriction hides the negative cycle: the walk simply refuses to go round it, and returns numbers that look fine.</p>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-bf',this)">▶ Reveal brute-force code</button>
+  <div id="code-bf" class="code-block">
+    <pre class="cb"><span class="cm">// Walk every simple route; keep the cheapest total per node.</span>
+<span class="kw">void</span> <span class="fn">walk</span>(<span class="kw">int</span> u, <span class="kw">long long</span> cost, <span class="kw">vector</span>&lt;<span class="kw">long long</span>&gt;&amp; best,
+          <span class="kw">vector</span>&lt;<span class="kw">bool</span>&gt;&amp; onPath, <span class="kw">vector</span>&lt;<span class="kw">vector</span>&lt;<span class="kw">pair</span>&lt;<span class="kw">int</span>,<span class="kw">int</span>&gt;&gt;&gt;&amp; adj) {
+    onPath[u] = <span class="kw">true</span>;
+    <span class="kw">if</span> (cost &lt; best[u]) { best[u] = cost; }
+    <span class="kw">for</span> (<span class="kw">auto</span>&amp; [v, w] : adj[u]) {
+        <span class="kw">if</span> (onPath[v]) { <span class="kw">continue</span>; }   <span class="cm">// this is what hides the cycle</span>
+        <span class="fn">walk</span>(v, cost + w, best, onPath, adj);
+    }
+    onPath[u] = <span class="kw">false</span>;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3: TRANSLATIONS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 2</p>
+  <p class="sec-title">Translations — every optimisation, named</p>
+  <p class="body">Three swaps turn the route walk into V rounds of edge sweeping.</p>
+  <div class="skeleton">
+    <div class="wt-item">
+      <div class="wt-num">1</div>
+      <div class="wt-body">
+        <div class="wt-name">Track which route → keep only the best number</div>
+        <div class="wt-desc">A node never needs its history. Relaxing an edge blindly is enough, because a wrong guess can only be replaced by a better one.</div>
+        <div class="wt-gain">O(V!) → O(V·E)</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">2</div>
+      <div class="wt-body">
+        <div class="wt-name">Loop until nothing changes → stop after V-1 rounds</div>
+        <div class="wt-desc">The bound is not a guess. A shortest route has at most V-1 edges, and round k prices every route of k edges, so round V-1 finishes the job.</div>
+        <div class="wt-gain">a guaranteed termination bound</div>
+      </div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-num">3</div>
+      <div class="wt-body">
+        <div class="wt-name">Separate cycle hunt → one extra round</div>
+        <div class="wt-desc">No second algorithm is needed. If round V still improves something, the improvement used more than V-1 edges, which means a cycle that pays.</div>
+        <div class="wt-gain">detection for one extra O(E) pass</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 4: ALGORITHM IN PLAIN ENGLISH ═══ -->
+<div class="section">
+  <p class="sec-label">Step 3</p>
+  <p class="sec-title">The algorithm in plain English</p>
+  <div class="algo-steps">
+    <div class="algo-step">
+      <div class="algo-n">1</div>
+      <div class="algo-t"><b>Set up.</b> Every distance starts at infinity except <code>dist[src] = 0</code>.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">2</div>
+      <div class="algo-t"><b>Do V-1 rounds.</b> In each round walk the entire edge list once, in any order.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">3</div>
+      <div class="algo-t"><b>Relax each edge.</b> If <code>dist[u] + w &lt; dist[v]</code>, lower <code>dist[v]</code>. Skip edges whose source is still infinite.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">4</div>
+      <div class="algo-t"><b>Stop early if a round changes nothing</b> — the answer has already settled and further rounds are wasted work.</div>
+    </div>
+    <div class="algo-step">
+      <div class="algo-n">5</div>
+      <div class="algo-t"><b>Run one more round.</b> If anything still improves, report a negative cycle. Otherwise return the distances, with <code>null</code> for unreachable.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: CODE ═══ -->
+<div class="section">
+  <p class="sec-label">Step 4</p>
+  <p class="sec-title">Code</p>
+  <p class="body">C++ first — that is the version the walkthrough below animates. The <code>dist[u] == INF</code> guard is not optional: without it the sentinel overflows and looks like an improvement.</p>
+  <button class="reveal-btn" onclick="toggleEl('code-main',this)">▶ Reveal Code</button>
+  <div id="code-main" class="code-block">
+    <pre class="cb"><span class="kw">struct</span> Result { <span class="kw">vector</span>&lt;<span class="kw">long long</span>&gt; dist; <span class="kw">bool</span> neg; };
+
+Result <span class="fn">bellmanFord</span>(<span class="kw">int</span> n, <span class="kw">vector</span>&lt;<span class="kw">array</span>&lt;<span class="kw">int</span>,3&gt;&gt;&amp; edges, <span class="kw">int</span> src) {
+    <span class="kw">const long long</span> INF = 4e18;
+    <span class="kw">vector</span>&lt;<span class="kw">long long</span>&gt; dist(n, INF);
+    dist[src] = 0;
+    <span class="kw">for</span> (<span class="kw">int</span> round = 1; round &lt; n; round++) {
+        <span class="kw">bool</span> changed = <span class="kw">false</span>;
+        <span class="kw">for</span> (<span class="kw">auto</span>&amp; [u, v, w] : edges) {
+            <span class="kw">if</span> (dist[u] == INF) { <span class="kw">continue</span>; }      <span class="cm">// never add to the sentinel</span>
+            <span class="kw">if</span> (dist[u] + w &lt; dist[v]) { dist[v] = dist[u] + w; changed = <span class="kw">true</span>; }
+        }
+        <span class="kw">if</span> (!changed) { <span class="kw">break</span>; }                <span class="cm">// settled early</span>
+    }
+    <span class="kw">for</span> (<span class="kw">auto</span>&amp; [u, v, w] : edges) {              <span class="cm">// one extra round = detector</span>
+        <span class="kw">if</span> (dist[u] != INF &amp;&amp; dist[u] + w &lt; dist[v]) { <span class="kw">return</span> {{}, <span class="kw">true</span>}; }
+    }
+    <span class="kw">return</span> {dist, <span class="kw">false</span>};
+}</pre>
+  </div>
+  <button class="reveal-btn" onclick="toggleEl('code-py',this)" style="margin-top:.5rem">▶ Reveal the same thing in Python</button>
+  <div id="code-py" class="code-block">
+    <pre class="cb"><span class="kw">def</span> <span class="fn">bellman_ford</span>(n, edges, src):
+    INF = <span class="fn">float</span>(<span class="nu">'inf'</span>)
+    dist = [INF] * n
+    dist[src] = <span class="nu">0</span>
+    <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(n - <span class="nu">1</span>):
+        changed = <span class="kw">False</span>
+        <span class="kw">for</span> u, v, w <span class="kw">in</span> edges:
+            <span class="kw">if</span> dist[u] + w &lt; dist[v]:
+                dist[v] = dist[u] + w
+                changed = <span class="kw">True</span>
+        <span class="kw">if</span> <span class="kw">not</span> changed:
+            <span class="kw">break</span>
+    <span class="kw">for</span> u, v, w <span class="kw">in</span> edges:
+        <span class="kw">if</span> dist[u] + w &lt; dist[v]:
+            <span class="kw">return</span> <span class="kw">None</span>, <span class="kw">True</span>          <span class="cm"># reachable negative cycle</span>
+    <span class="kw">return</span> [<span class="kw">None</span> <span class="kw">if</span> d == INF <span class="kw">else</span> d <span class="kw">for</span> d <span class="kw">in</span> dist], <span class="kw">False</span></pre>
+  </div>
+</div>
+
+<!-- ═══ SECTION 6: CODE VISUALIZATION ═══ -->
+<div class="section cv-section">
+  <p class="sec-label">Step 5</p>
+  <p class="sec-title">Code visualization — line by line</p>
+  <p class="body">Each step runs one line of the C++ above. On the negative-cycle example, watch the detector round fire and return early.</p>
+  <div class="cv-split">
+    <div id="cv-code-panel" class="cv-code-panel"><!-- built by cvBuildCode(CV_LINES) --></div>
+    <div class="cv-state-panel">
+      <div id="cv-var-grid" class="cv-var-grid">
+        <div class="cv-var-card dim" id="cv-v-round"><span class="cv-var-name">round</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-edge"><span class="cv-var-name">edge</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-changed"><span class="cv-var-name">changed</span><span class="cv-var-val">—</span></div>
+        <div class="cv-var-card dim" id="cv-v-dist"><span class="cv-var-name">dist</span><span class="cv-var-val">—</span></div>
+      </div>
+      <div id="cv-narration" class="cv-narration">Press ▶ Auto or use the arrow keys to walk through.</div>
+    </div>
+  </div>
+  <div id="cv-graph" class="gv-wrap" style="background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r2);padding:.875rem 1rem;margin:.875rem 0"></div>
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="cv-ex0" onclick="cvLoadEx(0)">negatives, no cycle</button>
+    <button class="ex-btn"        id="cv-ex1" onclick="cvLoadEx(1)">negative cycle</button>
+    <button class="ex-btn"        id="cv-ex2" onclick="cvLoadEx(2)">unreachable</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="cv-bprev" onclick="cvPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="cv-bplay" onclick="cvTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="cv-bnext" onclick="cvNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="cvReset()">↺ Reset</button>
+    <span class="step-ctr" id="cv-sctr"></span>
+    <span class="kbd-hint">keys <kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> <kbd>R</kbd></span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 7: DRY RUN ═══ -->
+<div class="section dr-section">
+  <p class="sec-label">Step 6</p>
+  <p class="sec-title">Dry run — step through the algorithm</p>
+  <p class="body">Pick a graph and run the rounds by hand. Before pressing Next, predict which distances this round can still lower.</p>
+
+  <div id="dr-graph" class="gv-wrap" style="margin:.75rem 0"></div>
+  <div class="gv-legend">
+    <span><span class="leg-dot" style="background:var(--bg-info)"></span>lowered this round</span>
+    <span><span class="leg-dot" style="background:var(--bg-warn)"></span>has a value</span>
+    <span><span class="leg-dot" style="background:var(--bg-success)"></span>settled</span>
+  </div>
+
+  <div class="panels-fixed">
+    <div id="dr-formula" class="formula-panel">
+      <div class="formula-grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">round</div>
+          <div class="fitem-val" id="dr-f-round">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">lowered this round</div>
+          <div class="fitem-val" id="dr-f-changed">0</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="fitem-label">negative cycle</div>
+          <div class="fitem-val" id="dr-f-neg">…</div>
+        </div>
+      </div>
+      <div class="formula-eq" id="dr-f-dist"></div>
+    </div>
+    <div id="dr-step" class="step-panel">
+      <div class="step-what"></div>
+      <div class="step-why"></div>
+    </div>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:.75rem">
+    <button class="ex-btn active" id="dr-ex0" onclick="drLoadEx(0)">negatives → [0,2,4,7,-2]</button>
+    <button class="ex-btn"        id="dr-ex1" onclick="drLoadEx(1)">cycle → no answer</button>
+    <button class="ex-btn"        id="dr-ex2" onclick="drLoadEx(2)">unreachable → null</button>
+  </div>
+  <div class="ctrl-row" style="margin-top:.5rem">
+    <button class="ctrl-btn"     id="dr-bp"    onclick="drPrev()">← Prev</button>
+    <button class="ctrl-btn pri" id="dr-bplay" onclick="drTogglePlay()">▶ Auto</button>
+    <button class="ctrl-btn"     id="dr-bn"    onclick="drNext()">Next →</button>
+    <button class="ctrl-btn"                   onclick="drReset()">↺ Reset</button>
+    <span class="step-ctr" id="dr-sctr"></span>
+  </div>
+  <p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto/pause &nbsp;<kbd>R</kbd> reset</p>
+</div>
+
+<!-- ═══ SECTION 8: CORNER CASES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 7</p>
+  <p class="sec-title">Corner cases</p>
+
+  <div class="corner">
+    <div class="cnum">1</div>
+    <div class="corner-title">Adding to the infinity sentinel</div>
+    <div class="corner-body">If <code>dist[u]</code> is <code>LLONG_MAX</code>, then <code>dist[u] + w</code> with a negative <code>w</code> is smaller than the sentinel and looks like a real improvement — so unreachable nodes acquire nonsense distances. Guard with <code>if (dist[u] == INF) continue;</code> or use a sentinel like <code>4e18</code> that leaves headroom.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">2</div>
+    <div class="corner-title">A negative cycle the source cannot reach</div>
+    <div class="corner-body">It never affects any distance, so arguably the answer is still valid. The plain detector reports it anyway, because it checks every edge. If that matters, restrict the final check to edges whose source has a finite distance — which is what the code above does.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">3</div>
+    <div class="corner-title">Using -1 for unreachable</div>
+    <div class="corner-body">A real bug here, unlike in BFS. Negative weights make -1 a perfectly ordinary distance, so a caller cannot tell "cost -1" from "no route". Return <code>null</code> or keep the infinity sentinel.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">4</div>
+    <div class="corner-title">An undirected graph with a negative edge</div>
+    <div class="corner-body">There is no answer, ever. Walking that edge back and forth is a cycle of twice its weight, so it is negative. If a problem gives you undirected negative weights, one of your assumptions is wrong.</div>
+  </div>
+  <div class="corner">
+    <div class="cnum">5</div>
+    <div class="corner-title">Dropping the early exit</div>
+    <div class="corner-body">Not a correctness bug, but on most real graphs the distances settle in far fewer than V-1 rounds. The <code>changed</code> flag usually turns O(V·E) into something close to O(E).</div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 9: PRODUCTION READINESS ═══ -->
+<div class="section">
+  <p class="sec-label">Step 8</p>
+  <p class="sec-title">Production readiness</p>
+  <div class="checklist">
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Guard the sentinel</b> before every relaxation. This is the bug that produces distances for nodes that have no route at all.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Keep the early-exit flag.</b> Free, and it usually cuts the round count to a handful.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Return the cycle verdict in the type,</b> not as a magic number. A caller must not be able to use the distances without seeing the flag.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>Use 64-bit distances.</b> V·maxWeight overflows 32 bits, and negative weights let it overflow in both directions.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>To name the cycle,</b> record <code>parent[v]</code> on each relaxation, then walk back V steps from a node that improved in the extra round — that lands you inside the cycle.</div>
+    </div>
+    <div class="chk-item">
+      <div class="chk-icon">✓</div>
+      <div class="chk-text"><b>If all weights are non-negative, use Dijkstra.</b> Bellman-Ford is O(V·E); paying that when you do not have to is the real mistake.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 10: APPROACHES ═══ -->
+<div class="section">
+  <p class="sec-label">Step 9</p>
+  <p class="sec-title">Approaches — trade-offs</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab0" onclick="switchTab(0)">Bellman-Ford</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab(1)">SPFA (queue)</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Floyd-Warshall</button>
+  </div>
+  <div class="tab-pane active" id="pane0">
+    <span class="tag tag-time">O(V·E)</span><span class="tag tag-space">O(V)</span>
+    <p class="body">The version above. Simple, predictable, and the standard answer when weights can be negative or when you must detect a negative cycle. Also the easiest to adapt to "at most K edges" — just run K rounds.</p>
+  </div>
+  <div class="tab-pane" id="pane1">
+    <span class="tag tag-time">O(V·E) worst case</span><span class="tag tag-space">O(V)</span>
+    <p class="body">Only relax edges out of nodes whose distance actually changed, kept in a queue. Much faster in practice, same worst case — and adversarial inputs really do hit it, so do not rely on the average when the input is not yours.</p>
+    <button class="reveal-btn" onclick="toggleEl('code-spfa',this)">▶ Reveal sketch</button>
+    <div id="code-spfa" class="code-block">
+      <pre class="cb"><span class="kw">queue</span>&lt;<span class="kw">int</span>&gt; q; q.<span class="fn">push</span>(src); inQ[src] = <span class="kw">true</span>;
+<span class="kw">while</span> (!q.<span class="fn">empty</span>()) {
+    <span class="kw">int</span> u = q.<span class="fn">front</span>(); q.<span class="fn">pop</span>(); inQ[u] = <span class="kw">false</span>;
+    <span class="kw">for</span> (<span class="kw">auto</span>&amp; [v, w] : adj[u]) {
+        <span class="kw">if</span> (dist[u] + w &lt; dist[v]) {
+            dist[v] = dist[u] + w;
+            <span class="kw">if</span> (!inQ[v]) { q.<span class="fn">push</span>(v); inQ[v] = <span class="kw">true</span>; }
+            <span class="kw">if</span> (++cnt[v] &gt;= n) { <span class="kw">return</span> NEGATIVE_CYCLE; }
+        }
+    }
+}</pre>
+    </div>
+  </div>
+  <div class="tab-pane" id="pane2">
+    <span class="tag tag-time">O(V³)</span><span class="tag tag-space">O(V²)</span>
+    <p class="body">Gives every pair at once and also handles negatives. Better than running Bellman-Ford from every source (which is O(V²·E)) whenever the graph is dense, and it detects negative cycles from the diagonal. Worse if you only need one source.</p>
+  </div>
+</div>
+
+<!-- ═══ SECTION 11: COMPLEXITY ═══ -->
+<div class="section">
+  <p class="sec-label">Step 10</p>
+  <p class="sec-title">Complexity</p>
+  <div class="cplx-grid">
+    <div class="ccard">
+      <div class="ccard-l">Time</div>
+      <div class="ccard-v">O(V·E)</div>
+      <div class="ccard-n">Each round scans the whole edge list, O(E), and there are V-1 rounds plus one detector round. The bound is tight: a path relaxed in the worst order needs every round.</div>
+    </div>
+    <div class="ccard">
+      <div class="ccard-l">Space</div>
+      <div class="ccard-v">O(V)</div>
+      <div class="ccard-n">One distance per node. The edge list is the input, and nothing else is stored — no queue, no heap, no visited set.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 12: TAKE HOME ═══ -->
+<div class="section">
+  <p class="sec-label">Take home</p>
+  <p class="sec-title">LeetCode problems that are this algorithm</p>
+  <div class="takehome">
+    <p><b>LC 787 — Cheapest Flights Within K Stops:</b> the cleanest fit anywhere on LeetCode. Run exactly K+1 rounds and the "at most K stops" limit falls straight out of the round count — but relax from a <i>copy</i> of the previous round's distances, or one round can chain several flights.</p>
+    <p><b>LC 743 — Network Delay Time:</b> weights are non-negative so Dijkstra is better, but Bellman-Ford is a correct and much shorter answer worth knowing.</p>
+    <p><b>LC 1976 — Number of Ways to Arrive at Destination:</b> shortest paths plus a count. The counting layer works on top of either algorithm.</p>
+    <p><b>The trick to carry:</b> "at most K edges" is the giveaway. Dijkstra has no notion of round number, but a Bellman-Ford round <i>is</i> an edge count.</p>
+  </div>
+</div>
+
+<script src="../../static/lesson.js"></script>
+<script src="../../static/algo.js"></script>
+<script>
+  const LAYOUT = [
+    { vb: '0 0 515 210', pos: [[55,105],[215,50],[370,50],[215,162],[370,162]] },
+    { vb: '0 0 515 210', pos: [[90,105],[258,105],[425,105]] },
+    { vb: '0 0 515 210', pos: [[70,105],[215,105],[360,105],[465,105]] },
+  ];
+
+  /* Map one animation step onto the shared painter. DOM only. */
+  function gDraw(conId, exIdx, st) {
+    const raw = EX[exIdx].edges, pos = LAYOUT[exIdx].pos;
+    const edges = raw.map(e => [e[0], e[1]]);
+    const hot = st.hi ? st.hi[0] + '>' + st.hi[1] : null;
+    const onPath = new Set();
+    for (let i = 0; i + 1 < (st.path || []).length; i++) { onPath.add(st.path[i] + '>' + st.path[i + 1]); }
+    const settled = new Set(st.settled || []);
+    const justFell = new Set(st.fell || []);
+    const has = d => d !== null && d !== undefined && d !== Infinity;
+    gvPaint(conId, { vb: LAYOUT[exIdx].vb, pos, edges, directed: true, weights: raw.map(e => e[2]) }, {
+      nodeCls: pos.map((_, i) =>
+        justFell.has(i) ? 'cur' : settled.has(i) ? 'seen' : has((st.dist || [])[i]) ? 'queue' : ''),
+      edgeCls: edges.map(e => {
+        const k = e[0] + '>' + e[1];
+        return k === hot ? 'hot' : onPath.has(k) ? 'tree' : '';
+      }),
+      labels:  pos.map((_, i) => has((st.dist || [])[i]) ? String(st.dist[i]) : '∞'),
+      labelOn: pos.map((_, i) => settled.has(i)),
+    });
+  }
+
+  /* ── answer-bearing examples (drive bf / cv / dr panels AND the verifier) ── */
+  const EX = [
+    { n: 5, edges: [[0,1,6],[0,3,7],[1,2,5],[1,3,8],[1,4,-4],[2,1,-2],[3,2,-3],[3,4,9],[4,2,7],[4,0,2]],
+      src: 0, answer: { dist: [0,2,4,7,-2], neg: false } },
+    { n: 3, edges: [[0,1,1],[1,2,-1],[2,1,-1]],
+      src: 0, answer: { dist: null, neg: true } },
+    { n: 4, edges: [[0,1,4],[1,2,-2]],
+      src: 0, answer: { dist: [0,4,2,null], neg: false } },
+  ];
+
+  const CV_LINES = [
+    { n:1,  c:'Result bellmanFord(int n, vector<array<int,3>>& edges, int src) {' },
+    { n:2,  c:'    vector<long long> dist(n, INF);' },
+    { n:3,  c:'    dist[src] = 0;' },
+    { n:4,  c:'    for (int round = 1; round < n; round++) {' },
+    { n:5,  c:'        bool changed = false;' },
+    { n:6,  c:'        for (auto& [u, v, w] : edges) {' },
+    { n:7,  c:'            if (dist[u] == INF) continue;' },
+    { n:8,  c:'            if (dist[u] + w < dist[v]) { dist[v] = dist[u]+w; changed = true; }' },
+    { n:9,  c:'        }' },
+    { n:10, c:'        if (!changed) break;' },
+    { n:11, c:'    }' },
+    { n:12, c:'    for (auto& [u, v, w] : edges)          // detector round' },
+    { n:13, c:'        if (dist[u] != INF && dist[u]+w < dist[v]) return {{}, true};' },
+    { n:14, c:'    return {dist, false};' },
+    { n:15, c:'}' },
+  ];
+
+  /* ════════════════ SEC 1 INSIGHT — round by round ════════════════ */
+  let siSteps = [], siCur = 0, siTimer = null;
+
+  function siGenSteps(n, edges, src) {
+    const dist = new Array(n).fill(null);
+    dist[src] = 0;
+    const steps = [];
+    steps.push({ dist: dist.slice(), settled: [], fell: [], hi: null,
+      cap: `Round 0 — only the source has a value. Every route of 0 edges is priced.` });
+    for (let r = 1; r < n; r++) {
+      const before = dist.slice();
+      const fell = [];
+      for (const e of edges) {
+        if (before[e[0]] === null) { continue; }
+        const cand = before[e[0]] + e[2];
+        if (dist[e[1]] === null || cand < dist[e[1]]) { dist[e[1]] = cand; }
+      }
+      for (let i = 0; i < n; i++) {
+        if (dist[i] !== before[i]) { fell.push(i); }
+      }
+      const settled = [];
+      for (let i = 0; i < n; i++) { if (dist[i] !== null && fell.indexOf(i) < 0) { settled.push(i); } }
+      steps.push({ dist: dist.slice(), settled, fell, hi: null,
+        cap: fell.length
+          ? `Round ${r} — every route of ${r} edge(s) is now priced. Lowered: ${fell.join(', ')}.`
+          : `Round ${r} — nothing changed, so the distances have already settled. Later rounds cannot help.` });
+      if (fell.length === 0) { break; }
+    }
+    const settledAll = [];
+    for (let i = 0; i < n; i++) { if (dist[i] !== null) { settledAll.push(i); } }
+    steps.push({ dist: dist.slice(), settled: settledAll, fell: [], hi: null,
+      cap: `A shortest route uses at most ${n - 1} edge(s), so ${n - 1} round(s) is always enough. One more round that still improves would mean a negative cycle.` });
+    return steps;
+  }
+
+  function siRender(st) {
+    gDraw('si-graph', 0, st);
+    document.getElementById('si-cap').textContent = st.cap;
+    const c = document.getElementById('si-sctr');
+    if (c) c.textContent = `step ${siCur + 1} / ${siSteps.length}`;
+  }
+  function siNext()  { if (siCur < siSteps.length - 1) { siCur++; siRender(siSteps[siCur]); } else siStopPlay(); }
+  function siPrev()  { if (siCur > 0) { siCur--; siRender(siSteps[siCur]); } }
+  function siReset() { siStopPlay(); siCur = 0; siRender(siSteps[0]); }
+  function siStopPlay() { clearInterval(siTimer); siTimer = null; const b = document.getElementById('si-bplay'); if (b) b.textContent = '▶ Auto'; }
+  function siTogglePlay() {
+    if (siTimer) { siStopPlay(); return; }
+    document.getElementById('si-bplay').textContent = '⏸ Pause';
+    siTimer = setInterval(() => { if (siCur < siSteps.length - 1) siNext(); else siStopPlay(); }, 1400);
+  }
+
+  /* ════════════════ SEC 2 BRUTE FORCE — every simple route ════════════════ */
+  let bfCur = 0, bfSteps = [], bfTimer = null, bfEx = 0;
+
+  function bfGenSteps(n, edges, src) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const e of edges) { adj[e[0]].push([e[1], e[2]]); }
+    const best = new Array(n).fill(null);
+    const onPath = new Array(n).fill(false);
+    const path = [];
+    const steps = [];
+    let routes = 0;
+    steps.push({ dist: best.slice(), settled: [], fell: [], hi: null, path: [], routes, cost: 0,
+      narr: `Follow every route out of node ${src} that never repeats a node, keeping the cheapest total per node.` });
+    const walk = (u, cost) => {
+      onPath[u] = true;
+      path.push(u);
+      routes++;
+      if (best[u] === null || cost < best[u]) { best[u] = cost; }
+      steps.push({ dist: best.slice(), settled: [], fell: [u], hi: null,
+        path: path.slice(), routes, cost,
+        narr: `Route ${path.join('→')} reaches node ${u} at cost ${cost}. Routes walked: ${routes}.` });
+      for (const [v, w] of adj[u]) {
+        if (onPath[v]) { continue; }
+        walk(v, cost + w);
+      }
+      onPath[u] = false;
+      path.pop();
+    };
+    walk(src, 0);
+    steps.push({ dist: best.slice(), settled: [], fell: [], hi: null, path: [], routes, cost: 0,
+      narr: `${routes} route(s) walked on a ${n}-node graph. Refusing to repeat a node keeps this finite — but it is also why a negative cycle is invisible here.` });
+    return steps;
+  }
+
+  function bfRender(st) {
+    gDraw('bf-graph', bfEx, st);
+    stripPaint('bf-strip', st.dist.map((d, i) =>
+      ({ text: 'best[' + i + ']=' + (d === null ? '∞' : d), cls: d === null ? '' : 'set' })));
+    document.getElementById('bf-routes').textContent = st.routes;
+    document.getElementById('bf-path').textContent = st.path.length ? st.path.join('→') : '—';
+    document.getElementById('bf-cost').textContent = st.cost;
+    document.getElementById('bf-narr').textContent = st.narr;
+    document.getElementById('bf-sctr').textContent = `Step ${bfCur + 1} / ${bfSteps.length}`;
+    const bp = document.getElementById('bf-prev'); if (bp) bp.disabled = bfCur === 0;
+    const bn = document.getElementById('bf-next'); if (bn) bn.disabled = bfCur === bfSteps.length - 1;
+  }
+  function bfLoadEx(idx) {
+    bfStopPlay(); bfCur = 0; bfEx = idx;
+    [0,1,2].forEach(i => document.getElementById('bf-ex' + i).classList.toggle('active', i === idx));
+    bfSteps = bfGenSteps(EX[idx].n, EX[idx].edges, EX[idx].src);
+    bfRender(bfSteps[0]);
+  }
+  function bfNext()  { if (bfCur < bfSteps.length - 1) { bfCur++; bfRender(bfSteps[bfCur]); } else bfStopPlay(); }
+  function bfPrev()  { if (bfCur > 0) { bfCur--; bfRender(bfSteps[bfCur]); } }
+  function bfReset() { bfStopPlay(); bfCur = 0; bfRender(bfSteps[0]); }
+
+  /* ════════════════ SEC 6 CODE VIZ — one C++ line per step ════════════════ */
+  let cvCur = 0, cvSteps = [], cvTimer = null, cvEx = 0;
+
+  function cvGenSteps(n, edges, src) {
+    const dist = new Array(n).fill(null);
+    let round = null, edgeTxt = null, changed = null;
+    const steps = [];
+    const fmt = a => '[' + a.map(x => (x === null ? '∞' : x)).join(',') + ']';
+    const snap = (o) => Object.assign({
+      dist: dist.slice(), settled: [], fell: [], hi: null, changed: [],
+      round, edgeTxt, changedFlag: changed,
+    }, o);
+    steps.push(snap({ line: 1, narr: `Called with ${n} nodes, ${edges.length} edge(s), source ${src}.` }));
+    steps.push(snap({ line: 2, changed: ['dist'], narr: 'Every distance starts at infinity.' }));
+    dist[src] = 0;
+    steps.push(snap({ line: 3, changed: ['dist'], narr: `dist[${src}] = 0.` }));
+    let broke = false;
+    for (let r = 1; r < n && !broke; r++) {
+      round = r;
+      steps.push(snap({ line: 4, changed: ['round'], narr: `Round ${r} of ${n - 1}.` }));
+      changed = false;
+      steps.push(snap({ line: 5, changed: ['changedFlag'], narr: 'Nothing lowered yet this round.' }));
+      for (const e of edges) {
+        edgeTxt = e[0] + '→' + e[1] + ' (' + e[2] + ')';
+        if (dist[e[0]] === null) {
+          steps.push(snap({ line: 7, changed: ['edgeTxt'], hi: [e[0], e[1]],
+            narr: `Node ${e[0]} is still unreachable, so skip this edge. Adding to the sentinel would create a fake distance.` }));
+          continue;
+        }
+        const cand = dist[e[0]] + e[2];
+        if (dist[e[1]] === null || cand < dist[e[1]]) {
+          const old = dist[e[1]];
+          dist[e[1]] = cand;
+          changed = true;
+          steps.push(snap({ line: 8, changed: ['dist', 'changedFlag', 'edgeTxt'], hi: [e[0], e[1]], fell: [e[1]],
+            narr: `${dist[e[0]]} + ${e[2]} = ${cand} beats ${old === null ? '∞' : old}, so lower dist[${e[1]}].` }));
+        } else {
+          steps.push(snap({ line: 8, changed: ['edgeTxt'], hi: [e[0], e[1]],
+            narr: `${dist[e[0]]} + ${e[2]} = ${cand} does not beat dist[${e[1]}] = ${dist[e[1]]}.` }));
+        }
+      }
+      edgeTxt = null;
+      if (!changed) {
+        broke = true;
+        steps.push(snap({ line: 10, narr: `Round ${r} lowered nothing, so the distances have settled. Break out early.` }));
+      } else {
+        steps.push(snap({ line: 10, narr: `Round ${r} lowered something, so another round is needed.` }));
+      }
+    }
+    round = null; changed = null;
+    let neg = false;
+    for (const e of edges) {
+      if (dist[e[0]] === null) { continue; }
+      if (dist[e[1]] === null || dist[e[0]] + e[2] < dist[e[1]]) { neg = true; break; }
+    }
+    steps.push(snap({ line: 12, narr: 'Detector round: sweep every edge once more.' }));
+    if (neg) {
+      steps.push(snap({ line: 13, phase: 'done',
+        narr: 'An edge still improves after the full round count — that needs more than V-1 edges, so a reachable negative cycle exists. There is no shortest distance to return.',
+        result: { dist: null, neg: true } }));
+      return steps;
+    }
+    steps.push(snap({ line: 13, narr: 'Nothing improves, so there is no reachable negative cycle.' }));
+    steps.push(snap({ line: 14, phase: 'done',
+      narr: `Return ${fmt(dist)} (∞ shown as null for unreachable).`,
+      result: { dist: dist.slice(), neg: false } }));
+    return steps;
+  }
+
+  function cvRender(st) {
+    document.querySelectorAll('#cv-code-panel .cv-line').forEach(el => el.classList.remove('active', 'active-match'));
+    const ln = document.getElementById('cvL' + st.line);
+    if (ln) ln.classList.add(st.phase === 'done' ? 'active-match' : 'active');
+    const ch = st.changed || [];
+    const setCard = (id, val, changed) => {
+      const card = document.getElementById(id); if (!card) return;
+      card.querySelector('.cv-var-val').textContent = val;
+      card.classList.remove('hl', 'hl-match', 'dim');
+      if (changed) card.classList.add('hl');
+      else if (val === '—') card.classList.add('dim');
+    };
+    const fmt = a => '[' + a.map(x => (x === null ? '∞' : x)).join(',') + ']';
+    setCard('cv-v-round', st.round === null ? '—' : st.round, ch.includes('round'));
+    setCard('cv-v-edge', st.edgeTxt === null ? '—' : st.edgeTxt, ch.includes('edgeTxt'));
+    setCard('cv-v-changed', st.changedFlag === null ? '—' : String(st.changedFlag), ch.includes('changedFlag'));
+    setCard('cv-v-dist', fmt(st.dist), ch.includes('dist'));
+    const narr = document.getElementById('cv-narration');
+    narr.textContent = st.narr;
+    narr.className = 'cv-narration' + (st.phase === 'done' ? ' is-match' : ' is-active');
+    gDraw('cv-graph', cvEx, st);
+    document.getElementById('cv-sctr').textContent = `Step ${cvCur + 1} / ${cvSteps.length}`;
+    const bp = document.getElementById('cv-bprev'); if (bp) bp.disabled = cvCur === 0;
+    const bn = document.getElementById('cv-bnext'); if (bn) bn.disabled = cvCur === cvSteps.length - 1;
+  }
+  function cvLoadEx(idx) {
+    cvStopPlay(); cvCur = 0; cvEx = idx;
+    [0,1,2].forEach(i => document.getElementById('cv-ex' + i).classList.toggle('active', i === idx));
+    cvSteps = cvGenSteps(EX[idx].n, EX[idx].edges, EX[idx].src);
+    cvRender(cvSteps[0]);
+  }
+  function cvNext()  { if (cvCur < cvSteps.length - 1) { cvCur++; cvRender(cvSteps[cvCur]); } else cvStopPlay(); }
+  function cvPrev()  { if (cvCur > 0) { cvCur--; cvRender(cvSteps[cvCur]); } }
+  function cvReset() { cvStopPlay(); cvCur = 0; cvRender(cvSteps[0]); }
+
+  /* ════════════════ SEC 7 DRY RUN — the oracle ════════════════ */
+  let drCur = 0, drSteps = [], drTimer = null, drEx = 0;
+
+  function drGenSteps(n, edges, src) {
+    const dist = new Array(n).fill(null);
+    dist[src] = 0;
+    const steps = [];
+    const snap = (o) => Object.assign({
+      dist: dist.slice(), settled: [], fell: [], hi: null, round: 0, nchanged: 0, neg: null,
+    }, o);
+    steps.push(snap({ what: `Start: only node ${src} has a distance`,
+      why: `Everything else is ∞. Each round from here prices one more edge of every route.` }));
+    let stop = false;
+    for (let r = 1; r < n && !stop; r++) {
+      const fell = [];
+      let nchanged = 0;
+      for (const e of edges) {
+        if (dist[e[0]] === null) { continue; }
+        const cand = dist[e[0]] + e[2];
+        if (dist[e[1]] === null || cand < dist[e[1]]) {
+          dist[e[1]] = cand;
+          nchanged++;
+          if (fell.indexOf(e[1]) < 0) { fell.push(e[1]); }
+        }
+      }
+      const settled = [];
+      for (let i = 0; i < n; i++) { if (dist[i] !== null && fell.indexOf(i) < 0) { settled.push(i); } }
+      steps.push(snap({ dist: dist.slice(), settled, fell, round: r, nchanged,
+        what: `Round ${r}: swept all ${edges.length} edge(s)`,
+        why: nchanged
+          ? `Lowered ${nchanged} distance(s) — node(s) ${fell.join(', ')}. Every route of ${r} edge(s) is now priced correctly.`
+          : `Nothing changed, so the distances have settled. Rounds ${r + 1}..${n - 1} would be wasted work.` }));
+      if (nchanged === 0) { stop = true; }
+    }
+    let neg = false;
+    for (const e of edges) {
+      if (dist[e[0]] === null) { continue; }
+      if (dist[e[1]] === null || dist[e[0]] + e[2] < dist[e[1]]) { neg = true; break; }
+    }
+    if (neg) {
+      steps.push(snap({ neg: true,
+        what: 'Detector round: something still improves',
+        why: `After ${n - 1} round(s) every simple route is priced, so a further improvement must use a repeated node — a cycle whose total is negative. Distances can fall forever, so there is no answer.`,
+        result: { dist: null, neg: true } }));
+      return steps;
+    }
+    const out = dist.slice();
+    const settledAll = [];
+    for (let i = 0; i < n; i++) { if (out[i] !== null) { settledAll.push(i); } }
+    steps.push(snap({ settled: settledAll, neg: false,
+      what: 'Detector round: nothing improves',
+      why: `No reachable negative cycle, so the distances are final: ${JSON.stringify(out)}. A null means no route exists — note that -1 could not be used here, since it is a legal distance.`,
+      result: { dist: out, neg: false } }));
+    return steps;
+  }
+
+  function drRender(st) {
+    gDraw('dr-graph', drEx, st);
+    document.getElementById('dr-f-round').textContent = st.round;
+    document.getElementById('dr-f-changed').textContent = st.nchanged;
+    const negEl = document.getElementById('dr-f-neg');
+    negEl.textContent = st.neg === null ? '…' : (st.neg ? 'yes' : 'no');
+    negEl.style.color = st.neg === null ? 'var(--text2)' : (st.neg ? 'var(--text-danger)' : 'var(--text-success)');
+    document.getElementById('dr-f-dist').textContent =
+      'dist = [' + st.dist.map(x => (x === null ? '∞' : x)).join(', ') + ']';
+    const whatEl = document.querySelector('.dr-section .step-what');
+    const whyEl = document.querySelector('.dr-section .step-why');
+    if (whatEl) whatEl.textContent = st.what;
+    if (whyEl) whyEl.textContent = st.why;
+    document.getElementById('dr-sctr').textContent = `Step ${drCur + 1} / ${drSteps.length}`;
+    const bp = document.getElementById('dr-bp'); if (bp) bp.disabled = drCur === 0;
+    const bn = document.getElementById('dr-bn'); if (bn) bn.disabled = drCur === drSteps.length - 1;
+  }
+  function drLoadEx(idx) {
+    drStopPlay(); drCur = 0; drEx = idx;
+    [0,1,2].forEach(i => document.getElementById('dr-ex' + i).classList.toggle('active', i === idx));
+    drSteps = drGenSteps(EX[idx].n, EX[idx].edges, EX[idx].src);
+    drRender(drSteps[0]);
+  }
+  function drNext()  { if (drCur < drSteps.length - 1) { drCur++; drRender(drSteps[drCur]); } else drStopPlay(); }
+  function drPrev()  { if (drCur > 0) { drCur--; drRender(drSteps[drCur]); } }
+  function drReset() { drStopPlay(); drCur = 0; drRender(drSteps[0]); }
+
+  /* ── init ── */
+  siSteps = siGenSteps(EX[0].n, EX[0].edges, EX[0].src);
+  siRender(siSteps[0]);
+  cvBuildCode(CV_LINES);
+  cvLoadEx(0);
+  drLoadEx(0);
+  bfLoadEx(0);
+</script>
+
+</body>
+</html>
